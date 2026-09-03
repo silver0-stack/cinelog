@@ -1,0 +1,307 @@
+/** 같은 영화를 다시 봤을 때의 감상 하나. V2에서만 쓴다 — 덮어쓰지 않고 계속 쌓인다. */
+export type MovieViewing = {
+  id: string
+  rating?: number
+  note?: string
+  watchedAt: string
+}
+
+export type Movie = {
+  id: string
+  title: string
+  year: number
+  director: string
+  genres: string[]
+  themes: string[]
+  moods: string[]
+  era: string
+  locations: string[]
+  editorialConnections?: {
+    movieId: string
+    strength: number
+  }[]
+  /** 가장 최근 감상의 평점(0~5). V1 정적 큐레이션에는 없는 값 — V2에서만 쓴다(P2-4). */
+  rating?: number
+  /** TMDB 포스터 경로. V2에서만 쓴다(P2-5) — 기본 표현은 여전히 추상적인 점이고, 아주 가까이 줌인했을 때만 드러난다. */
+  posterPath?: string
+  /** 가장 최근 감상의 한줄메모. V2에서만 쓴다. */
+  note?: string
+  /** 이 영화를 본 기록 전체, 최신순. V2에서만 쓴다 — rating/note는 이 배열의 첫 항목과 같다. */
+  viewings?: MovieViewing[]
+}
+
+// 초안 목록 (24편). 장르/테마/무드/시대/지역이 서로 겹치도록 의도적으로 구성해서
+// lib/gravity.ts의 자동 계산이 의미 있는 결과를 내도록 했다. 실제 서비스용
+// 목록으로 자유롭게 교체/추가해도 이 구조는 그대로 유지하면 된다.
+export const movies: Movie[] = [
+  {
+    id: 'parasite',
+    title: '기생충',
+    year: 2019,
+    director: '봉준호',
+    genres: ['드라마', '스릴러', '블랙코미디'],
+    themes: ['계급', '가족', '욕망'],
+    moods: ['긴장감', '냉소적'],
+    era: '2010s',
+    locations: ['서울'],
+  },
+  {
+    id: 'memories-of-murder',
+    title: '살인의 추억',
+    year: 2003,
+    director: '봉준호',
+    genres: ['범죄', '드라마', '미스터리'],
+    themes: ['폭력', '무력감', '시대'],
+    moods: ['황량한', '긴장감'],
+    era: '2000s',
+    locations: ['시골'],
+  },
+  {
+    id: 'oldboy',
+    title: '올드보이',
+    year: 2003,
+    director: '박찬욱',
+    genres: ['스릴러', '미스터리'],
+    themes: ['복수', '감금', '정체성'],
+    moods: ['그로테스크', '긴장감'],
+    era: '2000s',
+    locations: ['서울'],
+  },
+  {
+    id: 'the-handmaiden',
+    title: '아가씨',
+    year: 2016,
+    director: '박찬욱',
+    genres: ['스릴러', '로맨스'],
+    themes: ['욕망', '억압', '반전'],
+    moods: ['관능적', '긴장감'],
+    era: '2010s',
+    locations: ['서울', '시골'],
+  },
+  {
+    id: 'burning',
+    title: '버닝',
+    year: 2018,
+    director: '이창동',
+    genres: ['드라마', '미스터리'],
+    themes: ['계급', '고립', '욕망'],
+    moods: ['몽환적', '황량한'],
+    era: '2010s',
+    locations: ['서울', '시골'],
+    editorialConnections: [{ movieId: 'parasite', strength: 0.5 }],
+  },
+  {
+    id: 'in-the-mood-for-love',
+    title: '화양연화',
+    year: 2000,
+    director: '왕가위',
+    genres: ['로맨스', '드라마'],
+    themes: ['억압', '상실', '기억'],
+    moods: ['몽환적', '우울'],
+    era: '2000s',
+    locations: ['홍콩'],
+  },
+  {
+    id: 'chungking-express',
+    title: '중경삼림',
+    year: 1994,
+    director: '왕가위',
+    genres: ['로맨스', '드라마'],
+    themes: ['고립', '우연', '도시'],
+    moods: ['몽환적', '따뜻하지만 쓸쓸한'],
+    era: '1990s',
+    locations: ['홍콩'],
+    editorialConnections: [{ movieId: 'amelie', strength: 0.5 }],
+  },
+  {
+    id: 'mulholland-drive',
+    title: '멀홀랜드 드라이브',
+    year: 2001,
+    director: '데이비드 린치',
+    genres: ['미스터리', '스릴러', '드라마'],
+    themes: ['정체성', '환상', '욕망'],
+    moods: ['몽환적', '그로테스크'],
+    era: '2000s',
+    locations: ['로스앤젤레스'],
+    editorialConnections: [{ movieId: 'perfect-blue', strength: 0.75 }],
+  },
+  {
+    id: 'blue-velvet',
+    title: '블루 벨벳',
+    year: 1986,
+    director: '데이비드 린치',
+    genres: ['미스터리', '스릴러'],
+    themes: ['감시', '이중성', '욕망'],
+    moods: ['그로테스크', '긴장감'],
+    era: '1980s',
+    locations: ['교외'],
+  },
+  {
+    id: 'blade-runner-2049',
+    title: '블레이드 러너 2049',
+    year: 2017,
+    director: '드니 빌뇌브',
+    genres: ['SF', '드라마'],
+    themes: ['정체성', '인공지능', '고립'],
+    moods: ['차갑고 절제된', '황량한'],
+    era: '2010s',
+    locations: ['로스앤젤레스'],
+    editorialConnections: [{ movieId: 'her', strength: 0.55 }],
+  },
+  {
+    id: 'arrival',
+    title: '컨택트',
+    year: 2016,
+    director: '드니 빌뇌브',
+    genres: ['SF', '드라마'],
+    themes: ['시간', '소통', '상실'],
+    moods: ['명상적', '차갑고 절제된'],
+    era: '2010s',
+    locations: ['시골'],
+  },
+  {
+    id: 'her',
+    title: '그녀',
+    year: 2013,
+    director: '스파이크 존즈',
+    genres: ['로맨스', 'SF', '드라마'],
+    themes: ['인공지능', '고립', '사랑'],
+    moods: ['따뜻하지만 쓸쓸한', '몽환적'],
+    era: '2010s',
+    locations: ['로스앤젤레스'],
+  },
+  {
+    id: 'lost-in-translation',
+    title: '사랑도 통역이 되나요',
+    year: 2003,
+    director: '소피아 코폴라',
+    genres: ['드라마', '로맨스'],
+    themes: ['고립', '소통', '이방인'],
+    moods: ['몽환적', '따뜻하지만 쓸쓸한'],
+    era: '2000s',
+    locations: ['도쿄'],
+  },
+  {
+    id: 'drive',
+    title: '드라이브',
+    year: 2011,
+    director: '니콜라스 윈딩 레픈',
+    genres: ['범죄', '스릴러'],
+    themes: ['고립', '폭력', '익명성'],
+    moods: ['차갑고 절제된', '긴장감'],
+    era: '2010s',
+    locations: ['로스앤젤레스'],
+    editorialConnections: [{ movieId: 'taxi-driver', strength: 0.6 }],
+  },
+  {
+    id: 'under-the-skin',
+    title: '언더 더 스킨',
+    year: 2013,
+    director: '조나단 글레이저',
+    genres: ['SF', '공포'],
+    themes: ['정체성', '고립', '이방인'],
+    moods: ['차갑고 절제된', '황량한'],
+    era: '2010s',
+    locations: ['스코틀랜드'],
+  },
+  {
+    id: 'eternal-sunshine',
+    title: '이터널 선샤인',
+    year: 2004,
+    director: '미셸 공드리',
+    genres: ['로맨스', 'SF', '드라마'],
+    themes: ['기억', '상실', '사랑'],
+    moods: ['몽환적', '우울'],
+    era: '2000s',
+    locations: ['뉴욕'],
+  },
+  {
+    id: 'taxi-driver',
+    title: '택시 드라이버',
+    year: 1976,
+    director: '마틴 스코세이지',
+    genres: ['범죄', '드라마'],
+    themes: ['고립', '폭력', '광기'],
+    moods: ['황량한', '긴장감'],
+    era: '1970s',
+    locations: ['뉴욕'],
+  },
+  {
+    id: 'pulp-fiction',
+    title: '펄프 픽션',
+    year: 1994,
+    director: '쿠엔틴 타란티노',
+    genres: ['범죄', '블랙코미디'],
+    themes: ['우연', '폭력', '시간'],
+    moods: ['냉소적', '긴장감'],
+    era: '1990s',
+    locations: ['로스앤젤레스'],
+  },
+  {
+    id: '2001-a-space-odyssey',
+    title: '2001 스페이스 오디세이',
+    year: 1968,
+    director: '스탠리 큐브릭',
+    genres: ['SF'],
+    themes: ['진화', '인공지능', '시간'],
+    moods: ['명상적', '차갑고 절제된'],
+    era: '1960s',
+    locations: ['우주'],
+    editorialConnections: [{ movieId: 'solaris', strength: 0.7 }],
+  },
+  {
+    id: 'the-shining',
+    title: '샤이닝',
+    year: 1980,
+    director: '스탠리 큐브릭',
+    genres: ['공포', '스릴러'],
+    themes: ['고립', '광기', '가족'],
+    moods: ['긴장감', '그로테스크'],
+    era: '1980s',
+    locations: ['산장'],
+  },
+  {
+    id: 'portrait-of-a-lady-on-fire',
+    title: '타오르는 여인의 초상',
+    year: 2019,
+    director: '셀린 시아마',
+    genres: ['로맨스', '드라마'],
+    themes: ['욕망', '기억', '시선'],
+    moods: ['명상적', '우울'],
+    era: '2010s',
+    locations: ['프랑스'],
+  },
+  {
+    id: 'amelie',
+    title: '아멜리에',
+    year: 2001,
+    director: '장 피에르 죄네',
+    genres: ['로맨스', '코미디'],
+    themes: ['고립', '우연', '환상'],
+    moods: ['따뜻하지만 쓸쓸한', '몽환적'],
+    era: '2000s',
+    locations: ['파리'],
+  },
+  {
+    id: 'perfect-blue',
+    title: '퍼펙트 블루',
+    year: 1997,
+    director: '곤 사토시',
+    genres: ['애니메이션', '스릴러', '미스터리'],
+    themes: ['정체성', '감시', '광기'],
+    moods: ['그로테스크', '긴장감'],
+    era: '1990s',
+    locations: ['도쿄'],
+  },
+  {
+    id: 'solaris',
+    title: '솔라리스',
+    year: 1972,
+    director: '안드레이 타르콥스키',
+    genres: ['SF', '드라마'],
+    themes: ['기억', '상실', '의식'],
+    moods: ['명상적', '우울'],
+    era: '1970s',
+    locations: ['우주'],
+  },
+]
