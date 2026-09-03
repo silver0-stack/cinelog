@@ -5,6 +5,11 @@ export const runtime = 'nodejs'
 export const alt = '영화 카드'
 export const size = { width: 1080, height: 1350 }
 export const contentType = 'image/png'
+// 첫 요청(콜드)은 포스터/폰트 외부 fetch 때문에 여전히 시간이 걸린다 — 트위터
+// 등 크롤러가 같은 카드를 다시 가져갈 때는 매번 새로 만들지 않고 캐시된 이미지를
+// 즉시 내려주도록 캐싱한다. 평점/메모가 바뀌어도 1시간 정도 지연 반영되는 건
+// 카드 공유 특성상 크게 문제되지 않는다.
+export const revalidate = 3600
 
 function ratingLine(rating: number | undefined): string {
   if (rating == null) return ''
@@ -59,7 +64,6 @@ async function loadPosterDataUri(posterPath: string): Promise<string | null> {
 export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const movie = await fetchCardMovie(slug)
-  const posterDataUri = movie?.posterPath ? await loadPosterDataUri(movie.posterPath) : null
 
   const noteText = movie?.note ? truncate(movie.note, 60) : ''
   // 감상의 연혁은 이 사진에서 항목별로 보여주지 않는다(고정 크기라 넘치면 잘리니까)
@@ -78,7 +82,14 @@ export default async function Image({ params }: { params: Promise<{ slug: string
     'CINELOG',
   ].join('')
 
-  const fontData = await loadKoreanFont(text)
+  // 포스터/폰트는 서로 의존관계가 없는 별개의 외부 요청이라 순서대로(직렬로)
+  // 기다릴 이유가 없다 — 직렬로 하면 트위터 카드 크롤러의 타임아웃(수 초)을
+  // 넘겨서 빈 이미지로 보이는 문제가 있었다. 동시에 실행해서 전체 대기 시간을
+  // 둘 중 더 느린 쪽 하나로 줄인다.
+  const [posterDataUri, fontData] = await Promise.all([
+    movie?.posterPath ? loadPosterDataUri(movie.posterPath) : Promise.resolve(null),
+    loadKoreanFont(text),
+  ])
   const fontFamily = fontData ? 'Noto Sans KR' : undefined
 
   return new ImageResponse(
