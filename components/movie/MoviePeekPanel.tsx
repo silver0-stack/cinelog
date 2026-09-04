@@ -248,10 +248,25 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
                   if (e.target === e.currentTarget) onFlip()
                 }}
               >
-                {movie.rating != null && (
-                  <div className="text-[10px] tracking-[0.2em] text-white/50">
-                    {'★'.repeat(movie.rating)}
-                    {'☆'.repeat(5 - movie.rating)}
+                {(movie.rating != null || (editable && viewings[0])) && (
+                  <div className="flex items-center gap-2">
+                    {movie.rating != null && (
+                      <div className="text-[10px] tracking-[0.2em] text-white/50">
+                        {'★'.repeat(movie.rating)}
+                        {'☆'.repeat(5 - movie.rating)}
+                      </div>
+                    )}
+                    {editable && viewings[0] && (
+                      <button
+                        type="button"
+                        onClick={startEditLatestViewing}
+                        aria-label="이 감상 고치기"
+                        title="이 감상 고치기"
+                        className="flex items-center justify-center text-white/35 outline-none transition-colors duration-500 hover:text-white/70"
+                      >
+                        <PencilIcon />
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -272,21 +287,14 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
                 {viewings[0] && (
                   <div className="flex items-center gap-2">
                     <span className="text-[8px] tracking-[0.2em] text-white/25">{viewings[0].watchedAt}</span>
-                    {editable && (
-                      <>
-                        <button type="button" onClick={startEditLatestViewing} className="text-[8px] tracking-[0.2em] text-white/25 outline-none transition-colors duration-500 hover:text-white/60">
-                          고치기
-                        </button>
-                        {viewings.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={handleDeleteLatestViewing}
-                            className="text-[8px] tracking-[0.2em] text-white/25 outline-none transition-colors duration-500 hover:text-white/60"
-                          >
-                            삭제
-                          </button>
-                        )}
-                      </>
+                    {editable && viewings.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={handleDeleteLatestViewing}
+                        className="text-[8px] tracking-[0.2em] text-white/25 outline-none transition-colors duration-500 hover:text-white/60"
+                      >
+                        삭제
+                      </button>
                     )}
                   </div>
                 )}
@@ -353,13 +361,28 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
             >
               <div className="relative">
                 {movie.posterPath ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={`https://image.tmdb.org/t/p/w342${movie.posterPath}`}
-                    alt=""
-                    loading="lazy"
-                    className="h-64 w-44 object-cover opacity-90 saturate-[0.8] brightness-[0.9]"
-                  />
+                  <>
+                    {/* 유튜브 앰비언트 모드처럼, 포스터 자체를 크게 확대해 블러한
+                        사본을 뒤에 깔아서 그 영화의 색이 은은하게 새어나오게
+                        한다 — 픽셀을 읽어 "대표색" 하나를 뽑는 대신(포스터가
+                        외부 CDN이라 캔버스로 읽으면 CORS에 막힐 수 있다) CSS
+                        블러만으로 같은 효과를 낸다. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`https://image.tmdb.org/t/p/w342${movie.posterPath}`}
+                      alt=""
+                      aria-hidden="true"
+                      loading="lazy"
+                      className="pointer-events-none absolute -inset-6 -z-10 object-cover opacity-35 blur-3xl"
+                    />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`https://image.tmdb.org/t/p/w342${movie.posterPath}`}
+                      alt=""
+                      loading="lazy"
+                      className="relative h-64 w-44 object-cover opacity-90 saturate-[0.8] brightness-[0.9]"
+                    />
+                  </>
                 ) : (
                   <div className="flex h-64 w-44 items-center justify-center border border-white/10">
                     <span className="text-[9px] tracking-[0.2em] text-white/20">포스터 없음</span>

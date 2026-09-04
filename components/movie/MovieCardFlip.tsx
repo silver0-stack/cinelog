@@ -82,12 +82,23 @@ export function MovieCardFlip({ movie, slug }: { movie: Movie; slug: string }) {
           onClick={flip}
         >
           {movie.posterPath ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={`https://image.tmdb.org/t/p/w342${movie.posterPath}`}
-              alt=""
-              className="h-72 w-48 object-cover opacity-80 saturate-[0.7] brightness-[0.85]"
-            />
+            <div className="relative">
+              {/* peek 패널과 같은 앰비언트 글로우 — 포스터를 확대·블러한 사본을
+                  뒤에 깔아서 그 영화의 색이 은은하게 새어나오게 한다. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`https://image.tmdb.org/t/p/w342${movie.posterPath}`}
+                alt=""
+                aria-hidden="true"
+                className="pointer-events-none absolute -inset-6 -z-10 object-cover opacity-35 blur-3xl"
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`https://image.tmdb.org/t/p/w342${movie.posterPath}`}
+                alt=""
+                className="relative h-72 w-48 object-cover opacity-80 saturate-[0.7] brightness-[0.85]"
+              />
+            </div>
           ) : (
             <div className="flex h-72 w-48 items-center justify-center border border-white/10">
               <span className="text-[10px] tracking-[0.2em] text-white/20">포스터 없음</span>
