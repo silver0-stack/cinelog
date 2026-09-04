@@ -74,6 +74,16 @@ body::after {
   animation: pulseSlow 4.2s ease-in-out infinite;
 }
 
+/* 동작을 줄이기로 설정한 사용자에게는 깜빡이는 애니메이션을 끄고, 두 값의
+   중간 정도 밝기로 고정한다 — 완전히 없애면 그 요소가 존재하는지조차
+   모호해지니, 밝기 변화만 멈추고 형태는 그대로 보이게 한다. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-slow {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
 /* peek 패널/가이드 패널처럼 좁고 어두운 패널 안에 스크롤이 생길 때, 브라우저
    기본 스크롤바(밝은 회색 막대)는 절제된 톤과 완전히 어긋난다 — 아주 가는
    반투명 흰 막대로 대체한다. 트랙은 투명하게 둬서 별도의 상자처럼

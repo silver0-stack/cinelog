@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { EASE_SLOW } from '@/lib/motion'
 import { secondaryNavLinkClass } from '@/lib/uiStyles'
 import { AccountMenu } from '@/components/archive/AccountMenu'
@@ -26,10 +26,16 @@ const bodyClass = 'text-xs font-light leading-loose tracking-[0.15em] text-white
 // 전환(HomeRitual)으로 이어진다. 섹션마다 whileInView로 아주 천천히 떠오르게 해서
 // "스크롤=탐험"이라는 감각을 유지한다 — 한 번에 다 쏟아붓지 않는다.
 function Section({ id, children, className = '' }: { id?: string; children: ReactNode; className?: string }) {
+  // 동작 줄이기를 켠 사용자에게는 아래에서 위로 올라오는 이동(y) 없이 밝기만
+  // 바꾼다 — 스크롤할 때마다 화면 여기저기가 계속 움직이는 건 그 자체로
+  // 피로/어지러움을 유발할 수 있는 종류다.
+  const reducedMotion = useReducedMotion()
+  const offset = reducedMotion ? 0 : 16
+
   return (
     <motion.section
       id={id}
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: offset }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-15% 0px' }}
       transition={{ duration: 1.6, ease: EASE_SLOW }}

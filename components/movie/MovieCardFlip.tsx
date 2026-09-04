@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { EASE_SLOW } from '@/lib/motion'
 import { ViewingHistoryStepper } from './ViewingHistoryStepper'
 import type { Movie } from '@/data/movies'
@@ -18,7 +18,15 @@ function ratingLine(rating: number | undefined): string {
 
 export function MovieCardFlip({ movie, slug }: { movie: Movie; slug: string }) {
   const [showBack, setShowBack] = useState(false)
+  // 포스터 경로는 있는데 실제 로드가 실패하면(포스터가 내려갔거나 네트워크
+  // 오류) 브라우저 기본 깨진 이미지 아이콘 대신 그냥 "포스터 없음"으로 대체한다.
+  const [posterFailed, setPosterFailed] = useState(false)
   const flip = () => setShowBack((v) => !v)
+
+  // 동작 줄이기를 켠 사용자에게는 3D 회전 대신 밝기만 바뀌는 크로스페이드로
+  // 뒤집는다 — MoviePeekPanel과 같은 이유.
+  const reducedMotion = useReducedMotion()
+  const rotate = (deg: number) => (reducedMotion ? {} : { rotateY: deg })
 
   // 최신 감상(평점/메모)은 뒷면에서 이미 보여주니, "감상의 연혁"에는 그 이전
   // 감상들만 넘겨서 볼 수 있게 한다 — 같은 내용이 두 번 겹쳐 보이지 않게.
@@ -29,9 +37,9 @@ export function MovieCardFlip({ movie, slug }: { movie: Movie; slug: string }) {
       {showBack ? (
         <motion.div
           key="back"
-          initial={{ rotateY: -90, opacity: 0 }}
-          animate={{ rotateY: 0, opacity: 1 }}
-          exit={{ rotateY: 90, opacity: 0 }}
+          initial={{ ...rotate(-90), opacity: 0 }}
+          animate={{ ...rotate(0), opacity: 1 }}
+          exit={{ ...rotate(90), opacity: 0 }}
           transition={FLIP_TRANSITION}
           style={{ transformPerspective: 900 }}
           className="flex w-full max-w-xs flex-col items-center gap-6 text-center"
@@ -71,17 +79,18 @@ export function MovieCardFlip({ movie, slug }: { movie: Movie; slug: string }) {
           </a>
         </motion.div>
       ) : (
-        <motion.div
+        <motion.button
+          type="button"
           key="front"
-          initial={{ rotateY: 90, opacity: 0 }}
-          animate={{ rotateY: 0, opacity: 1 }}
-          exit={{ rotateY: -90, opacity: 0 }}
+          initial={{ ...rotate(90), opacity: 0 }}
+          animate={{ ...rotate(0), opacity: 1 }}
+          exit={{ ...rotate(-90), opacity: 0 }}
           transition={FLIP_TRANSITION}
           style={{ transformPerspective: 900 }}
           className="flex w-full max-w-xs cursor-pointer flex-col items-center gap-6 text-center"
           onClick={flip}
         >
-          {movie.posterPath ? (
+          {movie.posterPath && !posterFailed ? (
             <div className="relative">
               {/* peek 패널과 같은 앰비언트 글로우 — 포스터를 확대·블러한 사본을
                   뒤에 깔아서 그 영화의 색이 은은하게 새어나오게 한다. */}
@@ -96,6 +105,7 @@ export function MovieCardFlip({ movie, slug }: { movie: Movie; slug: string }) {
               <img
                 src={`https://image.tmdb.org/t/p/w342${movie.posterPath}`}
                 alt=""
+                onError={() => setPosterFailed(true)}
                 className="relative h-72 w-48 object-cover opacity-80 saturate-[0.7] brightness-[0.85]"
               />
             </div>
@@ -116,7 +126,7 @@ export function MovieCardFlip({ movie, slug }: { movie: Movie; slug: string }) {
           </div>
 
           <p className="text-[9px] tracking-[0.2em] text-white/20">눌러서 뒤집기</p>
-        </motion.div>
+        </motion.button>
       )}
     </AnimatePresence>
   )

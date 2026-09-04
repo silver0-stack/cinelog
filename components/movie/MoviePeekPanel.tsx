@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { addViewing, deleteViewing, updateLoggedMovie, updateViewing } from '@/lib/loggedMovies'
 import { searchTmdbMovies, fetchTmdbMovieDetail, type TmdbSearchResult } from '@/lib/tmdbClient'
 import { editorialReason } from '@/lib/gravity'
@@ -53,12 +53,21 @@ type Props = {
 // 이전 감상이 사라지지 않는다.
 export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBack, onFlip, onClose, onRecenter }: Props) {
   const router = useRouter()
+  // 동작 줄이기를 켠 사용자에게는 3D 회전 대신 밝기만 바뀌는 크로스페이드로
+  // 뒤집는다 — 회전은 3D 공간에서 물체가 도는 것처럼 보여서 어지러움을 유발하기
+  // 쉬운 종류의 움직임이다.
+  const reducedMotion = useReducedMotion()
+  const rotate = (deg: number) => (reducedMotion ? {} : { rotateY: deg })
   const [mode, setMode] = useState<'view' | 'add' | 'edit' | 'edit-viewing'>('view')
   const [saving, setSaving] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [editingViewingId, setEditingViewingId] = useState<string | null>(null)
   const [showRecenterHint, setShowRecenterHint] = useState(false)
   const [showRewatchHint, setShowRewatchHint] = useState(false)
+  // TMDB 포스터 경로는 있는데 실제 이미지 로드가 실패하면(포스터가 내려갔거나
+  // 네트워크 오류) 브라우저 기본 "깨진 이미지" 아이콘이 뜨는데, 이 톤과 완전히
+  // 안 어울린다 — 실패하면 그냥 "포스터 없음" 플레이스홀더로 대체한다.
+  const [posterFailed, setPosterFailed] = useState(false)
 
   useEffect(() => {
     try {
@@ -215,9 +224,9 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
           {showBack ? (
             <motion.div
               key="back"
-              initial={{ rotateY: -90, opacity: 0 }}
-              animate={{ rotateY: 0, opacity: 1 }}
-              exit={{ rotateY: 90, opacity: 0 }}
+              initial={{ ...rotate(-90), opacity: 0 }}
+              animate={{ ...rotate(0), opacity: 1 }}
+              exit={{ ...rotate(90), opacity: 0 }}
               transition={FLIP_TRANSITION}
               style={{ transformPerspective: 900 }}
               className="flex w-full flex-col items-center gap-2"
@@ -351,16 +360,28 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
           ) : (
             <motion.div
               key="front"
-              initial={{ rotateY: 90, opacity: 0 }}
-              animate={{ rotateY: 0, opacity: 1 }}
-              exit={{ rotateY: -90, opacity: 0 }}
+              initial={{ ...rotate(90), opacity: 0 }}
+              animate={{ ...rotate(0), opacity: 1 }}
+              exit={{ ...rotate(-90), opacity: 0 }}
               transition={FLIP_TRANSITION}
               style={{ transformPerspective: 900 }}
               className="flex w-full cursor-pointer flex-col items-center gap-2"
               onClick={onFlip}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                // 앞면 카드 전체가 클릭 대상이지만 <div>라서(안에 진짜 <button>인
+                // 연필/공유 아이콘이 있어 이 카드 자체를 <button>으로 바꿀 수는
+                // 없다) 키보드 포커스를 받아도 엔터/스페이스로는 반응하지
+                // 않았다 — 직접 처리해서 별을 다시 찾지 않아도 뒤집을 수 있게 한다.
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onFlip()
+                }
+              }}
             >
               <div className="relative">
-                {movie.posterPath ? (
+                {movie.posterPath && !posterFailed ? (
                   <>
                     {/* 유튜브 앰비언트 모드처럼, 포스터 자체를 크게 확대해 블러한
                         사본을 뒤에 깔아서 그 영화의 색이 은은하게 새어나오게
@@ -380,6 +401,7 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
                       src={`https://image.tmdb.org/t/p/w342${movie.posterPath}`}
                       alt=""
                       loading="lazy"
+                      onError={() => setPosterFailed(true)}
                       className="relative h-64 w-44 object-cover opacity-90 saturate-[0.8] brightness-[0.9]"
                     />
                   </>

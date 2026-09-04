@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { BLACKHOLE, EASE_SLOW } from '@/lib/motion'
 
 type Phase = 'dim' | 'converge' | 'collapse' | 'void'
@@ -15,7 +15,36 @@ type Props = {
 // 영화 우주로 진입한다.
 export function BlackHoleTransition({ onArrive }: Props) {
   const [phase, setPhase] = useState<Phase>('dim')
+  const reducedMotion = useReducedMotion()
 
+  // 동작 줄이기를 켠 사용자에게는 이 다단계 확대/수렴 연출을 그대로 축소해서
+  // 재현하지 않는다 — 화면 전체가 회전·확대되는 게 이 장면의 핵심인데, 그게
+  // 바로 어지러움을 유발하는 종류의 움직임이다. 대신 단순한 암전 페이드로
+  // 같은 서사적 역할("다른 공간으로 넘어간다")만 짧게 수행한다.
+  if (reducedMotion) {
+    return (
+      <motion.div
+        className="h-full w-full bg-black"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6, ease: EASE_SLOW }}
+        onAnimationComplete={() => window.setTimeout(onArrive, 300)}
+      />
+    )
+  }
+
+  return <BlackHoleTransitionFull phase={phase} setPhase={setPhase} onArrive={onArrive} />
+}
+
+function BlackHoleTransitionFull({
+  phase,
+  setPhase,
+  onArrive,
+}: {
+  phase: Phase
+  setPhase: (phase: Phase) => void
+  onArrive: () => void
+}) {
   useEffect(() => {
     const t1 = window.setTimeout(() => setPhase('converge'), BLACKHOLE.dim)
     const t2 = window.setTimeout(() => setPhase('collapse'), BLACKHOLE.dim + BLACKHOLE.converge)
@@ -28,7 +57,7 @@ export function BlackHoleTransition({ onArrive }: Props) {
       window.clearTimeout(t2)
       window.clearTimeout(t3)
     }
-  }, [])
+  }, [setPhase])
 
   useEffect(() => {
     if (phase !== 'void') return

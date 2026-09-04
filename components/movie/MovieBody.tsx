@@ -137,6 +137,9 @@ export function MovieBody({
   // 앞면(포스터)/뒷면(내 평점·메모·액션) 중 뭘 보여줄지 — 열람이 닫히면 다음에
   // 다시 열었을 때 항상 앞면부터 보이도록 리셋한다.
   const [showBack, setShowBack] = useState(false)
+  // 포스터 경로는 있는데 실제 로드가 실패하면 브라우저 기본 깨진 이미지 아이콘
+  // 대신 그냥 안 보이게 한다 — MoviePeekPanel의 앞면과 같은 이유.
+  const [posterFailed, setPosterFailed] = useState(false)
 
   useEffect(() => {
     if (!peeked) {
@@ -330,12 +333,13 @@ export function MovieBody({
               className="pointer-events-none mt-3 flex w-28 flex-col items-center gap-1.5"
               style={{ opacity: detailOpacity }}
             >
-              {movie.posterPath && (
+              {movie.posterPath && !posterFailed && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={`https://image.tmdb.org/t/p/w154${movie.posterPath}`}
                   alt=""
                   loading="lazy"
+                  onError={() => setPosterFailed(true)}
                   className="h-24 w-16 object-cover opacity-70 saturate-[0.65] brightness-[0.82]"
                 />
               )}
