@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition, type FormEvent } from 'react'
+import { useEffect, useRef, useState, useTransition, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { addViewing, deleteViewing, updateLoggedMovie, updateViewing } from '@/lib/loggedMovies'
@@ -100,7 +100,10 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
   const [genres, setGenres] = useState(movie.genres)
   const [pickedTmdb, setPickedTmdb] = useState<{ tmdbId: number; posterPath: string | null } | null>(null)
   const [tmdbResults, setTmdbResults] = useState<TmdbSearchResult[]>([])
+  const [tmdbPending, setTmdbPending] = useState(false)
   const [searching, startSearch] = useTransition()
+  const tmdbSearchTokenRef = useRef(0)
+  const tmdbDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const viewings = movie.viewings ?? []
   const priorViewings = viewings.slice(1)
@@ -177,14 +180,23 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
   function handleTitleChange(value: string) {
     setTitle(value)
     setPickedTmdb(null)
+    if (tmdbDebounceRef.current) clearTimeout(tmdbDebounceRef.current)
     if (value.trim().length < 1) {
+      setTmdbPending(false)
       setTmdbResults([])
       return
     }
-    startSearch(async () => {
-      const found = await searchTmdbMovies(value.trim())
-      setTmdbResults(found)
-    })
+    setTmdbPending(true)
+    tmdbDebounceRef.current = setTimeout(() => {
+      const token = ++tmdbSearchTokenRef.current
+      startSearch(async () => {
+        const found = await searchTmdbMovies(value.trim())
+        if (token === tmdbSearchTokenRef.current) {
+          setTmdbResults(found)
+          setTmdbPending(false)
+        }
+      })
+    }, 300)
   }
 
   async function applyTmdbResult(result: TmdbSearchResult) {
@@ -519,7 +531,9 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
             required
             className={fieldClass}
           />
-          {searching && <p className="text-[9px] tracking-widest text-white/25">검색 중</p>}
+          {(tmdbPending || searching) && (
+            <p className="text-[9px] tracking-widest text-white/25">검색 중</p>
+          )}
           {tmdbResults.length > 0 && (
             <ul className="flex w-full flex-col gap-1">
               {tmdbResults.map((r) => (

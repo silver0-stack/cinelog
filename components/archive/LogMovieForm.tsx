@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, type FormEvent } from 'react'
+import { useState, useTransition, useRef, type FormEvent } from 'react'
 import Link from 'next/link'
 import { searchTmdbMovies, fetchTmdbMovieDetail, type TmdbSearchResult } from '@/lib/tmdbClient'
 import { createLoggedMovie } from '@/lib/loggedMovies'
@@ -44,17 +44,41 @@ export function LogMovieForm() {
   const [draft, setDraft] = useState<Draft>(emptyDraft())
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
+  const searchTokenRef = useRef(0)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  function handleQueryChange(value: string) {
-    setQuery(value)
+  function runSearch(value: string) {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
     if (value.trim().length < 1) {
+      setPending(false)
       setResults([])
       return
     }
-    startSearch(async () => {
-      const found = await searchTmdbMovies(value.trim())
-      setResults(found)
-    })
+    setPending(true)
+    debounceRef.current = setTimeout(() => {
+      const token = ++searchTokenRef.current
+      startSearch(async () => {
+        const found = await searchTmdbMovies(value.trim())
+        if (token === searchTokenRef.current) {
+          setResults(found)
+          setPending(false)
+        }
+      })
+    }, 300)
+  }
+
+  // 한글 조합 중에도 브라우저는 e.target.value를 그때그때 업데이트하므로 매 입력마다
+  // 그대로 검색을 예약한다 — 디바운스가 타이핑이 멈춘 시점에 자연히 정착시킨다.
+  // (조합 중에만 검색을 미루는 방식은 IME/브라우저에 따라 compositionend가 음절마다
+  // 안 터지고 스페이스/포커스아웃에서만 터져서 오히려 "스페이스 눌러야 검색됨" 증상을 만든다.)
+  function handleQueryChange(value: string) {
+    setQuery(value)
+    runSearch(value)
+  }
+
+  function handleCompositionEnd(e: React.CompositionEvent<HTMLInputElement>) {
+    runSearch(e.currentTarget.value)
   }
 
   async function selectResult(result: TmdbSearchResult) {
@@ -142,12 +166,15 @@ export function LogMovieForm() {
           type="text"
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
+          onCompositionEnd={handleCompositionEnd}
           placeholder="영화 제목"
           autoFocus
           className={`text-center ${fieldClass}`}
         />
 
-        {searching && <p className="text-xs font-light tracking-widest text-white/30">검색 중</p>}
+        {(pending || searching) && (
+          <p className="text-xs font-light tracking-widest text-white/30">검색 중</p>
+        )}
 
         {results.length > 0 && (
           <ul className="flex w-full flex-col gap-1">
