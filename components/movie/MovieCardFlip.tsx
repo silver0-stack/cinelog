@@ -71,7 +71,7 @@ export function MovieCardFlip({ movie, slug }: { movie: Movie; slug: string }) {
           )}
 
           <a
-            href={`/m/${slug}/opengraph-image`}
+            href={`/m/${slug}/download-image`}
             download={`${movie.title}.png`}
             className="mt-2 text-[10px] font-light tracking-[0.4em] text-white/30 outline-none transition-colors duration-500 hover:text-white/60"
           >

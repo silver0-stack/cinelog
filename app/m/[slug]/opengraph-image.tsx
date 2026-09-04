@@ -1,9 +1,16 @@
 import { ImageResponse } from 'next/og'
 import { fetchCardMovie } from './_data'
+import { ratingLine, truncate, loadKoreanFont, loadPosterDataUri } from './_shareImage'
 
 export const runtime = 'nodejs'
 export const alt = '영화 카드'
-export const size = { width: 1080, height: 1350 }
+// X(트위터)의 summary_large_image 카드는 가로로 넓은 슬롯(약 1.91:1)을
+// 기대한다 — 세로 이미지를 넣으면 위아래가 잘려서 제목/브랜드가 잘렸다.
+// 이 파일은 og:image(그리고 twitter-image가 따로 없으면 twitter:image도
+// 자동으로 이 파일을 쓴다)라서 여기를 가로로 맞추면 두 곳 다 해결된다.
+// 저장해서 인스타 등에 직접 올리는 용도는 download-image/route.ts(정사각형)가
+// 따로 맡는다.
+export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 // 첫 요청(콜드)은 포스터/폰트 외부 fetch 때문에 여전히 시간이 걸린다 — 트위터
 // 등 크롤러가 같은 카드를 다시 가져갈 때는 매번 새로 만들지 않고 캐시된 이미지를
@@ -11,61 +18,11 @@ export const contentType = 'image/png'
 // 카드 공유 특성상 크게 문제되지 않는다.
 export const revalidate = 3600
 
-function ratingLine(rating: number | undefined): string {
-  if (rating == null) return ''
-  return '★'.repeat(rating) + '☆'.repeat(5 - rating)
-}
-
-// 고정 크기 캔버스라 스크롤이 없다 — 이 사진은 요약용 미리보기일 뿐이고, 전체
-// 감상 이력은 이 이미지가 링크하는 웹페이지(page.tsx)에서 한 장씩 넘겨볼 수
-// 있다(ViewingHistoryStepper). 그래서 여기서는 넘치지 않을 만큼만 짧게 자른다.
-function truncate(text: string, max: number): string {
-  return text.length > max ? `${text.slice(0, max)}…` : text
-}
-
-// Satori(next/og)의 기본 폰트는 한글 글리프가 없다 — 제목/감독이 전부 한글이라
-// 폰트를 직접 안 실어주면 글자가 안 뜨거나 깨진다. Google Fonts의 CSS2 API에
-// text= 파라미터를 주면 실제로 쓰는 글자만 담긴 가벼운 폰트 파일을 받을 수 있다.
-// 네트워크 요청이 실패해도(오프라인 등) 카드 생성 자체가 죽지 않도록 실패하면
-// 조용히 기본 폰트로 넘어간다 — 한글이 안 보일 수는 있어도 이미지 자체는 뜬다.
-async function loadKoreanFont(text: string): Promise<ArrayBuffer | null> {
-  try {
-    const cssUrl = `https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600&text=${encodeURIComponent(text)}`
-    const css = await (await fetch(cssUrl)).text()
-    const match = css.match(/src: url\(([^)]+)\) format\('(?:opentype|truetype)'\)/)
-    if (!match) return null
-
-    const fontRes = await fetch(match[1])
-    if (!fontRes.ok) return null
-    return await fontRes.arrayBuffer()
-  } catch {
-    return null
-  }
-}
-
-// Satori가 <img src="https://..."> 를 만나면 렌더링 중에 자체적으로 그 URL을
-// fetch하는데, 이 경로가 환경에 따라 실패할 수 있다("fetch failed"로 카드 생성
-// 자체가 죽어버림). 대신 여기서 직접 fetch해서 base64 data URI로 박아넣으면
-// Satori는 이미 있는 이미지를 그리기만 하면 된다 — 실패해도 포스터만 빠지고
-// 카드 자체는 계속 뜬다.
-async function loadPosterDataUri(posterPath: string): Promise<string | null> {
-  try {
-    const res = await fetch(`https://image.tmdb.org/t/p/w500${posterPath}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-    })
-    if (!res.ok) return null
-    const buffer = await res.arrayBuffer()
-    return `data:image/jpeg;base64,${Buffer.from(buffer).toString('base64')}`
-  } catch {
-    return null
-  }
-}
-
 export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const movie = await fetchCardMovie(slug)
 
-  const noteText = movie?.note ? truncate(movie.note, 60) : ''
+  const noteText = movie?.note ? truncate(movie.note, 46) : ''
   // 감상의 연혁은 이 사진에서 항목별로 보여주지 않는다(고정 크기라 넘치면 잘리니까)
   // — "몇 번 다시 봤는지"만 짧게 알려주고, 전체 이력은 링크된 웹페이지에서 본다.
   const rewatchCount = Math.max(0, (movie?.viewings?.length ?? 0) - 1)
@@ -99,46 +56,64 @@ export default async function Image({ params }: { params: Promise<{ slug: string
           width: '100%',
           height: '100%',
           display: 'flex',
-          flexDirection: 'column',
+          flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'space-between',
           background: '#050505',
           color: '#fff',
-          padding: '90px 70px',
+          padding: '60px 70px',
+          gap: 56,
           fontFamily,
         }}
       >
-        <div />
+        {posterDataUri && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={posterDataUri}
+            alt=""
+            width={300}
+            height={450}
+            style={{ objectFit: 'cover', flexShrink: 0 }}
+          />
+        )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28 }}>
-          {posterDataUri && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={posterDataUri} alt="" width={300} height={450} style={{ objectFit: 'cover' }} />
-          )}
-
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-            <div style={{ display: 'flex', fontSize: 44, letterSpacing: 3, opacity: 0.92 }}>{movie?.title ?? ''}</div>
-            <div style={{ display: 'flex', fontSize: 22, letterSpacing: 6, opacity: 0.45 }}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            flex: 1,
+            height: '100%',
+            paddingTop: 8,
+            paddingBottom: 8,
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', fontSize: 40, letterSpacing: 2, opacity: 0.92 }}>{movie?.title ?? ''}</div>
+            <div style={{ display: 'flex', fontSize: 20, letterSpacing: 4, opacity: 0.45 }}>
               {movie ? `${movie.year} · ${movie.director}` : ''}
             </div>
+
+            {movie?.rating != null && (
+              <div style={{ display: 'flex', fontSize: 24, letterSpacing: 8, opacity: 0.7, marginTop: 6 }}>
+                {ratingLine(movie.rating)}
+              </div>
+            )}
+
+            {noteText && (
+              <div style={{ display: 'flex', maxWidth: 620, fontSize: 17, opacity: 0.55, marginTop: 6 }}>
+                “{noteText}”
+              </div>
+            )}
+
+            {rewatchCount > 0 && (
+              <div style={{ display: 'flex', fontSize: 14, letterSpacing: 3, opacity: 0.3, marginTop: 6 }}>
+                {rewatchCount}번 다시 봄
+              </div>
+            )}
           </div>
 
-          {movie?.rating != null && (
-            <div style={{ display: 'flex', fontSize: 30, letterSpacing: 10, opacity: 0.7 }}>{ratingLine(movie.rating)}</div>
-          )}
-
-          {noteText && (
-            <div style={{ display: 'flex', maxWidth: 640, fontSize: 19, opacity: 0.55, textAlign: 'center' }}>
-              “{noteText}”
-            </div>
-          )}
-
-          {rewatchCount > 0 && (
-            <div style={{ display: 'flex', fontSize: 16, letterSpacing: 4, opacity: 0.3 }}>{rewatchCount}번 다시 봄</div>
-          )}
+          <div style={{ display: 'flex', fontSize: 14, letterSpacing: 9, opacity: 0.25 }}>CINELOG</div>
         </div>
-
-        <div style={{ display: 'flex', fontSize: 16, letterSpacing: 10, opacity: 0.25 }}>CINELOG</div>
       </div>
     ),
     {
