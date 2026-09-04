@@ -30,6 +30,7 @@ export default async function ArchivePage() {
   const { data } = await supabase
     .from('logged_movies')
     .select('id, tmdb_id, title, year, director, genres, themes, moods, poster_path')
+    .eq('user_id', user.id)
 
   const rows = (data ?? []) as LoggedMovieRow[]
 
@@ -48,8 +49,8 @@ export default async function ArchivePage() {
   }
 
   const [{ data: viewingData }, { data: connectionData }] = await Promise.all([
-    supabase.from('viewings').select('id, logged_movie_id, rating, note, watched_at'),
-    supabase.from('editorial_connections').select('movie_a_id, movie_b_id, strength'),
+    supabase.from('viewings').select('id, logged_movie_id, rating, note, watched_at').eq('user_id', user.id),
+    supabase.from('editorial_connections').select('movie_a_id, movie_b_id, strength').eq('user_id', user.id),
   ])
 
   const movies = attachEditorialConnections(

@@ -28,10 +28,7 @@ export default async function SharedUniversePage({ params }: { params: Promise<{
     )
   }
 
-  const { data } = await supabase
-    .from('logged_movies')
-    .select('id, tmdb_id, title, year, director, genres, themes, moods, poster_path')
-    .eq('user_id', link.user_id)
+  const { data } = await supabase.rpc('get_shared_universe_movies', { p_slug: slug })
 
   const rows = (data ?? []) as LoggedMovieRow[]
 
@@ -47,8 +44,8 @@ export default async function SharedUniversePage({ params }: { params: Promise<{
   }
 
   const [{ data: viewingData }, { data: connectionData }] = await Promise.all([
-    supabase.from('viewings').select('id, logged_movie_id, rating, note, watched_at').eq('user_id', link.user_id),
-    supabase.from('editorial_connections').select('movie_a_id, movie_b_id, strength').eq('user_id', link.user_id),
+    supabase.rpc('get_shared_universe_viewings', { p_slug: slug }),
+    supabase.rpc('get_shared_universe_connections', { p_slug: slug }),
   ])
 
   const movies = attachEditorialConnections(

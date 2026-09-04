@@ -7,26 +7,11 @@ import type { Movie } from '@/data/movies'
 export async function fetchCardMovie(slug: string): Promise<Movie | null> {
   const supabase = await createClient()
 
-  const { data: link } = await supabase
-    .from('movie_share_links')
-    .select('logged_movie_id')
-    .eq('slug', slug)
-    .maybeSingle()
-
-  if (!link) return null
-
-  const { data: row } = await supabase
-    .from('logged_movies')
-    .select('id, tmdb_id, title, year, director, genres, themes, moods, poster_path')
-    .eq('id', link.logged_movie_id)
-    .maybeSingle()
+  const { data: row } = await supabase.rpc('get_shared_movie_card', { p_slug: slug }).maybeSingle()
 
   if (!row) return null
 
-  const { data: viewingRows } = await supabase
-    .from('viewings')
-    .select('id, logged_movie_id, rating, note, watched_at')
-    .eq('logged_movie_id', link.logged_movie_id)
+  const { data: viewingRows } = await supabase.rpc('get_shared_movie_card_viewings', { p_slug: slug })
 
   return combineLoggedMovie(row as LoggedMovieRow, (viewingRows ?? []) as ViewingRow[])
 }
