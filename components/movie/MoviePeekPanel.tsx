@@ -342,7 +342,7 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
                   )}
                   {showRewatchHint && (
                     <p className="text-center text-[8px] leading-relaxed tracking-wide text-white/25">
-                      같은 영화를 또 봤다면 새 감상을 남겨 — 이전 감상은 지워지지 않고 쌓여
+                      같은 영화를 또 봤다면 새 감상을 남겨. 이전 감상은 지워지지 않고 쌓여
                     </p>
                   )}
                 </div>
@@ -439,7 +439,7 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="메모 (선택 — 짧게 한 줄이어도, 길게 리뷰여도 괜찮아)"
+            placeholder="메모 (선택, 짧게 한 줄이어도 길게 리뷰여도 괜찮아)"
             rows={3}
             className={`max-h-[40vh] resize-y ${fieldClass}`}
           />
@@ -466,7 +466,7 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="메모 (선택 — 짧게 한 줄이어도, 길게 리뷰여도 괜찮아)"
+            placeholder="메모 (선택, 짧게 한 줄이어도 길게 리뷰여도 괜찮아)"
             rows={3}
             className={`max-h-[40vh] resize-y ${fieldClass}`}
           />
