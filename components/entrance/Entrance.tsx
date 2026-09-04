@@ -178,7 +178,7 @@ export function Entrance({ onEnter, userEmail }: Props) {
       {/* 마지막 CTA */}
       <Section className="min-h-dvh justify-center gap-10">
         <p className="max-w-xs text-[13px] font-light leading-loose tracking-[0.1em] text-white/60">
-          지금 당신의 우주를 시작해보세요.
+          지금 네 우주를 시작해봐.
         </p>
         <Link
           href={primaryCtaHref}

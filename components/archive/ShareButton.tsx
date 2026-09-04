@@ -6,7 +6,7 @@ import { CopyIcon } from '@/components/icons/CopyIcon'
 import { CheckIcon } from '@/components/icons/CheckIcon'
 
 const navLinkClass =
-  'flex items-center gap-1 text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80'
+  'flex items-center gap-1 text-xs font-light tracking-[0.2em] sm:tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80'
 
 export function ShareButton({ initialUrl = null }: { initialUrl?: string | null }) {
   const [url, setUrl] = useState<string | null>(initialUrl)
@@ -39,9 +39,9 @@ export function ShareButton({ initialUrl = null }: { initialUrl?: string | null 
 
   if (url) {
     return (
-      <button type="button" onClick={handleClick} className={navLinkClass}>
+      <button type="button" onClick={handleClick} className={navLinkClass} aria-label={copied ? '복사됨' : '우주 링크 복사'}>
         {copied ? <CheckIcon /> : <CopyIcon />}
-        {copied ? '복사됨' : '우주 링크 복사'}
+        <span className="hidden sm:inline">{copied ? '복사됨' : '우주 링크 복사'}</span>
       </button>
     )
   }

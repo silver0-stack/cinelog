@@ -54,6 +54,17 @@ type Props = {
    * 넘기면, ShareCardButton이 클릭 시점에 "있는지 확인"하느라 매번 "만드는 중"이
    * 뜨는 걸 피할 수 있다(ShareButton의 initialUrl과 같은 이유). */
   movieCardUrls?: Record<string, string>
+  /** 이 id가 바뀔 때마다 카메라를 그 영화 위치로 팬하고 peek을 연다 — 데모 우주에
+   * 실험 삼아 별을 추가했을 때, 그 별이 우주 어디에 자리 잡았는지 몰라 못 찾겠다는
+   * 피드백으로 추가했다. 중심(centerId)은 건드리지 않는다 — 전체 재배치 없이
+   * "저기 있어"만 보여준다. */
+  focusMovieId?: string | null
+  /** 있으면 peek 패널의 평점/메모가 Supabase 대신 이 함수로 로컬 상태에만
+   * 반영된다(데모 우주의 게스트 체험용) — editable과 별개다. */
+  onGuestMutate?: (movieId: string, mutate: (movie: Movie) => Movie) => void
+  /** tmdbId → 이미 기록한 그 영화의 logged_movie id. "정보 수정"에서 중복 저장을
+   * 저장 버튼 누르기 전에 미리 막는 데 쓴다. */
+  existingByTmdbId?: Record<number, string>
 }
 
 function pairKey(a: string, b: string): string {
@@ -66,6 +77,9 @@ export function MovieUniverse({
   editable = false,
   showIdleHint = false,
   movieCardUrls,
+  focusMovieId,
+  onGuestMutate,
+  existingByTmdbId,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [centerId, setCenterId] = useState(defaultCenterId ?? movies[0]?.id ?? '')
@@ -159,6 +173,26 @@ export function MovieUniverse({
       ...satellites,
     ]
   }, [movies, center, movieIndex, strengthOverrides])
+
+  // focusMovieId가 가리키는 별로 카메라를 팬하고 peek을 연다. 화면 좌표는
+  // pan + world*zoom으로 계산되므로(zoomAt 참고), 그 별을 화면 중앙(world 원점)에
+  // 두려면 pan을 -world*zoom으로 맞추면 된다.
+  useEffect(() => {
+    if (!focusMovieId) return
+    const body = bodies.find((b) => b.movie.id === focusMovieId)
+    if (!body) return
+    const z = rawZoom.get()
+    rawPanX.set(-body.x * z)
+    rawPanY.set(-body.y * z)
+    setPeekedId(focusMovieId)
+    // /archive?focus=... 로 들어온 경우, 처리하고 나면 주소창에서 지운다 —
+    // 안 그러면 새로고침할 때마다 계속 같은 별로 다시 팬된다. 서버 데이터를
+    // 다시 조회할 필요는 없는 순수 URL 정리라 router.replace 대신 history API를
+    // 직접 쓴다.
+    if (window.location.search.includes('focus=')) {
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+  }, [focusMovieId, bodies, rawZoom, rawPanX, rawPanY])
 
   // 드래그 중 실시간 미리보기 — 별이 즉시 새 반지름으로 반응해야 한다.
   const handleDragStrength = useCallback(
@@ -300,6 +334,12 @@ export function MovieUniverse({
 
     const handleTouchMove = (e: TouchEvent) => {
       if (gesture.mode === 'pending' && e.touches.length === 1) {
+        // pending 단계(임계값 넘기 전)에서도 미리 막아둔다 — 여기서 안 막으면
+        // 브라우저가 그 몇 프레임 사이에 이미 네이티브 스크롤을 시작해버려서,
+        // pan으로 전환된 뒤 preventDefault를 불러도 늦어 무시된다
+        // ("[Intervention] Ignored attempt to cancel a touchmove event
+        // with cancelable=false" 경고로 나타남).
+        e.preventDefault()
         const t = e.touches[0]
         const dx = t.clientX - gesture.startX
         const dy = t.clientY - gesture.startY
@@ -410,6 +450,8 @@ export function MovieUniverse({
             onPeek={handlePeek}
             onDragStrength={editable && tier !== 'core' ? handleDragStrength : undefined}
             onCommitStrength={editable && tier !== 'core' ? handleCommitStrength : undefined}
+            onGuestMutate={onGuestMutate}
+            existingByTmdbId={existingByTmdbId}
           />
         ))}
       </motion.div>

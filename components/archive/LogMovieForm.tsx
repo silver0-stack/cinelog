@@ -36,7 +36,13 @@ function emptyDraft(): Draft {
 const fieldClass =
   'w-full border-b border-white/15 bg-transparent px-1 py-2 text-sm font-light tracking-widest text-white/80 outline-none transition-colors duration-500 placeholder:text-white/20 focus:border-white/40'
 
-export function LogMovieForm() {
+type Props = {
+  /** tmdbId → 이미 기록한 이 영화의 logged_movie id. 검색 결과를 고를 때 이미
+   * 기록한 영화면 새 별을 또 만드는 대신 기존 기록으로 안내하는 데 쓴다. */
+  existingByTmdbId?: Record<number, string>
+}
+
+export function LogMovieForm({ existingByTmdbId = {} }: Props) {
   const [step, setStep] = useState<'search' | 'details' | 'done'>('search')
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<TmdbSearchResult[]>([])
@@ -44,7 +50,10 @@ export function LogMovieForm() {
   const [draft, setDraft] = useState<Draft>(emptyDraft())
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [savedId, setSavedId] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const [loadingDetail, setLoadingDetail] = useState(false)
+  const [duplicate, setDuplicate] = useState<{ id: string; title: string } | null>(null)
   const searchTokenRef = useRef(0)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -82,7 +91,15 @@ export function LogMovieForm() {
   }
 
   async function selectResult(result: TmdbSearchResult) {
-    const detail = await fetchTmdbMovieDetail(result.tmdbId)
+    const existingId = existingByTmdbId[result.tmdbId]
+    if (existingId) {
+      setDuplicate({ id: existingId, title: result.title })
+      return
+    }
+
+    if (loadingDetail) return
+    setLoadingDetail(true)
+    const detail = await fetchTmdbMovieDetail(result.tmdbId).finally(() => setLoadingDetail(false))
     setDraft({
       ...emptyDraft(),
       tmdbId: result.tmdbId,
@@ -112,7 +129,7 @@ export function LogMovieForm() {
 
     setSaving(true)
     try {
-      await createLoggedMovie({
+      const id = await createLoggedMovie({
         tmdbId: draft.tmdbId,
         title: draft.title.trim(),
         year,
@@ -123,6 +140,7 @@ export function LogMovieForm() {
         note: draft.note.trim() || null,
         watchedAt: draft.watchedAt,
       })
+      setSavedId(id)
       setStep('done')
     } catch {
       setError('저장하지 못했어. 잠시 후 다시 시도해줘.')
@@ -149,10 +167,37 @@ export function LogMovieForm() {
             다른 영화 기록하기
           </button>
           <Link
-            href="/archive"
+            href={savedId ? `/archive?focus=${savedId}` : '/archive'}
             className="text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
           >
             우주에서 보기
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (duplicate) {
+    return (
+      <div className="flex flex-col items-center gap-8">
+        <p className="max-w-xs text-center text-xs font-light leading-relaxed tracking-widest text-white/60">
+          {duplicate.title}, 이미 기록했어.
+          <br />
+          다시 봤다면 그 별을 열어서 새 감상을 남겨봐.
+        </p>
+        <div className="flex items-center gap-8">
+          <button
+            type="button"
+            onClick={() => setDuplicate(null)}
+            className="text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
+          >
+            다른 영화 검색
+          </button>
+          <Link
+            href={`/archive?focus=${duplicate.id}`}
+            className="text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
+          >
+            그 별로 가기
           </Link>
         </div>
       </div>
@@ -172,9 +217,17 @@ export function LogMovieForm() {
           className={`text-center ${fieldClass}`}
         />
 
-        {(pending || searching) && (
-          <p className="text-xs font-light tracking-widest text-white/30">검색 중</p>
-        )}
+        {/* 결과 목록 바로 위에 조건부로 마운트/언마운트되면, 타이핑 중(한글 조합
+            포함) 계속 토글되면서 목록 전체가 위아래로 밀린다 — 클릭하는 순간
+            하필 밀리면 엉뚱한 결과를 누르게 된다. 항상 자리를 차지하되 보이기만
+            껐다 켜지게 해서 목록 위치가 절대 안 흔들리게 한다. */}
+        <p
+          className={`text-xs font-light tracking-widest text-white/30 ${
+            pending || searching || loadingDetail ? '' : 'invisible'
+          }`}
+        >
+          {loadingDetail ? '불러오는 중' : '검색 중'}
+        </p>
 
         {results.length > 0 && (
           <ul className="flex w-full flex-col gap-1">
@@ -183,7 +236,8 @@ export function LogMovieForm() {
                 <button
                   type="button"
                   onClick={() => selectResult(r)}
-                  className="flex w-full items-baseline justify-between gap-4 border-b border-white/5 px-1 py-2 text-left text-sm font-light text-white/70 outline-none transition-colors duration-300 hover:border-white/20 hover:text-white"
+                  disabled={loadingDetail}
+                  className="flex w-full items-baseline justify-between gap-4 border-b border-white/5 px-1 py-2 text-left text-sm font-light text-white/70 outline-none transition-colors duration-300 hover:border-white/20 hover:text-white disabled:opacity-40"
                 >
                   <span className="tracking-wide">{r.title}</span>
                   <span className="shrink-0 text-xs text-white/30">{r.year ?? ''}</span>

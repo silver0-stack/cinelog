@@ -39,9 +39,15 @@ export function ViewingHistoryStepper({ viewings }: { viewings: MovieViewing[] }
 
       {viewings.length > 1 && (
         <div className="flex items-center gap-4 text-[9px] tracking-widest text-white/25">
+          {/* 이 버튼들은 종종 "빈 곳 클릭하면 카드가 뒤집히는" 영역 안에 놓인다
+              (MovieCardFlip, MoviePeekPanel) — 페이지 넘기려다 카드가 같이
+              뒤집히지 않도록 전파를 막는다. */}
           <button
             type="button"
-            onClick={() => setIndex((i) => Math.min(viewings.length - 1, i + 1))}
+            onClick={(e) => {
+              e.stopPropagation()
+              setIndex((i) => Math.min(viewings.length - 1, i + 1))
+            }}
             disabled={index >= viewings.length - 1}
             className="outline-none transition-colors duration-300 hover:text-white/60 disabled:opacity-25"
           >
@@ -52,7 +58,10 @@ export function ViewingHistoryStepper({ viewings }: { viewings: MovieViewing[] }
           </span>
           <button
             type="button"
-            onClick={() => setIndex((i) => Math.max(0, i - 1))}
+            onClick={(e) => {
+              e.stopPropagation()
+              setIndex((i) => Math.max(0, i - 1))
+            }}
             disabled={index <= 0}
             className="outline-none transition-colors duration-300 hover:text-white/60 disabled:opacity-25"
           >

@@ -53,14 +53,23 @@ export default async function MovieCardPage({ params }: { params: Promise<{ slug
     // 때 어떤 레이아웃 계산도 클리핑을 일으킬 여지가 없는, 그냥 위에서 아래로
     // 흐르는 가장 단순한 구조를 쓴다.
     <main className="flex min-h-dvh w-screen flex-col items-center bg-black px-6 py-20">
-      <MovieCardFlip movie={movie} slug={slug} />
-
-      <div className="mt-16 flex flex-col items-center gap-3">
-        <p className="text-[9px] font-light tracking-[0.5em] text-white/20">CINELOG</p>
+      {/* 메모가 길면 카드 밑에 흐름대로 두는 CTA는 한참 밑으로 밀린다(의도된
+          동작, 위 주석 참고 — 절대 안 잘리게 하려고 흐름대로 둔다). 그래서
+          스크롤 안 해도 바로 보이는 고정 진입점을 화면 위 구석에 둔다.
+          위쪽은 콘텐츠가 아래로만 자라니 겹쳐서 가릴 위험이 없다. */}
+      <div className="fixed left-6 top-6 z-10 flex flex-col items-start gap-1.5">
+        <Link
+          href="/"
+          className="text-[9px] font-light tracking-[0.5em] text-white/20 outline-none transition-colors duration-700 hover:text-white/50"
+        >
+          CINELOG
+        </Link>
         <Link href="/login" className={loginLinkClass}>
           나도 기록하기
         </Link>
       </div>
+
+      <MovieCardFlip movie={movie} slug={slug} />
     </main>
   )
 }

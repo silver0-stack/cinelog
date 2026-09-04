@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { addViewing, deleteViewing, updateLoggedMovie, updateViewing } from '@/lib/loggedMovies'
@@ -12,7 +13,7 @@ import { GenreChipPicker } from '@/components/archive/GenreChipPicker'
 import { PencilIcon } from '@/components/icons/PencilIcon'
 import { ShareCardButton } from './ShareCardButton'
 import { ViewingHistoryStepper } from './ViewingHistoryStepper'
-import type { Movie } from '@/data/movies'
+import type { Movie, MovieViewing } from '@/data/movies'
 
 // 앞면(포스터 카드, 객관적 정보) ↔ 뒷면(내 평점/메모/액션)을 오가는 회전 애니메이션.
 // 두 면의 실제 콘텐츠 높이가 서로 달라서(포스터 카드는 세로로 길고, 뒷면은
@@ -35,6 +36,14 @@ type Props = {
   /** 현재 중심 영화. movie와의 editorial 큐레이터 노트를 찾는 데 쓴다. */
   center: Movie
   editable: boolean
+  /** 있으면 평점/메모(감상)가 Supabase 대신 이 함수로 로컬 상태에만 반영된다
+   * (데모 우주의 게스트 체험용) — editable과 별개다. "정보 수정"/카드 공유는
+   * 여전히 editable에만 반응한다(큐레이션 자체를 고치는 건 다른 기능이라서). */
+  onGuestMutate?: (movieId: string, mutate: (movie: Movie) => Movie) => void
+  /** tmdbId → 이미 기록한 그 영화의 logged_movie id. "정보 수정"에서 다른 이미
+   * 기록한 영화와 같은 작품으로 검색 결과를 고르면, 저장 버튼을 누르기 전에
+   * 미리 막는 데 쓴다(저장 시점에도 DB 유니크 제약이 한 번 더 막아준다). */
+  existingByTmdbId?: Record<number, string>
   /** 이미 만들어진 영화 카드 공유 URL(서버에서 미리 조회) — ShareCardButton으로 그대로 전달된다. */
   initialCardUrl?: string | null
   /** true면 뒷면(내 평점/메모/액션)을, false면 앞면(포스터 카드)을 보여준다. */
@@ -51,8 +60,22 @@ type Props = {
 // 같은 이유로 감상은 덮어쓰지 않는다: rating/note는 movie.viewings의 최신 항목일
 // 뿐이고, "다시 봤어"는 그 위에 새 항목을 쌓는다 — 다시 봤을 때 감상이 달라져도
 // 이전 감상이 사라지지 않는다.
-export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBack, onFlip, onClose, onRecenter }: Props) {
+export function MoviePeekPanel({
+  movie,
+  center,
+  editable,
+  onGuestMutate,
+  existingByTmdbId,
+  initialCardUrl,
+  showBack,
+  onFlip,
+  onClose,
+  onRecenter,
+}: Props) {
   const router = useRouter()
+  // 감상(평점/메모) 관련 UI는 editable(실제 계정)이거나 onGuestMutate(데모 게스트
+  // 체험)이 있으면 켠다 — "정보 수정"/카드 공유는 아래에서 별도로 editable만 본다.
+  const guestEnabled = editable || !!onGuestMutate
   // 동작 줄이기를 켠 사용자에게는 3D 회전 대신 밝기만 바뀌는 크로스페이드로
   // 뒤집는다 — 회전은 3D 공간에서 물체가 도는 것처럼 보여서 어지러움을 유발하기
   // 쉬운 종류의 움직임이다.
@@ -60,6 +83,8 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
   const rotate = (deg: number) => (reducedMotion ? {} : { rotateY: deg })
   const [mode, setMode] = useState<'view' | 'add' | 'edit' | 'edit-viewing'>('view')
   const [saving, setSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+  const [duplicateTargetId, setDuplicateTargetId] = useState<string | null>(null)
   const [expanded, setExpanded] = useState(false)
   const [editingViewingId, setEditingViewingId] = useState<string | null>(null)
   const [showRecenterHint, setShowRecenterHint] = useState(false)
@@ -78,7 +103,7 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
         setShowRecenterHint(true)
         localStorage.setItem(RECENTER_HINT_KEY, '1')
       }
-      if (editable && !localStorage.getItem(REWATCH_HINT_KEY)) {
+      if (guestEnabled && !localStorage.getItem(REWATCH_HINT_KEY)) {
         setShowRewatchHint(true)
         localStorage.setItem(REWATCH_HINT_KEY, '1')
       }
@@ -101,6 +126,7 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
   const [pickedTmdb, setPickedTmdb] = useState<{ tmdbId: number; posterPath: string | null } | null>(null)
   const [tmdbResults, setTmdbResults] = useState<TmdbSearchResult[]>([])
   const [tmdbPending, setTmdbPending] = useState(false)
+  const [tmdbLoadingDetail, setTmdbLoadingDetail] = useState(false)
   const [searching, startSearch] = useTransition()
   const tmdbSearchTokenRef = useRef(0)
   const tmdbDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -110,6 +136,24 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
 
   async function handleAddViewing(e: FormEvent) {
     e.preventDefault()
+
+    if (onGuestMutate) {
+      onGuestMutate(movie.id, (m) => {
+        const newViewing: MovieViewing = {
+          id: `guest-${crypto.randomUUID()}`,
+          rating: rating ?? undefined,
+          note: note.trim() || undefined,
+          watchedAt,
+        }
+        const nextViewings = [newViewing, ...(m.viewings ?? [])]
+        return { ...m, viewings: nextViewings, rating: newViewing.rating, note: newViewing.note }
+      })
+      setMode('view')
+      setRating(null)
+      setNote('')
+      return
+    }
+
     setSaving(true)
     try {
       await addViewing(movie.id, { rating, note: note.trim() || null, watchedAt })
@@ -139,6 +183,21 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
   async function handleUpdateViewing(e: FormEvent) {
     e.preventDefault()
     if (!editingViewingId) return
+
+    if (onGuestMutate) {
+      onGuestMutate(movie.id, (m) => {
+        const list = m.viewings ?? []
+        const idx = list.findIndex((v) => v.id === editingViewingId)
+        if (idx === -1) return m
+        const nextViewings = [...list]
+        nextViewings[idx] = { ...nextViewings[idx], rating: rating ?? undefined, note: note.trim() || undefined, watchedAt }
+        const latest = nextViewings[0]
+        return { ...m, viewings: nextViewings, rating: latest.rating, note: latest.note }
+      })
+      setMode('view')
+      return
+    }
+
     setSaving(true)
     try {
       await updateViewing(editingViewingId, { rating, note: note.trim() || null, watchedAt })
@@ -156,6 +215,16 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
   async function handleDeleteLatestViewing() {
     const latest = viewings[0]
     if (!latest || viewings.length <= 1) return
+
+    if (onGuestMutate) {
+      onGuestMutate(movie.id, (m) => {
+        const nextViewings = (m.viewings ?? []).slice(1)
+        const newLatest = nextViewings[0]
+        return { ...m, viewings: nextViewings, rating: newLatest?.rating, note: newLatest?.note }
+      })
+      return
+    }
+
     setSaving(true)
     try {
       await deleteViewing(latest.id)
@@ -172,6 +241,8 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
     setGenres(movie.genres)
     setPickedTmdb(null)
     setTmdbResults([])
+    setEditError(null)
+    setDuplicateTargetId(null)
   }
 
   // 제목 입력창 자체가 검색창이다 — 타이핑하면 TMDB에서 후보를 찾아 보여주고,
@@ -180,6 +251,8 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
   function handleTitleChange(value: string) {
     setTitle(value)
     setPickedTmdb(null)
+    setEditError(null)
+    setDuplicateTargetId(null)
     if (tmdbDebounceRef.current) clearTimeout(tmdbDebounceRef.current)
     if (value.trim().length < 1) {
       setTmdbPending(false)
@@ -200,7 +273,19 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
   }
 
   async function applyTmdbResult(result: TmdbSearchResult) {
-    const detail = await fetchTmdbMovieDetail(result.tmdbId)
+    const existingId = existingByTmdbId?.[result.tmdbId]
+    if (existingId && existingId !== movie.id) {
+      setEditError('이미 기록한 다른 영화와 같은 작품이야.')
+      setDuplicateTargetId(existingId)
+      setTmdbResults([])
+      return
+    }
+    setEditError(null)
+    setDuplicateTargetId(null)
+
+    if (tmdbLoadingDetail) return
+    setTmdbLoadingDetail(true)
+    const detail = await fetchTmdbMovieDetail(result.tmdbId).finally(() => setTmdbLoadingDetail(false))
     setTitle(detail?.title ?? result.title)
     setYear(String(detail?.year ?? result.year ?? ''))
     setDirector(detail?.director ?? '')
@@ -214,6 +299,7 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
     const y = Number(year)
     if (!title.trim() || !Number.isInteger(y)) return
     setSaving(true)
+    setEditError(null)
     try {
       await updateLoggedMovie(movie.id, {
         title: title.trim(),
@@ -224,13 +310,32 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
       })
       router.refresh()
       setMode('view')
+    } catch (err) {
+      // 23505 = unique_violation — 이 tmdb_id로 이미 기록한 다른 영화가 있다는
+      // 뜻이다(logged_movies_user_tmdb_unique). 그 외엔 일반 저장 실패 메시지.
+      const isDuplicate = (err as { code?: string } | null)?.code === '23505'
+      setEditError(isDuplicate ? '이미 기록한 다른 영화와 같은 작품이야.' : '저장하지 못했어. 잠시 후 다시 시도해줘.')
+      setDuplicateTargetId(isDuplicate ? (pickedTmdb ? existingByTmdbId?.[pickedTmdb.tmdbId] ?? null : null) : null)
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <div data-star="" className="pointer-events-auto flex w-56 flex-col items-center gap-2 bg-black px-3 py-3">
+    // layoutId를 MovieBody의 작은 포스터 별과 공유한다 — 별이 사라지고 이 패널이
+    // 뜨는 순간, 프레이머모션이 둘의 위치/크기를 자동으로 보간해서 "그 자리에서
+    // 포스터가 커져 카드가 되는" 것처럼 보이게 한다(카메라는 안 움직인다).
+    <motion.div
+      layoutId={`star-${movie.id}`}
+      layout="size"
+      data-star=""
+      transition={{ layout: { duration: 0.5, ease: EASE_SLOW } }}
+      // 높이를 고정하면 내용 적은 면(주로 뒷면)이 텅 빈 박스처럼 보인다 — 그래서
+      // 내용에 맞게 자연스럽게 늘었다 줄었다 하는 쪽으로 되돌렸다. layout="size"는
+      // 가로/세로 "위치"는 건드리지 않고 "크기"만 애니메이션해서, rotateY 회전과
+      // 부딪혀 옆으로 미끄러지던 문제를 피한다.
+      className="themed-scroll pointer-events-auto flex max-h-[85vh] w-[min(88vw,340px)] flex-col items-center gap-2 overflow-y-auto rounded-lg border border-white/10 bg-black px-4 py-4"
+    >
       {mode === 'view' && (
         <AnimatePresence mode="wait" initial={false}>
           {showBack ? (
@@ -269,7 +374,7 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
                   if (e.target === e.currentTarget) onFlip()
                 }}
               >
-                {(movie.rating != null || (editable && viewings[0])) && (
+                {(movie.rating != null || (guestEnabled && viewings[0])) && (
                   <div className="flex items-center gap-2">
                     {movie.rating != null && (
                       <div className="text-[10px] tracking-[0.2em] text-white/50">
@@ -277,7 +382,7 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
                         {'☆'.repeat(5 - movie.rating)}
                       </div>
                     )}
-                    {editable && viewings[0] && (
+                    {guestEnabled && viewings[0] && (
                       <button
                         type="button"
                         onClick={startEditLatestViewing}
@@ -308,7 +413,7 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
                 {viewings[0] && (
                   <div className="flex items-center gap-2">
                     <span className="text-[8px] tracking-[0.2em] text-white/25">{viewings[0].watchedAt}</span>
-                    {editable && viewings.length > 1 && (
+                    {guestEnabled && viewings.length > 1 && (
                       <button
                         type="button"
                         onClick={handleDeleteLatestViewing}
@@ -339,14 +444,9 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
                   if (e.target === e.currentTarget) onFlip()
                 }}
               >
-                {onRecenter && (
-                  <button type="button" onClick={onRecenter} className={actionClass}>
-                    이 영화를 중심으로
-                  </button>
-                )}
-                {editable && (
+                {guestEnabled && (
                   <button type="button" onClick={() => setMode('add')} className={actionClass}>
-                    다시 본 감상 남기기
+                    {viewings.length > 0 ? '다시 본 감상 남기기' : '감상 남기기'}
                   </button>
                 )}
                 <button type="button" onClick={onClose} className="text-[9px] tracking-[0.25em] text-white/25 outline-none transition-colors duration-500 hover:text-white/60">
@@ -354,18 +454,11 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
                 </button>
               </div>
 
-              {(showRecenterHint || showRewatchHint) && (
+              {showRewatchHint && (
                 <div className="flex flex-col items-center gap-1 px-2">
-                  {showRecenterHint && (
-                    <p className="text-center text-[8px] leading-relaxed tracking-wide text-white/25">
-                      중심을 옮기면 우주 전체가 이 영화와의 관계로 다시 배치돼
-                    </p>
-                  )}
-                  {showRewatchHint && (
-                    <p className="text-center text-[8px] leading-relaxed tracking-wide text-white/25">
-                      같은 영화를 또 봤다면 새 감상을 남겨. 이전 감상은 지워지지 않고 쌓여
-                    </p>
-                  )}
+                  <p className="text-center text-[8px] leading-relaxed tracking-wide text-white/25">
+                    같은 영화를 또 봤다면 새 감상을 남겨. 이전 감상은 지워지지 않고 쌓여
+                  </p>
                 </div>
               )}
             </motion.div>
@@ -392,7 +485,7 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
                 }
               }}
             >
-              <div className="relative">
+              <div className="relative flex w-full justify-center">
                 {movie.posterPath && !posterFailed ? (
                   <>
                     {/* 유튜브 앰비언트 모드처럼, 포스터 자체를 크게 확대해 블러한
@@ -414,11 +507,11 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
                       alt=""
                       loading="lazy"
                       onError={() => setPosterFailed(true)}
-                      className="relative h-64 w-44 object-cover opacity-90 saturate-[0.8] brightness-[0.9]"
+                      className="relative aspect-[2/3] w-full max-w-[260px] rounded-sm object-cover opacity-90 saturate-[0.8] brightness-[0.9]"
                     />
                   </>
                 ) : (
-                  <div className="flex h-64 w-44 items-center justify-center border border-white/10">
+                  <div className="flex aspect-[2/3] w-full max-w-[260px] items-center justify-center rounded-sm border border-white/10">
                     <span className="text-[9px] tracking-[0.2em] text-white/20">포스터 없음</span>
                   </div>
                 )}
@@ -460,6 +553,28 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
                   <p className="text-[9px] tracking-[0.1em] text-white/30">{movie.genres.join(' · ')}</p>
                 )}
               </div>
+
+              {/* "이 영화를 중심으로"는 내 감상이 아니라 우주를 탐색하는 액션이라
+                  뒷면(내 평점/메모)보다 앞면(객관적 정보)에 더 자연스럽다 —
+                  감상을 안 남긴 영화라도 뒤집을 필요 없이 바로 다른 세계로
+                  넘어갈 수 있게 된다. 카드 전체가 클릭(뒤집기) 영역이라 전파를 막는다. */}
+              {onRecenter && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onRecenter()
+                  }}
+                  className={actionClass}
+                >
+                  이 영화를 중심으로
+                </button>
+              )}
+              {showRecenterHint && (
+                <p className="max-w-[220px] text-center text-[8px] leading-relaxed tracking-wide text-white/25">
+                  중심을 옮기면 우주 전체가 이 영화와의 관계로 다시 배치돼
+                </p>
+              )}
 
               <p className="mt-1 text-[8px] tracking-[0.2em] text-white/20">눌러서 뒤집기</p>
             </motion.div>
@@ -531,9 +646,16 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
             required
             className={fieldClass}
           />
-          {(tmdbPending || searching) && (
-            <p className="text-[9px] tracking-widest text-white/25">검색 중</p>
-          )}
+          {/* 결과 목록 바로 위에서 조건부로 마운트/언마운트되면 타이핑 중 계속
+              토글되면서 목록이 밀려 클릭 실수를 유발한다 — 항상 자리를
+              차지하되 보이기만 껐다 켜지게 한다. */}
+          <p
+            className={`text-[9px] tracking-widest text-white/25 ${
+              tmdbPending || searching || tmdbLoadingDetail ? '' : 'invisible'
+            }`}
+          >
+            {tmdbLoadingDetail ? '불러오는 중' : '검색 중'}
+          </p>
           {tmdbResults.length > 0 && (
             <ul className="flex w-full flex-col gap-1">
               {tmdbResults.map((r) => (
@@ -541,7 +663,8 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
                   <button
                     type="button"
                     onClick={() => applyTmdbResult(r)}
-                    className="flex w-full items-baseline justify-between gap-2 border-b border-white/5 px-1 py-1 text-left text-[10px] font-light text-white/70 outline-none transition-colors duration-300 hover:border-white/20 hover:text-white"
+                    disabled={tmdbLoadingDetail}
+                    className="flex w-full items-baseline justify-between gap-2 border-b border-white/5 px-1 py-1 text-left text-[10px] font-light text-white/70 outline-none transition-colors duration-300 hover:border-white/20 hover:text-white disabled:opacity-40"
                   >
                     <span className="tracking-wide">{r.title}</span>
                     <span className="shrink-0 text-[9px] text-white/30">{r.year ?? ''}</span>
@@ -570,6 +693,19 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
             />
           </div>
           <GenreChipPicker selected={genres} onChange={setGenres} />
+          {editError && (
+            <div className="flex flex-col items-center gap-1">
+              <p className="text-[9px] tracking-widest text-white/40">{editError}</p>
+              {duplicateTargetId && (
+                <Link
+                  href={`/archive?focus=${duplicateTargetId}`}
+                  className="text-[9px] tracking-[0.25em] text-white/40 outline-none transition-colors duration-500 hover:text-white/70"
+                >
+                  그 별로 가기
+                </Link>
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-4">
             <button type="button" onClick={() => setMode('view')} className="text-[9px] tracking-[0.25em] text-white/30 outline-none transition-colors duration-500 hover:text-white/60">
               취소
@@ -580,6 +716,6 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
           </div>
         </form>
       )}
-    </div>
+    </motion.div>
   )
 }

@@ -11,6 +11,11 @@ type Props = {
    * "내 우주 가기"(/archive)가 여기 들어간다. /archive 안에서는 이미 그 화면에
    * 있으니 비워둔다. */
   links?: { label: string; href: string }[]
+  /** 페이지 이동이 아니라 이 자리에서 뭔가를 토글/실행하는 액션 — "가이드",
+   * "패턴" 같은 부가 기능을 여기 몰아둔다. 예전엔 화면 구석에 항상 떠 있는
+   * 버튼이었는데, 자주 안 쓰는 기능이 마치 주요 기능처럼 보인다는 피드백으로
+   * 여기로 옮겼다. 누르면 그 자체 동작 후 메뉴를 닫는다. */
+  menuActions?: { label: string; onClick: () => void }[]
 }
 
 // 로그인한 계정이 누구인지 화면 어디에도 안 보이고, 로그아웃도 /login에 따로
@@ -19,7 +24,7 @@ type Props = {
 // 기록하는 문제)으로 이어진 적이 있다. CLAUDE.md가 만들지 않기로 한 "프로필"은
 // 개인정보 편집/공개 프로필 페이지 같은 전통적인 의미고, 이건 그것과 달리
 // 지금 세션이 누구인지 보여주고 로그아웃만 하는 최소한의 계정 표시다.
-export function AccountMenu({ email, links = [] }: Props) {
+export function AccountMenu({ email, links = [], menuActions = [] }: Props) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   useClickOutside(containerRef, open, () => setOpen(false))
@@ -31,12 +36,14 @@ export function AccountMenu({ email, links = [] }: Props) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="계정"
-        className="flex h-6 w-6 items-center justify-center rounded-full border border-white/20 text-[10px] font-light text-white/50 outline-none transition-colors duration-500 hover:border-white/40 hover:text-white/80"
+        className="group -m-2.5 flex items-center justify-center p-2.5 outline-none"
       >
-        {initial}
+        <span className="flex h-6 w-6 items-center justify-center rounded-full border border-white/20 text-[10px] font-light text-white/50 transition-colors duration-500 group-hover:border-white/40 group-hover:text-white/80">
+          {initial}
+        </span>
       </button>
       {open && (
-        <div className="absolute right-0 top-9 z-20 flex flex-col items-end gap-3 whitespace-nowrap bg-black px-3 py-3">
+        <div className="absolute right-0 top-9 z-20 flex flex-col items-end gap-3 whitespace-nowrap border border-white/10 bg-black px-3 py-3">
           <p className="text-[10px] tracking-[0.15em] text-white/40">{email}</p>
           {links.map((link) => (
             <Link
@@ -46,6 +53,19 @@ export function AccountMenu({ email, links = [] }: Props) {
             >
               {link.label}
             </Link>
+          ))}
+          {menuActions.map((action) => (
+            <button
+              key={action.label}
+              type="button"
+              onClick={() => {
+                action.onClick()
+                setOpen(false)
+              }}
+              className="text-xs font-light tracking-[0.5em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80 focus-visible:text-white/80"
+            >
+              {action.label}
+            </button>
           ))}
           <SignOutButton />
         </div>

@@ -132,6 +132,8 @@ export async function createLoggedMovie(input: NewLoggedMovie) {
     await supabase.from('logged_movies').delete().eq('id', movie.id)
     throw viewingError
   }
+
+  return movie.id as string
 }
 
 export type NewViewing = {

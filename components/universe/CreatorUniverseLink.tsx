@@ -11,8 +11,8 @@ export function CreatorUniverseLink() {
   if (!slug) return null
 
   return (
-    <Link href={`/u/${slug}`} className={`absolute bottom-6 left-6 z-10 ${secondaryNavLinkClass}`}>
-      제작자의 우주 구경하기
+    <Link href={`/u/${slug}`} className={secondaryNavLinkClass}>
+      → 제작자의 진짜 우주 구경하기
     </Link>
   )
 }

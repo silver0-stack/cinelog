@@ -62,7 +62,6 @@ export default async function SharedUniversePage({ params }: { params: Promise<{
       <GuidePanel
         variant="shared"
         triggerClassName="absolute right-6 top-6 z-10 text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
-        panelClassName="absolute right-6 top-14"
       />
       <Link href="/login" className={`absolute bottom-6 right-6 z-10 ${loginLinkClass}`}>
         나도 기록하기

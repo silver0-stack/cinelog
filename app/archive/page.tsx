@@ -8,19 +8,23 @@ import { combineLoggedMovies, type LoggedMovieRow, type ViewingRow } from '@/lib
 import { attachEditorialConnections, type EditorialConnectionRow } from '@/lib/editorialConnections'
 import { ShareButton } from '@/components/archive/ShareButton'
 import { AccountMenu } from '@/components/archive/AccountMenu'
-import { UniverseInsightPanel } from '@/components/archive/UniverseInsightPanel'
-import { GuidePanel } from '@/components/guide/GuidePanel'
+import { ArchiveMenu } from '@/components/archive/ArchiveMenu'
 import { summarizeUniverse } from '@/lib/universeInsights'
 
 const navLinkClass =
-  'text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80'
+  'text-xs font-light tracking-[0.2em] sm:tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80'
 
 // 기록을 추가하고 돌아올 때마다 최신 상태를 다시 조회해야 한다 — 캐시된 화면에
 // 방금 추가한 기록이 안 보이면 안 되므로 이 라우트는 절대 캐시하지 않는다.
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-export default async function ArchivePage() {
+export default async function ArchivePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ focus?: string }>
+}) {
+  const { focus } = await searchParams
   const supabase = await createClient()
   const {
     data: { user },
@@ -67,6 +71,13 @@ export default async function ArchivePage() {
   )
   const insights = summarizeUniverse(movies)
 
+  // "정보 수정"에서 다른 이미 기록한 영화와 같은 작품으로 바꾸려는 걸 저장 버튼
+  // 누르기 전에 미리 막는 데 쓴다(DB 유니크 제약은 그 뒤의 안전장치).
+  const existingByTmdbId: Record<number, string> = {}
+  for (const row of rows) {
+    if (row.tmdb_id != null) existingByTmdbId[row.tmdb_id] = row.id
+  }
+
   // 이미 공유 링크가 있으면 버튼을 누르기 전에 서버에서 미리 채워둔다 — 클라이언트가
   // 매번 "있는지 확인"하느라 몇 초씩 "만드는 중"으로 보이는 걸 막기 위해서다.
   const headersList = await headers()
@@ -84,21 +95,22 @@ export default async function ArchivePage() {
   return (
     <main className="relative h-dvh w-screen overflow-hidden bg-black">
       <FadeIn>
-        <MovieUniverse movies={movies} defaultCenterId={movies[0].id} editable movieCardUrls={movieCardUrls} />
+        <MovieUniverse
+          movies={movies}
+          defaultCenterId={movies[0].id}
+          editable
+          movieCardUrls={movieCardUrls}
+          focusMovieId={focus ?? null}
+          existingByTmdbId={existingByTmdbId}
+        />
       </FadeIn>
-      <div className="absolute right-6 top-6 z-10 flex items-center gap-8">
+      <div className="absolute right-4 top-4 z-10 flex items-center gap-3 sm:right-6 sm:top-6 sm:gap-8">
         <ShareButton initialUrl={initialShareUrl} />
         <Link href="/archive/new" className={navLinkClass}>
           + 기록
         </Link>
-        <AccountMenu email={user.email ?? ''} />
+        <ArchiveMenu email={user.email ?? ''} insights={insights} />
       </div>
-      <UniverseInsightPanel insights={insights} />
-      <GuidePanel
-        variant="archive"
-        triggerClassName="absolute bottom-6 right-6 z-10 text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
-        panelClassName="absolute bottom-14 right-6"
-      />
     </main>
   )
 }

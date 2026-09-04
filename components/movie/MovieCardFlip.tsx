@@ -42,14 +42,18 @@ export function MovieCardFlip({ movie, slug }: { movie: Movie; slug: string }) {
           exit={{ ...rotate(90), opacity: 0 }}
           transition={FLIP_TRANSITION}
           style={{ transformPerspective: 900 }}
-          className="flex w-full max-w-xs flex-col items-center gap-6 text-center"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) flip()
-          }}
+          className="flex w-full max-w-xs cursor-pointer flex-col items-center gap-6 text-center"
+          onClick={flip}
         >
+          {/* 이 버튼 자체도 클릭하면 뒤집히긴 하지만, 부모의 onClick까지 같이
+              불리면 flip이 두 번 토글돼서 도로 제자리로 돌아가버린다(버그) —
+              전파를 막는다. */}
           <button
             type="button"
-            onClick={flip}
+            onClick={(e) => {
+              e.stopPropagation()
+              flip()
+            }}
             className="self-start text-[10px] tracking-[0.3em] text-white/25 outline-none transition-colors duration-500 hover:text-white/60"
           >
             ← 포스터
@@ -73,6 +77,7 @@ export function MovieCardFlip({ movie, slug }: { movie: Movie; slug: string }) {
           <a
             href={`/m/${slug}/download-image`}
             download={`${movie.title}.png`}
+            onClick={(e) => e.stopPropagation()}
             className="mt-2 text-[10px] font-light tracking-[0.4em] text-white/30 outline-none transition-colors duration-500 hover:text-white/60"
           >
             이미지 저장

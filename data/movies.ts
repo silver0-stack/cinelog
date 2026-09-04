@@ -23,21 +23,30 @@ export type Movie = {
      * 볼 때 짧은 큐레이터 노트로 드러난다. V2(드래그로 만든 연결)에는 없다. */
     reason?: string
   }[]
-  /** 가장 최근 감상의 평점(0~5). V1 정적 큐레이션에는 없는 값 — V2에서만 쓴다(P2-4). */
+  /** 가장 최근 감상의 평점(0~5). V2 전용 값이지만, V1 정적 우주 24편에는 peek
+   * 패널 뒷면이 비어 보이지 않도록 데모용 가짜 값을 미리 채워뒀다(아래 목록
+   * 주석 참고) — 게스트 모드로 자유롭게 고쳐볼 수 있고 새로고침하면 원상복구된다. */
   rating?: number
   /** TMDB 포스터 경로. 기본 표현은 여전히 추상적인 점이고, 아주 가까이 줌인했을 때만
-   * 드러난다(P2-5) — V1도 실제 TMDB 포스터를 쓴다(가짜 평점과 달리 실존 영화의
-   * 실제 포스터라 "가짜 데이터처럼 보인다"는 문제가 없다). */
+   * 드러난다(P2-5) — V1도 실제 TMDB 포스터를 쓴다(실존 영화의 실제 포스터라
+   * "가짜 데이터처럼 보인다"는 문제가 없다). */
   posterPath?: string
-  /** 가장 최근 감상의 메모 — 짧은 한 줄일 수도, 긴 리뷰일 수도 있다. V2에서만 쓴다. */
+  /** 가장 최근 감상의 메모 — 짧은 한 줄일 수도, 긴 리뷰일 수도 있다. rating과 같은
+   * 이유로 V1 24편에는 데모용 가짜 값이 채워져 있다. */
   note?: string
-  /** 이 영화를 본 기록 전체, 최신순. V2에서만 쓴다 — rating/note는 이 배열의 첫 항목과 같다. */
+  /** 이 영화를 본 기록 전체, 최신순. rating/note는 이 배열의 첫 항목과 같다. */
   viewings?: MovieViewing[]
 }
 
 // 초안 목록 (24편). 장르/테마/무드/시대/지역이 서로 겹치도록 의도적으로 구성해서
 // lib/gravity.ts의 자동 계산이 의미 있는 결과를 내도록 했다. 실제 서비스용
 // 목록으로 자유롭게 교체/추가해도 이 구조는 그대로 유지하면 된다.
+//
+// rating/note/viewings는 데모용으로 미리 채워둔 가짜 감상이다 — 실제 계정(V2)의
+// 기록은 항상 최소 1개의 viewing을 갖는데(createLoggedMovie), V1 정적 우주는
+// 원래 그 구조가 아예 없어서 peek 패널 뒷면이 늘 비어 보였다. 방문자가 데모
+// 우주에서 별을 열었을 때 "감상을 남기면 이렇게 보인다"를 바로 보여주려고 넣었고,
+// 로그인 없이도 게스트 모드로 자유롭게 고쳐볼 수 있다(새로고침하면 원상복구).
 export const movies: Movie[] = [
   {
     id: 'parasite',
@@ -50,6 +59,9 @@ export const movies: Movie[] = [
     era: '2010s',
     locations: ['서울'],
     posterPath: '/jjHccoFjbqlfr4VGLVLT7yek0Xn.jpg',
+    rating: 5,
+    note: '계단 하나로 계급을 다 말해버리네.',
+    viewings: [{ id: 'seed-parasite', rating: 5, note: '계단 하나로 계급을 다 말해버리네.', watchedAt: '2026-02-14' }],
   },
   {
     id: 'memories-of-murder',
@@ -62,6 +74,9 @@ export const movies: Movie[] = [
     era: '2000s',
     locations: ['시골'],
     posterPath: '/wrsf1ebQ6S4gVhjR9FJElfdxAjj.jpg',
+    rating: 4,
+    note: '마지막 그 눈빛이 아직도 안 잊혀.',
+    viewings: [{ id: 'seed-memories-of-murder', rating: 4, note: '마지막 그 눈빛이 아직도 안 잊혀.', watchedAt: '2025-11-03' }],
   },
   {
     id: 'oldboy',
@@ -74,6 +89,9 @@ export const movies: Movie[] = [
     era: '2000s',
     locations: ['서울'],
     posterPath: '/xpa9ybm6tYGna5LseqSXvKpSSJn.jpg',
+    rating: 4,
+    note: '복수극인데 볼수록 슬퍼진다.',
+    viewings: [{ id: 'seed-oldboy', rating: 4, note: '복수극인데 볼수록 슬퍼진다.', watchedAt: '2025-09-21' }],
   },
   {
     id: 'the-handmaiden',
@@ -86,6 +104,9 @@ export const movies: Movie[] = [
     era: '2010s',
     locations: ['서울', '시골'],
     posterPath: '/2as91uhVX6RjDQw3Y5pFWITv3iA.jpg',
+    rating: 5,
+    note: '화면 하나하나가 다 계산돼 있어서 소름.',
+    viewings: [{ id: 'seed-the-handmaiden', rating: 5, note: '화면 하나하나가 다 계산돼 있어서 소름.', watchedAt: '2026-01-08' }],
   },
   {
     id: 'burning',
@@ -99,6 +120,9 @@ export const movies: Movie[] = [
     locations: ['서울', '시골'],
     editorialConnections: [{ movieId: 'parasite', strength: 0.5, reason: '계급이라는 같은 뿌리, 다른 온도' }],
     posterPath: '/AlKlezuaJkP2lDEWbJxYv47GeDf.jpg',
+    rating: 4,
+    note: '끝까지 손에 안 잡히는 게 오히려 맞았다.',
+    viewings: [{ id: 'seed-burning', rating: 4, note: '끝까지 손에 안 잡히는 게 오히려 맞았다.', watchedAt: '2025-12-19' }],
   },
   {
     id: 'in-the-mood-for-love',
@@ -111,6 +135,9 @@ export const movies: Movie[] = [
     era: '2000s',
     locations: ['홍콩'],
     posterPath: '/mjkr1IamzDiL5mLIbnuhiYOXLqg.jpg',
+    rating: 5,
+    note: '말 안 해도 다 보이는 사랑.',
+    viewings: [{ id: 'seed-in-the-mood-for-love', rating: 5, note: '말 안 해도 다 보이는 사랑.', watchedAt: '2025-10-30' }],
   },
   {
     id: 'chungking-express',
@@ -124,6 +151,9 @@ export const movies: Movie[] = [
     locations: ['홍콩'],
     editorialConnections: [{ movieId: 'amelie', strength: 0.5, reason: '우연이 만든 도시의 고독한 로맨스' }],
     posterPath: '/pT12E2OfHSSRTCASe2gkJfrBUAE.jpg',
+    rating: 4,
+    note: '도시가 이렇게 외로울 수 있구나.',
+    viewings: [{ id: 'seed-chungking-express', rating: 4, note: '도시가 이렇게 외로울 수 있구나.', watchedAt: '2025-08-17' }],
   },
   {
     id: 'mulholland-drive',
@@ -137,6 +167,9 @@ export const movies: Movie[] = [
     locations: ['로스앤젤레스'],
     editorialConnections: [{ movieId: 'perfect-blue', strength: 0.75, reason: '무너지는 정체성을 쫓는 악몽' }],
     posterPath: '/e7eIq8wTxGX00cX47cDFwVvhH5M.jpg',
+    rating: 5,
+    note: '두 번 봐야 진짜 시작되는 영화.',
+    viewings: [{ id: 'seed-mulholland-drive', rating: 5, note: '두 번 봐야 진짜 시작되는 영화.', watchedAt: '2026-03-05' }],
   },
   {
     id: 'blue-velvet',
@@ -149,6 +182,9 @@ export const movies: Movie[] = [
     era: '1980s',
     locations: ['교외'],
     posterPath: '/ad5xNQg53japfM6zHXinqPpOg25.jpg',
+    rating: 3,
+    note: '교외의 뒷면을 들춘 느낌.',
+    viewings: [{ id: 'seed-blue-velvet', rating: 3, note: '교외의 뒷면을 들춘 느낌.', watchedAt: '2025-07-02' }],
   },
   {
     id: 'blade-runner-2049',
@@ -162,6 +198,9 @@ export const movies: Movie[] = [
     locations: ['로스앤젤레스'],
     editorialConnections: [{ movieId: 'her', strength: 0.55, reason: '인공지능이 만드는 고독한 사랑' }],
     posterPath: '/fJZmCJpLeBFKktLFEIKPEhllWlU.jpg',
+    rating: 4,
+    note: '느린데 눈을 못 뗐다.',
+    viewings: [{ id: 'seed-blade-runner-2049', rating: 4, note: '느린데 눈을 못 뗐다.', watchedAt: '2025-11-22' }],
   },
   {
     id: 'arrival',
@@ -174,6 +213,9 @@ export const movies: Movie[] = [
     era: '2010s',
     locations: ['시골'],
     posterPath: '/yHEMUTIYZFHN3jjkKmTFrvhj64a.jpg',
+    rating: 5,
+    note: '언어가 시간을 바꾼다는 발상이 계속 남아.',
+    viewings: [{ id: 'seed-arrival', rating: 5, note: '언어가 시간을 바꾼다는 발상이 계속 남아.', watchedAt: '2026-01-27' }],
   },
   {
     id: 'her',
@@ -186,6 +228,9 @@ export const movies: Movie[] = [
     era: '2010s',
     locations: ['로스앤젤레스'],
     posterPath: '/thUJI82kWMxA2jtjLtPxDIj67tY.jpg',
+    rating: 4,
+    note: '외로움을 이렇게 다정하게 그릴 수 있다니.',
+    viewings: [{ id: 'seed-her', rating: 4, note: '외로움을 이렇게 다정하게 그릴 수 있다니.', watchedAt: '2025-09-09' }],
   },
   {
     id: 'lost-in-translation',
@@ -198,6 +243,9 @@ export const movies: Movie[] = [
     era: '2000s',
     locations: ['도쿄'],
     posterPath: '/rGyDyUyepFIdFQLnzBelp3vsSaB.jpg',
+    rating: 4,
+    note: '낯선 도시에서의 시차가 그대로 느껴져.',
+    viewings: [{ id: 'seed-lost-in-translation', rating: 4, note: '낯선 도시에서의 시차가 그대로 느껴져.', watchedAt: '2025-12-01' }],
   },
   {
     id: 'drive',
@@ -211,6 +259,9 @@ export const movies: Movie[] = [
     locations: ['로스앤젤레스'],
     editorialConnections: [{ movieId: 'taxi-driver', strength: 0.6, reason: '도시의 그림자 속, 고립된 남자' }],
     posterPath: '/ukDRwCEnVwBVSJ13xpzSzegIi1u.jpg',
+    rating: 4,
+    note: '말 없는 주인공이 이렇게 매력적일 일인가.',
+    viewings: [{ id: 'seed-drive', rating: 4, note: '말 없는 주인공이 이렇게 매력적일 일인가.', watchedAt: '2025-06-14' }],
   },
   {
     id: 'under-the-skin',
@@ -223,6 +274,9 @@ export const movies: Movie[] = [
     era: '2010s',
     locations: ['스코틀랜드'],
     posterPath: '/36UYGehLNBpQ3d0mCGFC6L9iQWb.jpg',
+    rating: 3,
+    note: '낯설고 오래 남는 영화.',
+    viewings: [{ id: 'seed-under-the-skin', rating: 3, note: '낯설고 오래 남는 영화.', watchedAt: '2025-10-11' }],
   },
   {
     id: 'eternal-sunshine',
@@ -235,6 +289,9 @@ export const movies: Movie[] = [
     era: '2000s',
     locations: ['뉴욕'],
     posterPath: '/jULvvUymAqM18gIDHbMRfKHbCSB.jpg',
+    rating: 5,
+    note: '지우고 싶던 기억이 결국 제일 소중했다.',
+    viewings: [{ id: 'seed-eternal-sunshine', rating: 5, note: '지우고 싶던 기억이 결국 제일 소중했다.', watchedAt: '2026-02-01' }],
   },
   {
     id: 'taxi-driver',
@@ -247,6 +304,9 @@ export const movies: Movie[] = [
     era: '1970s',
     locations: ['뉴욕'],
     posterPath: '/g3VlHCbkgC23yCtCrnWcBP8ONhT.jpg',
+    rating: 4,
+    note: '고립이 어떻게 폭력이 되는지.',
+    viewings: [{ id: 'seed-taxi-driver', rating: 4, note: '고립이 어떻게 폭력이 되는지.', watchedAt: '2025-08-29' }],
   },
   {
     id: 'pulp-fiction',
@@ -259,6 +319,9 @@ export const movies: Movie[] = [
     era: '1990s',
     locations: ['로스앤젤레스'],
     posterPath: '/lnRkeQstaCvfMahZq7p9eAWzK1a.jpg',
+    rating: 4,
+    note: '시간 순서를 흩트려놔야 더 재밌는 이야기도 있다.',
+    viewings: [{ id: 'seed-pulp-fiction', rating: 4, note: '시간 순서를 흩트려놔야 더 재밌는 이야기도 있다.', watchedAt: '2025-07-19' }],
   },
   {
     id: '2001-a-space-odyssey',
@@ -272,6 +335,9 @@ export const movies: Movie[] = [
     locations: ['우주'],
     editorialConnections: [{ movieId: 'solaris', strength: 0.7, reason: '우주를 거울 삼아 인간을 묻다' }],
     posterPath: '/2qJjH5mYNlGPdVrPqfEq1J6Mgb4.jpg',
+    rating: 5,
+    note: '지금 봐도 낡지가 않아서 이상하다.',
+    viewings: [{ id: 'seed-2001-a-space-odyssey', rating: 5, note: '지금 봐도 낡지가 않아서 이상하다.', watchedAt: '2025-11-15' }],
   },
   {
     id: 'the-shining',
@@ -284,6 +350,9 @@ export const movies: Movie[] = [
     era: '1980s',
     locations: ['산장'],
     posterPath: '/aaItbIXZlC2C7Arg3PI0IglKi0.jpg',
+    rating: 4,
+    note: '고립된 공간 자체가 공포가 되는 영화.',
+    viewings: [{ id: 'seed-the-shining', rating: 4, note: '고립된 공간 자체가 공포가 되는 영화.', watchedAt: '2025-10-24' }],
   },
   {
     id: 'portrait-of-a-lady-on-fire',
@@ -296,6 +365,11 @@ export const movies: Movie[] = [
     era: '2010s',
     locations: ['프랑스'],
     posterPath: '/M0mm1VGMZRa6eRzgoZmYW9zPd8.jpg',
+    rating: 5,
+    note: '시선을 주고받는 것만으로 이렇게 뜨거울 수 있다니.',
+    viewings: [
+      { id: 'seed-portrait-of-a-lady-on-fire', rating: 5, note: '시선을 주고받는 것만으로 이렇게 뜨거울 수 있다니.', watchedAt: '2026-01-19' },
+    ],
   },
   {
     id: 'amelie',
@@ -308,6 +382,9 @@ export const movies: Movie[] = [
     era: '2000s',
     locations: ['파리'],
     posterPath: '/EkQ9Lu1NFnxfPSGizktuLJuxdv.jpg',
+    rating: 4,
+    note: '우연을 이렇게 다정하게 그리는 영화가 또 있을까.',
+    viewings: [{ id: 'seed-amelie', rating: 4, note: '우연을 이렇게 다정하게 그리는 영화가 또 있을까.', watchedAt: '2025-09-27' }],
   },
   {
     id: 'perfect-blue',
@@ -320,6 +397,9 @@ export const movies: Movie[] = [
     era: '1990s',
     locations: ['도쿄'],
     posterPath: '/cpsxJP7lUNEozPtDLIM5gPC9gJH.jpg',
+    rating: 4,
+    note: '애니메이션인데 실사보다 더 소름끼쳐.',
+    viewings: [{ id: 'seed-perfect-blue', rating: 4, note: '애니메이션인데 실사보다 더 소름끼쳐.', watchedAt: '2025-12-08' }],
   },
   {
     id: 'solaris',
@@ -332,5 +412,8 @@ export const movies: Movie[] = [
     era: '1970s',
     locations: ['우주'],
     posterPath: '/dvDSdKFjdnm5chM4KR4IAnDyCvH.jpg',
+    rating: 3,
+    note: '느리지만 그 느림이 다 이유가 있더라.',
+    viewings: [{ id: 'seed-solaris', rating: 3, note: '느리지만 그 느림이 다 이유가 있더라.', watchedAt: '2025-08-05' }],
   },
 ]
