@@ -55,7 +55,7 @@ export function ShareCardButton({ loggedMovieId, initialUrl = null, variant = 't
         disabled={loading}
         aria-label={url ? '카드 링크 복사' : '영화 카드 공유'}
         title={copied ? '복사됨' : url ? '카드 링크 복사' : '영화 카드 공유'}
-        className="flex items-center justify-center text-white/50 outline-none transition-colors duration-500 hover:text-white/85 disabled:text-white/20"
+        className="-m-1.5 flex items-center justify-center p-1.5 text-white/50 outline-none transition-colors duration-500 hover:text-white/85 disabled:text-white/20"
       >
         {copied ? <CheckIcon /> : <CopyIcon />}
       </button>

@@ -271,7 +271,7 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
                         onClick={startEditLatestViewing}
                         aria-label="이 감상 고치기"
                         title="이 감상 고치기"
-                        className="flex items-center justify-center text-white/35 outline-none transition-colors duration-500 hover:text-white/70"
+                        className="-m-2 flex items-center justify-center p-2 text-white/35 outline-none transition-colors duration-500 hover:text-white/70"
                       >
                         <PencilIcon />
                       </button>
@@ -415,7 +415,7 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
                     아이콘으로 옮겼다 — 카드를 눌렀을 때(뒤집기)와 겹치지 않도록
                     각 아이콘 클릭에서 이벤트 전파를 막는다. */}
                 {editable && (
-                  <div className="absolute right-1 top-1 flex gap-2 bg-black/50 px-1.5 py-1">
+                  <div className="absolute right-1 top-1 flex gap-3 bg-black/50 px-1.5 py-1">
                     <button
                       type="button"
                       onClick={(e) => {
@@ -425,7 +425,7 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
                       }}
                       aria-label="정보 수정"
                       title="정보 수정"
-                      className="flex items-center justify-center text-white/50 outline-none transition-colors duration-500 hover:text-white/85"
+                      className="-m-1.5 flex items-center justify-center p-1.5 text-white/50 outline-none transition-colors duration-500 hover:text-white/85"
                     >
                       <PencilIcon />
                     </button>
