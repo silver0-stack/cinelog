@@ -9,6 +9,7 @@ import { editorialReason } from '@/lib/gravity'
 import { EASE_SLOW } from '@/lib/motion'
 import { RatingPicker } from '@/components/archive/RatingPicker'
 import { GenreChipPicker } from '@/components/archive/GenreChipPicker'
+import { PencilIcon } from '@/components/icons/PencilIcon'
 import { ShareCardButton } from './ShareCardButton'
 import { ViewingHistoryStepper } from './ViewingHistoryStepper'
 import type { Movie } from '@/data/movies'
@@ -319,19 +320,6 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
                     다시 본 감상 남기기
                   </button>
                 )}
-                {editable && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      resetMetadataDraft()
-                      setMode('edit')
-                    }}
-                    className={actionClass}
-                  >
-                    정보 수정
-                  </button>
-                )}
-                {editable && <ShareCardButton loggedMovieId={movie.id} initialUrl={initialCardUrl} />}
                 <button type="button" onClick={onClose} className="text-[9px] tracking-[0.25em] text-white/25 outline-none transition-colors duration-500 hover:text-white/60">
                   닫기
                 </button>
@@ -363,19 +351,48 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
               className="flex w-full cursor-pointer flex-col items-center gap-2"
               onClick={onFlip}
             >
-              {movie.posterPath ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={`https://image.tmdb.org/t/p/w342${movie.posterPath}`}
-                  alt=""
-                  loading="lazy"
-                  className="h-64 w-44 object-cover opacity-90 saturate-[0.8] brightness-[0.9]"
-                />
-              ) : (
-                <div className="flex h-64 w-44 items-center justify-center border border-white/10">
-                  <span className="text-[9px] tracking-[0.2em] text-white/20">포스터 없음</span>
-                </div>
-              )}
+              <div className="relative">
+                {movie.posterPath ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={`https://image.tmdb.org/t/p/w342${movie.posterPath}`}
+                    alt=""
+                    loading="lazy"
+                    className="h-64 w-44 object-cover opacity-90 saturate-[0.8] brightness-[0.9]"
+                  />
+                ) : (
+                  <div className="flex h-64 w-44 items-center justify-center border border-white/10">
+                    <span className="text-[9px] tracking-[0.2em] text-white/20">포스터 없음</span>
+                  </div>
+                )}
+
+                {/* "정보 수정"/"카드 공유"를 뒷면 텍스트 버튼 대신 포스터 구석의
+                    아이콘으로 옮겼다 — 카드를 눌렀을 때(뒤집기)와 겹치지 않도록
+                    각 아이콘 클릭에서 이벤트 전파를 막는다. */}
+                {editable && (
+                  <div className="absolute right-1 top-1 flex gap-2 bg-black/50 px-1.5 py-1">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        resetMetadataDraft()
+                        setMode('edit')
+                      }}
+                      aria-label="정보 수정"
+                      title="정보 수정"
+                      className="flex items-center justify-center text-white/50 outline-none transition-colors duration-500 hover:text-white/85"
+                    >
+                      <PencilIcon />
+                    </button>
+                    <ShareCardButton
+                      loggedMovieId={movie.id}
+                      initialUrl={initialCardUrl}
+                      variant="icon"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                )}
+              </div>
 
               <div className="mt-1 flex flex-col items-center gap-1 px-2 text-center">
                 <p className="text-[11px] tracking-[0.1em] text-white/80">
