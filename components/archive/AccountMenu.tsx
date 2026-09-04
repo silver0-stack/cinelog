@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { SignOutButton } from '@/components/auth/SignOutButton'
+import { useClickOutside } from '@/lib/useClickOutside'
 
 // 로그인한 계정이 누구인지 화면 어디에도 안 보이고, 로그아웃도 /login에 따로
 // 들어가야만 할 수 있었다 — 같은 브라우저에서 여러 계정을 오갈 때 "지금 누구로
@@ -11,10 +12,12 @@ import { SignOutButton } from '@/components/auth/SignOutButton'
 // 지금 세션이 누구인지 보여주고 로그아웃만 하는 최소한의 계정 표시다.
 export function AccountMenu({ email }: { email: string }) {
   const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  useClickOutside(containerRef, open, () => setOpen(false))
   const initial = email.trim().charAt(0).toUpperCase() || '?'
 
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

@@ -31,8 +31,8 @@ export function ViewingHistoryStepper({ viewings }: { viewings: MovieViewing[] }
           {current.rating != null ? `   ·   ${ratingLine(current.rating)}` : ''}
         </p>
         {current.note && (
-          <p className="max-w-[220px] text-center text-[10px] font-light italic leading-relaxed tracking-wide text-white/30">
-            “{current.note}”
+          <p className="w-full max-w-[220px] whitespace-pre-line text-left text-[10px] font-light italic leading-relaxed tracking-wide text-white/30">
+            {current.note}
           </p>
         )}
       </div>

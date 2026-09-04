@@ -215,9 +215,9 @@ export function LogMovieForm() {
       <textarea
         value={draft.note}
         onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))}
-        placeholder="한줄메모 (선택)"
-        rows={2}
-        className={`resize-none tracking-wide ${fieldClass}`}
+        placeholder="메모 (선택 — 짧게 한 줄이어도, 길게 리뷰여도 괜찮아)"
+        rows={3}
+        className={`max-h-[40vh] resize-y tracking-wide ${fieldClass}`}
       />
 
       <input

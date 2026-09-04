@@ -242,6 +242,9 @@ export function MovieUniverse({
 
     const handleMouseDown = (e: MouseEvent) => {
       if (e.button !== 0 || isOnStar(e.target)) return
+      // 별이 아닌 빈 여백을 눌렀다 — 열려 있던 peek 패널을 닫는다. 별을 다시
+      // 눌러야만 닫히던 걸, 여백 클릭으로도 닫을 수 있게 해달라는 피드백.
+      handlePeek(null)
       mouseGesture = { mode: 'pending', startX: e.clientX, startY: e.clientY }
     }
 
@@ -281,6 +284,7 @@ export function MovieUniverse({
     const handleTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 1) {
         if (isOnStar(e.target)) return
+        handlePeek(null)
         const t = e.touches[0]
         gesture = { mode: 'pending', startX: t.clientX, startY: t.clientY }
       } else if (e.touches.length === 2) {
@@ -351,7 +355,7 @@ export function MovieUniverse({
       el.removeEventListener('touchend', handleTouchEnd)
       el.removeEventListener('touchcancel', handleTouchEnd)
     }
-  }, [rawZoom, rawPanX, rawPanY])
+  }, [rawZoom, rawPanX, rawPanY, handlePeek])
 
   // 몇 초간 아무 조작이 없으면 힌트를 아주 옅게 띄운다. 조작이 시작되는 순간
   // 바로 사라지고, 다시 가만히 있으면 또 뜬다 — 강요가 아니라 옆에서 살짝 건드리는 정도.

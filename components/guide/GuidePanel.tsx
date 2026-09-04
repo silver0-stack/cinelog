@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { EASE_SLOW } from '@/lib/motion'
 import { secondaryNavLinkClass } from '@/lib/uiStyles'
+import { useClickOutside } from '@/lib/useClickOutside'
 
 type QA = { q: string; a: string }
 
@@ -37,10 +38,12 @@ type Props = {
 
 export function GuidePanel({ variant, triggerClassName, panelClassName }: Props) {
   const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  useClickOutside(containerRef, open, () => setOpen(false))
   const items = [...UNIVERSE_QA, ...(variant === 'demo' ? DEMO_QA : ARCHIVE_QA)]
 
   return (
-    <>
+    <div ref={containerRef}>
       <button type="button" onClick={() => setOpen((v) => !v)} className={triggerClassName}>
         가이드
       </button>
@@ -71,6 +74,6 @@ export function GuidePanel({ variant, triggerClassName, panelClassName }: Props)
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </div>
   )
 }

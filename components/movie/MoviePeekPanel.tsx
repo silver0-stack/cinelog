@@ -225,7 +225,11 @@ export function MoviePeekPanel({ movie, center, editable, onClose, onRecenter }:
             )}
 
             {movie.note && (
-              <div className="max-w-full text-center text-[9px] leading-relaxed tracking-wide text-white/40">{movie.note}</div>
+              // 왼쪽 정렬로 뒀다 — 한 줄짜리 메모는 가운데 정렬이 괜찮지만, 여러
+              // 문단짜리 리뷰는 가운데 정렬이면 읽기 어렵다.
+              <div className="w-full max-w-full whitespace-pre-line text-left text-[9px] leading-relaxed tracking-wide text-white/40">
+                {movie.note}
+              </div>
             )}
 
             {reason && (
@@ -321,9 +325,9 @@ export function MoviePeekPanel({ movie, center, editable, onClose, onRecenter }:
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="한줄메모 (선택)"
-            rows={2}
-            className={`resize-none ${fieldClass}`}
+            placeholder="메모 (선택 — 짧게 한 줄이어도, 길게 리뷰여도 괜찮아)"
+            rows={3}
+            className={`max-h-[40vh] resize-y ${fieldClass}`}
           />
           <input
             type="date"
@@ -348,9 +352,9 @@ export function MoviePeekPanel({ movie, center, editable, onClose, onRecenter }:
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="한줄메모 (선택)"
-            rows={2}
-            className={`resize-none ${fieldClass}`}
+            placeholder="메모 (선택 — 짧게 한 줄이어도, 길게 리뷰여도 괜찮아)"
+            rows={3}
+            className={`max-h-[40vh] resize-y ${fieldClass}`}
           />
           <input
             type="date"
