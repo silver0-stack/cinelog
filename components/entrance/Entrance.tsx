@@ -5,10 +5,15 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { EASE_SLOW } from '@/lib/motion'
 import { secondaryNavLinkClass } from '@/lib/uiStyles'
+import { AccountMenu } from '@/components/archive/AccountMenu'
 
 type Props = {
   /** 체험 트리거(하단 별)를 누르면 호출된다 — 좌석 없이 곧장 블랙홀 전환으로 이어진다. */
   onEnter: () => void
+  /** 로그인한 유저의 이메일. 로그인 안 했으면 null — 이 페이지는 로그인 여부와
+   * 무관하게 항상 보이니(더 이상 /archive로 강제 리다이렉트하지 않는다), CTA와
+   * 우측 상단 링크가 로그인 여부에 따라 달라져야 한다. */
+  userEmail: string | null
 }
 
 const headingClass = 'text-xs font-light tracking-[0.3em] text-white/70 sm:text-sm'
@@ -35,14 +40,23 @@ function Section({ id, children, className = '' }: { id?: string; children: Reac
   )
 }
 
-export function Entrance({ onEnter }: Props) {
+export function Entrance({ onEnter, userEmail }: Props) {
+  const primaryCtaLabel = userEmail ? '내 우주 가기' : '내 우주 만들기'
+  const primaryCtaHref = userEmail ? '/archive' : '/login'
+
   return (
     <div className="flex min-h-full w-full flex-col items-center bg-black">
-      {/* 스크롤해도 항상 접근 가능한 로그인 진입로 — 데모만 보고 갈 사람에게도,
-          이미 계정이 있어서 바로 로그인만 하고 싶은 사람에게도 필요하다. */}
-      <Link href="/login" className={`fixed right-6 top-6 z-10 ${secondaryNavLinkClass}`}>
-        LOG IN
-      </Link>
+      {/* 스크롤해도 항상 접근 가능한 진입로 — 로그인 안 했으면 로그인으로, 이미
+          로그인했으면 계정 메뉴(내 우주 가기/로그아웃)로 바뀐다. */}
+      <div className="fixed right-6 top-6 z-10">
+        {userEmail ? (
+          <AccountMenu email={userEmail} links={[{ label: '내 우주 가기', href: '/archive' }]} />
+        ) : (
+          <Link href="/login" className={secondaryNavLinkClass}>
+            LOG IN
+          </Link>
+        )}
+      </div>
 
       {/* 히어로 */}
       <section className="relative flex min-h-dvh w-full flex-col items-center justify-center gap-16 px-6 text-center">
@@ -64,10 +78,10 @@ export function Entrance({ onEnter }: Props) {
 
         <div className="flex items-center gap-10">
           <Link
-            href="/login"
+            href={primaryCtaHref}
             className="text-xs font-light tracking-[0.5em] text-white/60 outline-none transition-colors duration-700 hover:text-white/90 focus-visible:text-white/90"
           >
-            내 우주 만들기
+            {primaryCtaLabel}
           </Link>
           <a
             href="#how"
@@ -161,10 +175,10 @@ export function Entrance({ onEnter }: Props) {
           지금 당신의 우주를 시작해보세요.
         </p>
         <Link
-          href="/login"
+          href={primaryCtaHref}
           className="animate-pulse-slow text-xs font-light tracking-[0.5em] text-white/50 outline-none transition-colors duration-700 hover:text-white/85 focus-visible:text-white/85"
         >
-          내 우주 만들기
+          {primaryCtaLabel}
         </Link>
       </Section>
 

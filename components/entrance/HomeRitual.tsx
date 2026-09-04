@@ -24,7 +24,7 @@ type Stage = 'entrance' | 'blackhole' | 'universe'
 // 플래그가 있었다 — 입장 화면이 그냥 "CINELOG / ENTER" 스플래시였을 땐 매번
 // 반복시키는 게 마찰이었지만, 지금은 이용 방법/철학/FAQ가 있는 진짜 홈페이지라
 // "/"에 다시 오면 항상 이 페이지가 보여야 정상이다. 그래서 그 스킵 로직을 없앴다.
-export function HomeRitual() {
+export function HomeRitual({ userEmail }: { userEmail: string | null }) {
   const [stage, setStage] = useState<Stage>('entrance')
 
   const handleEnter = useCallback(() => setStage('blackhole'), [])
@@ -40,7 +40,7 @@ export function HomeRitual() {
             transition={{ duration: DURATION.fade, ease: EASE_SLOW }}
             className="absolute inset-0 overflow-y-auto"
           >
-            <Entrance onEnter={handleEnter} />
+            <Entrance onEnter={handleEnter} userEmail={userEmail} />
           </motion.div>
         )}
 

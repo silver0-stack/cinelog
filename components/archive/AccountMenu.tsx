@@ -1,8 +1,17 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import Link from 'next/link'
 import { SignOutButton } from '@/components/auth/SignOutButton'
 import { useClickOutside } from '@/lib/useClickOutside'
+
+type Props = {
+  email: string
+  /** 계정 메뉴에 이메일/로그아웃 말고 추가로 넣을 링크 — 랜딩 페이지에서는
+   * "내 우주 가기"(/archive)가 여기 들어간다. /archive 안에서는 이미 그 화면에
+   * 있으니 비워둔다. */
+  links?: { label: string; href: string }[]
+}
 
 // 로그인한 계정이 누구인지 화면 어디에도 안 보이고, 로그아웃도 /login에 따로
 // 들어가야만 할 수 있었다 — 같은 브라우저에서 여러 계정을 오갈 때 "지금 누구로
@@ -10,7 +19,7 @@ import { useClickOutside } from '@/lib/useClickOutside'
 // 기록하는 문제)으로 이어진 적이 있다. CLAUDE.md가 만들지 않기로 한 "프로필"은
 // 개인정보 편집/공개 프로필 페이지 같은 전통적인 의미고, 이건 그것과 달리
 // 지금 세션이 누구인지 보여주고 로그아웃만 하는 최소한의 계정 표시다.
-export function AccountMenu({ email }: { email: string }) {
+export function AccountMenu({ email, links = [] }: Props) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   useClickOutside(containerRef, open, () => setOpen(false))
@@ -29,6 +38,15 @@ export function AccountMenu({ email }: { email: string }) {
       {open && (
         <div className="absolute right-0 top-9 z-20 flex flex-col items-end gap-3 whitespace-nowrap bg-black px-3 py-3">
           <p className="text-[10px] tracking-[0.15em] text-white/40">{email}</p>
+          {links.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-xs font-light tracking-[0.5em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80 focus-visible:text-white/80"
+            >
+              {link.label}
+            </Link>
+          ))}
           <SignOutButton />
         </div>
       )}
