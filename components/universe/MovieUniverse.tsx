@@ -50,6 +50,10 @@ type Props = {
   /** true면 몇 초간 조작이 없을 때 아주 옅은 한 줄 힌트가 떴다 사라진다. 처음 온 사람이
    * "이게 뭐지"에서 멈추지 않도록 하는 최소한의 장치 — 조작하자마자 바로 사라진다. */
   showIdleHint?: boolean
+  /** loggedMovieId → 이미 만들어진 영화 카드 공유 URL. 서버에서 미리 조회해서
+   * 넘기면, ShareCardButton이 클릭 시점에 "있는지 확인"하느라 매번 "만드는 중"이
+   * 뜨는 걸 피할 수 있다(ShareButton의 initialUrl과 같은 이유). */
+  movieCardUrls?: Record<string, string>
 }
 
 function pairKey(a: string, b: string): string {
@@ -61,6 +65,7 @@ export function MovieUniverse({
   defaultCenterId,
   editable = false,
   showIdleHint = false,
+  movieCardUrls,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [centerId, setCenterId] = useState(defaultCenterId ?? movies[0]?.id ?? '')
@@ -400,6 +405,7 @@ export function MovieUniverse({
             zoomScale={zoom}
             peeked={movie.id === peekedId}
             editable={editable}
+            initialCardUrl={movieCardUrls?.[movie.id] ?? null}
             onSelect={tier === 'core' ? undefined : handleSelect}
             onPeek={handlePeek}
             onDragStrength={editable && tier !== 'core' ? handleDragStrength : undefined}

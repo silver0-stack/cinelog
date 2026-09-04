@@ -27,8 +27,10 @@ type Props = {
   zoomScale: MotionValue<number>
   /** 지금 이 영화가 열람(peek) 상태인지 — 클릭 한 번으로 열리고, 우주를 재배치하지 않는다. */
   peeked: boolean
-  /** true면 peek 패널에서 "다시 봤어"/"정보 수정"이 가능해진다(로그인한 본인 아카이브에서만). */
+  /** true면 peek 패널에서 "다시 본 감상 남기기"/"정보 수정"이 가능해진다(로그인한 본인 아카이브에서만). */
   editable?: boolean
+  /** 이미 만들어진 영화 카드 공유 URL(서버에서 미리 조회). ShareCardButton의 initialUrl로 전달된다. */
+  initialCardUrl?: string | null
   /** 위성(비-core) 영화에만 전달된다 — peek 패널의 "이 영화를 중심으로"에서만 호출된다. */
   onSelect?: (movieId: string) => void
   /** 클릭으로 열람을 열고 닫는다 — null이면 닫기. 우주 재배치(onSelect)와는 완전히 별개다. */
@@ -89,6 +91,7 @@ export function MovieBody({
   zoomScale,
   peeked,
   editable,
+  initialCardUrl,
   onSelect,
   onPeek,
   onDragStrength,
@@ -347,6 +350,7 @@ export function MovieBody({
                 movie={movie}
                 center={center}
                 editable={!!editable}
+                initialCardUrl={initialCardUrl}
                 onClose={() => onPeek?.(null)}
                 onRecenter={onSelect ? () => onSelect(movie.id) : undefined}
               />

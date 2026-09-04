@@ -54,10 +54,11 @@ export default async function ArchivePage() {
     )
   }
 
-  const [{ data: viewingData }, { data: connectionData }, { data: shareLink }] = await Promise.all([
+  const [{ data: viewingData }, { data: connectionData }, { data: shareLink }, { data: cardLinks }] = await Promise.all([
     supabase.from('viewings').select('id, logged_movie_id, rating, note, watched_at').eq('user_id', user.id),
     supabase.from('editorial_connections').select('movie_a_id, movie_b_id, strength').eq('user_id', user.id),
     supabase.from('share_links').select('slug').eq('user_id', user.id).maybeSingle(),
+    supabase.from('movie_share_links').select('logged_movie_id, slug').eq('user_id', user.id),
   ])
 
   const movies = attachEditorialConnections(
@@ -73,10 +74,17 @@ export default async function ArchivePage() {
   const protocol = headersList.get('x-forwarded-proto') ?? (host?.startsWith('localhost') ? 'http' : 'https')
   const initialShareUrl = shareLink ? `${protocol}://${host}/u/${shareLink.slug}` : null
 
+  // 영화 카드 공유도 같은 이유로 미리 채운다 — 이미 링크를 만들어둔 영화를
+  // 새로고침 후 다시 열면 매번 "만드는 중"이 뜨던 문제.
+  const movieCardUrls: Record<string, string> = {}
+  for (const link of (cardLinks ?? []) as { logged_movie_id: string; slug: string }[]) {
+    movieCardUrls[link.logged_movie_id] = `${protocol}://${host}/m/${link.slug}`
+  }
+
   return (
     <main className="relative h-dvh w-screen overflow-hidden bg-black">
       <FadeIn>
-        <MovieUniverse movies={movies} defaultCenterId={movies[0].id} editable />
+        <MovieUniverse movies={movies} defaultCenterId={movies[0].id} editable movieCardUrls={movieCardUrls} />
       </FadeIn>
       <div className="absolute right-6 top-6 z-10 flex items-center gap-8">
         <ShareButton initialUrl={initialShareUrl} />

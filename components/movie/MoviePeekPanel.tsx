@@ -26,6 +26,8 @@ type Props = {
   /** 현재 중심 영화. movie와의 editorial 큐레이터 노트를 찾는 데 쓴다. */
   center: Movie
   editable: boolean
+  /** 이미 만들어진 영화 카드 공유 URL(서버에서 미리 조회) — ShareCardButton으로 그대로 전달된다. */
+  initialCardUrl?: string | null
   onClose: () => void
   /** core가 아닌 위성에만 있다 — core 자체를 다시 중심으로 만들 수는 없다. */
   onRecenter?: () => void
@@ -36,7 +38,7 @@ type Props = {
 // 같은 이유로 감상은 덮어쓰지 않는다: rating/note는 movie.viewings의 최신 항목일
 // 뿐이고, "다시 봤어"는 그 위에 새 항목을 쌓는다 — 다시 봤을 때 감상이 달라져도
 // 이전 감상이 사라지지 않는다.
-export function MoviePeekPanel({ movie, center, editable, onClose, onRecenter }: Props) {
+export function MoviePeekPanel({ movie, center, editable, initialCardUrl, onClose, onRecenter }: Props) {
   const router = useRouter()
   const [mode, setMode] = useState<'view' | 'add' | 'edit' | 'edit-viewing'>('view')
   const [saving, setSaving] = useState(false)
@@ -296,7 +298,7 @@ export function MoviePeekPanel({ movie, center, editable, onClose, onRecenter }:
                 정보 수정
               </button>
             )}
-            {editable && <ShareCardButton loggedMovieId={movie.id} />}
+            {editable && <ShareCardButton loggedMovieId={movie.id} initialUrl={initialCardUrl} />}
             <button type="button" onClick={onClose} className="text-[9px] tracking-[0.25em] text-white/25 outline-none transition-colors duration-500 hover:text-white/60">
               닫기
             </button>
