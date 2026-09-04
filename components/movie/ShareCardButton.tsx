@@ -39,7 +39,7 @@ export function ShareCardButton({ loggedMovieId }: { loggedMovieId: string }) {
 
   return (
     <button type="button" onClick={handleShare} disabled={loading} className={`${actionClass} disabled:text-white/20`}>
-      {loading ? '만드는 중' : '카드로 공유'}
+      {loading ? '만드는 중' : '영화 카드 공유'}
     </button>
   )
 }

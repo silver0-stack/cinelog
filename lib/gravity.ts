@@ -23,6 +23,14 @@ function editorialStrength(a: Movie, b: Movie): number {
   return Math.max(forward, backward)
 }
 
+/** editorialStrength과 같은 방향으로 찾되, 그 연결에 남긴 큐레이터 노트를 돌려준다. */
+export function editorialReason(a: Movie, b: Movie): string | undefined {
+  return (
+    a.editorialConnections?.find((c) => c.movieId === b.id)?.reason ??
+    b.editorialConnections?.find((c) => c.movieId === a.id)?.reason
+  )
+}
+
 /**
  * 두 영화 사이의 "중력" — 관계가 강할수록 1에 가깝다.
  * 자동 계산(감독/장르/테마/무드/시대/지역) + editorial connection을 더해서 만든다.

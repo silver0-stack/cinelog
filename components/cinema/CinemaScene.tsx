@@ -6,8 +6,14 @@ import { buildSeatLayout } from '@/lib/seatLayout'
 import { Seat } from '@/components/seat/Seat'
 import { Screen } from './Screen'
 import { DURATION, EASE_SLOW } from '@/lib/motion'
+import { useIdleHint } from '@/lib/useIdleHint'
 
 type Phase = 'exploring' | 'approaching' | 'settled'
+
+const IDLE_HINT_DELAY = 4000
+// 여기서의 "조작"은 곧 마우스 이동(카메라가 따라가는 것) 그 자체라서, 우주 화면과
+// 달리 mousemove/touchmove도 idle 판정에 포함시킨다.
+const CINEMA_IDLE_EVENTS = ['mousemove', 'mousedown', 'touchstart', 'touchmove'] as const
 
 type Props = {
   onSeated: (seatId: string) => void
@@ -42,6 +48,7 @@ export function CinemaScene({ onSeated }: Props) {
   // 계속 도망가는 문제가 생긴다. 이미 진행 중이던 관성 이동도 그 순간 바로 멈춘다.
   const hoveredRef = useRef<string | null>(null)
   const activeControlsRef = useRef<AnimationPlaybackControls[]>([])
+  const showHint = useIdleHint(containerRef, phase === 'exploring', CINEMA_IDLE_EVENTS, IDLE_HINT_DELAY)
 
   // 시선 회전 (아주 미세한 둘러보기)
   const tiltXRaw = useMotionValue(0)
@@ -243,6 +250,15 @@ export function CinemaScene({ onSeated }: Props) {
             'radial-gradient(ellipse at 50% 42%, transparent 34%, rgba(0,0,0,0.88) 100%)',
         }}
       />
+
+      <motion.p
+        className="pointer-events-none absolute bottom-10 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-light tracking-[0.3em] text-white/30"
+        style={{ textShadow: '0 0 10px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.9)' }}
+        animate={{ opacity: showHint ? 1 : 0 }}
+        transition={{ duration: 1.6, ease: EASE_SLOW }}
+      >
+        마우스를 움직여 좌석 사이를 둘러보고, 원하는 자리를 눌러봐
+      </motion.p>
     </div>
   )
 }

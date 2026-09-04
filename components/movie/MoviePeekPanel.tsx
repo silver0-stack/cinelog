@@ -1,14 +1,21 @@
 'use client'
 
-import { useState, useTransition, type FormEvent } from 'react'
+import { useEffect, useState, useTransition, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { addViewing, updateLoggedMovie } from '@/lib/loggedMovies'
+import { addViewing, deleteViewing, updateLoggedMovie, updateViewing } from '@/lib/loggedMovies'
 import { searchTmdbMovies, fetchTmdbMovieDetail, type TmdbSearchResult } from '@/lib/tmdbClient'
+import { editorialReason } from '@/lib/gravity'
 import { RatingPicker } from '@/components/archive/RatingPicker'
 import { GenreChipPicker } from '@/components/archive/GenreChipPicker'
 import { ShareCardButton } from './ShareCardButton'
 import { ViewingHistoryStepper } from './ViewingHistoryStepper'
 import type { Movie } from '@/data/movies'
+
+// 처음 이 컨트롤을 마주쳤을 때 딱 한 번, 뭘 하는 건지 아주 작게 알려준다 —
+// 두 번째부터는 다시 안 뜬다(로컬스토리지로 기억). "중심 옮기기"/"다시 보기"가
+// 뭘 위한 기능인지 몰라서 안 눌러봤다는 피드백이 있었다.
+const RECENTER_HINT_KEY = 'cinelog:hint-seen:recenter'
+const REWATCH_HINT_KEY = 'cinelog:hint-seen:rewatch'
 
 const actionClass = 'text-[9px] tracking-[0.25em] text-white/40 outline-none transition-colors duration-500 hover:text-white/70'
 const fieldClass =
@@ -16,6 +23,8 @@ const fieldClass =
 
 type Props = {
   movie: Movie
+  /** 현재 중심 영화. movie와의 editorial 큐레이터 노트를 찾는 데 쓴다. */
+  center: Movie
   editable: boolean
   onClose: () => void
   /** core가 아닌 위성에만 있다 — core 자체를 다시 중심으로 만들 수는 없다. */
@@ -27,11 +36,35 @@ type Props = {
 // 같은 이유로 감상은 덮어쓰지 않는다: rating/note는 movie.viewings의 최신 항목일
 // 뿐이고, "다시 봤어"는 그 위에 새 항목을 쌓는다 — 다시 봤을 때 감상이 달라져도
 // 이전 감상이 사라지지 않는다.
-export function MoviePeekPanel({ movie, editable, onClose, onRecenter }: Props) {
+export function MoviePeekPanel({ movie, center, editable, onClose, onRecenter }: Props) {
   const router = useRouter()
-  const [mode, setMode] = useState<'view' | 'add' | 'edit'>('view')
+  const [mode, setMode] = useState<'view' | 'add' | 'edit' | 'edit-viewing'>('view')
   const [saving, setSaving] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [editingViewingId, setEditingViewingId] = useState<string | null>(null)
+  const [showRecenterHint, setShowRecenterHint] = useState(false)
+  const [showRewatchHint, setShowRewatchHint] = useState(false)
+
+  useEffect(() => {
+    try {
+      if (onRecenter && !localStorage.getItem(RECENTER_HINT_KEY)) {
+        // 로컬스토리지(외부 시스템) 값을 마운트 시점에 한 번만 React 상태로
+        // 반영한다 — HomeRitual의 세션스토리지 체크와 같은 패턴.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setShowRecenterHint(true)
+        localStorage.setItem(RECENTER_HINT_KEY, '1')
+      }
+      if (editable && !localStorage.getItem(REWATCH_HINT_KEY)) {
+        setShowRewatchHint(true)
+        localStorage.setItem(REWATCH_HINT_KEY, '1')
+      }
+    } catch {
+      // 로컬스토리지를 못 쓰는 환경에서는 그냥 매번 힌트를 안 보여준다 — 기능엔 영향 없다.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const reason = movie.id !== center.id ? editorialReason(center, movie) : undefined
 
   const [rating, setRating] = useState<number | null>(null)
   const [note, setNote] = useState('')
@@ -57,6 +90,49 @@ export function MoviePeekPanel({ movie, editable, onClose, onRecenter }: Props) 
       setMode('view')
       setRating(null)
       setNote('')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // 잘못 입력한 평점/메모/날짜를 고칠 수 있어야 한다는 피드백으로 추가했다.
+  // 지금은 가장 최근 감상만 고칠 수 있다 — 히스토리를 넘겨보는 과거 감상까지
+  // 편집하려면 ViewingHistoryStepper에도 편집 진입점이 필요한데, 우선 가장 많이
+  // 쓰일 "방금 남긴 감상 고치기"부터 지원한다.
+  function startEditLatestViewing() {
+    const latest = viewings[0]
+    if (!latest) return
+    setEditingViewingId(latest.id)
+    setRating(latest.rating ?? null)
+    setNote(latest.note ?? '')
+    setWatchedAt(latest.watchedAt)
+    setMode('edit-viewing')
+  }
+
+  async function handleUpdateViewing(e: FormEvent) {
+    e.preventDefault()
+    if (!editingViewingId) return
+    setSaving(true)
+    try {
+      await updateViewing(editingViewingId, { rating, note: note.trim() || null, watchedAt })
+      router.refresh()
+      setMode('view')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // 그 영화의 마지막 남은 감상은 지우지 않는다 — combineLoggedMovie가 항상 최소
+  // 1개의 viewing을 전제하기 때문에, 다 지우면 그 영화 자체가 표시할 수 없는
+  // 상태가 된다(이럴 땐 "정보 수정"이 아니라 영화 자체를 지우는 기능이 필요한데
+  // 아직 없다 — 요청받으면 추가).
+  async function handleDeleteLatestViewing() {
+    const latest = viewings[0]
+    if (!latest || viewings.length <= 1) return
+    setSaving(true)
+    try {
+      await deleteViewing(latest.id)
+      router.refresh()
     } finally {
       setSaving(false)
     }
@@ -152,7 +228,33 @@ export function MoviePeekPanel({ movie, editable, onClose, onRecenter }: Props) 
               <div className="max-w-full text-center text-[9px] leading-relaxed tracking-wide text-white/40">{movie.note}</div>
             )}
 
-            {viewings[0] && <div className="text-[8px] tracking-[0.2em] text-white/25">{viewings[0].watchedAt}</div>}
+            {reason && (
+              <div className="max-w-full text-center text-[9px] italic leading-relaxed tracking-wide text-white/35">
+                “{reason}”
+              </div>
+            )}
+
+            {viewings[0] && (
+              <div className="flex items-center gap-2">
+                <span className="text-[8px] tracking-[0.2em] text-white/25">{viewings[0].watchedAt}</span>
+                {editable && (
+                  <>
+                    <button type="button" onClick={startEditLatestViewing} className="text-[8px] tracking-[0.2em] text-white/25 outline-none transition-colors duration-500 hover:text-white/60">
+                      고치기
+                    </button>
+                    {viewings.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={handleDeleteLatestViewing}
+                        className="text-[8px] tracking-[0.2em] text-white/25 outline-none transition-colors duration-500 hover:text-white/60"
+                      >
+                        삭제
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
 
             {priorViewings.length > 0 && (
               <button type="button" onClick={() => setExpanded((v) => !v)} className={actionClass}>
@@ -175,7 +277,7 @@ export function MoviePeekPanel({ movie, editable, onClose, onRecenter }: Props) 
             )}
             {editable && (
               <button type="button" onClick={() => setMode('add')} className={actionClass}>
-                다시 봤어
+                다시 본 감상 남기기
               </button>
             )}
             {editable && (
@@ -195,11 +297,53 @@ export function MoviePeekPanel({ movie, editable, onClose, onRecenter }: Props) 
               닫기
             </button>
           </div>
+
+          {(showRecenterHint || showRewatchHint) && (
+            <div className="flex flex-col items-center gap-1 px-2">
+              {showRecenterHint && (
+                <p className="text-center text-[8px] leading-relaxed tracking-wide text-white/25">
+                  중심을 옮기면 우주 전체가 이 영화와의 관계로 다시 배치돼
+                </p>
+              )}
+              {showRewatchHint && (
+                <p className="text-center text-[8px] leading-relaxed tracking-wide text-white/25">
+                  같은 영화를 또 봤다면 새 감상을 남겨 — 이전 감상은 지워지지 않고 쌓여
+                </p>
+              )}
+            </div>
+          )}
         </>
       )}
 
       {mode === 'add' && (
         <form onSubmit={handleAddViewing} className="flex w-full flex-col items-center gap-3">
+          <RatingPicker value={rating} onChange={setRating} />
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="한줄메모 (선택)"
+            rows={2}
+            className={`resize-none ${fieldClass}`}
+          />
+          <input
+            type="date"
+            value={watchedAt}
+            onChange={(e) => setWatchedAt(e.target.value)}
+            className="border-b border-white/15 bg-transparent px-1 py-1 text-[10px] text-white/50 outline-none [color-scheme:dark] focus:border-white/40"
+          />
+          <div className="flex items-center gap-4">
+            <button type="button" onClick={() => setMode('view')} className="text-[9px] tracking-[0.25em] text-white/30 outline-none transition-colors duration-500 hover:text-white/60">
+              취소
+            </button>
+            <button type="submit" disabled={saving} className={`${actionClass} disabled:text-white/20`}>
+              {saving ? '저장 중' : '저장'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {mode === 'edit-viewing' && (
+        <form onSubmit={handleUpdateViewing} className="flex w-full flex-col items-center gap-3">
           <RatingPicker value={rating} onChange={setRating} />
           <textarea
             value={note}

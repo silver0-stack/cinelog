@@ -19,10 +19,15 @@ export type Movie = {
   editorialConnections?: {
     movieId: string
     strength: number
+    /** 이 연결을 직접 지정한 이유. V1 큐레이션에만 쓴다 — peek 패널에서 위성으로
+     * 볼 때 짧은 큐레이터 노트로 드러난다. V2(드래그로 만든 연결)에는 없다. */
+    reason?: string
   }[]
   /** 가장 최근 감상의 평점(0~5). V1 정적 큐레이션에는 없는 값 — V2에서만 쓴다(P2-4). */
   rating?: number
-  /** TMDB 포스터 경로. V2에서만 쓴다(P2-5) — 기본 표현은 여전히 추상적인 점이고, 아주 가까이 줌인했을 때만 드러난다. */
+  /** TMDB 포스터 경로. 기본 표현은 여전히 추상적인 점이고, 아주 가까이 줌인했을 때만
+   * 드러난다(P2-5) — V1도 실제 TMDB 포스터를 쓴다(가짜 평점과 달리 실존 영화의
+   * 실제 포스터라 "가짜 데이터처럼 보인다"는 문제가 없다). */
   posterPath?: string
   /** 가장 최근 감상의 한줄메모. V2에서만 쓴다. */
   note?: string
@@ -44,6 +49,7 @@ export const movies: Movie[] = [
     moods: ['긴장감', '냉소적'],
     era: '2010s',
     locations: ['서울'],
+    posterPath: '/jjHccoFjbqlfr4VGLVLT7yek0Xn.jpg',
   },
   {
     id: 'memories-of-murder',
@@ -55,6 +61,7 @@ export const movies: Movie[] = [
     moods: ['황량한', '긴장감'],
     era: '2000s',
     locations: ['시골'],
+    posterPath: '/wrsf1ebQ6S4gVhjR9FJElfdxAjj.jpg',
   },
   {
     id: 'oldboy',
@@ -66,6 +73,7 @@ export const movies: Movie[] = [
     moods: ['그로테스크', '긴장감'],
     era: '2000s',
     locations: ['서울'],
+    posterPath: '/xpa9ybm6tYGna5LseqSXvKpSSJn.jpg',
   },
   {
     id: 'the-handmaiden',
@@ -77,6 +85,7 @@ export const movies: Movie[] = [
     moods: ['관능적', '긴장감'],
     era: '2010s',
     locations: ['서울', '시골'],
+    posterPath: '/2as91uhVX6RjDQw3Y5pFWITv3iA.jpg',
   },
   {
     id: 'burning',
@@ -88,7 +97,8 @@ export const movies: Movie[] = [
     moods: ['몽환적', '황량한'],
     era: '2010s',
     locations: ['서울', '시골'],
-    editorialConnections: [{ movieId: 'parasite', strength: 0.5 }],
+    editorialConnections: [{ movieId: 'parasite', strength: 0.5, reason: '계급이라는 같은 뿌리, 다른 온도' }],
+    posterPath: '/AlKlezuaJkP2lDEWbJxYv47GeDf.jpg',
   },
   {
     id: 'in-the-mood-for-love',
@@ -100,6 +110,7 @@ export const movies: Movie[] = [
     moods: ['몽환적', '우울'],
     era: '2000s',
     locations: ['홍콩'],
+    posterPath: '/mjkr1IamzDiL5mLIbnuhiYOXLqg.jpg',
   },
   {
     id: 'chungking-express',
@@ -111,7 +122,8 @@ export const movies: Movie[] = [
     moods: ['몽환적', '따뜻하지만 쓸쓸한'],
     era: '1990s',
     locations: ['홍콩'],
-    editorialConnections: [{ movieId: 'amelie', strength: 0.5 }],
+    editorialConnections: [{ movieId: 'amelie', strength: 0.5, reason: '우연이 만든 도시의 고독한 로맨스' }],
+    posterPath: '/pT12E2OfHSSRTCASe2gkJfrBUAE.jpg',
   },
   {
     id: 'mulholland-drive',
@@ -123,7 +135,8 @@ export const movies: Movie[] = [
     moods: ['몽환적', '그로테스크'],
     era: '2000s',
     locations: ['로스앤젤레스'],
-    editorialConnections: [{ movieId: 'perfect-blue', strength: 0.75 }],
+    editorialConnections: [{ movieId: 'perfect-blue', strength: 0.75, reason: '무너지는 정체성을 쫓는 악몽' }],
+    posterPath: '/e7eIq8wTxGX00cX47cDFwVvhH5M.jpg',
   },
   {
     id: 'blue-velvet',
@@ -135,6 +148,7 @@ export const movies: Movie[] = [
     moods: ['그로테스크', '긴장감'],
     era: '1980s',
     locations: ['교외'],
+    posterPath: '/ad5xNQg53japfM6zHXinqPpOg25.jpg',
   },
   {
     id: 'blade-runner-2049',
@@ -146,7 +160,8 @@ export const movies: Movie[] = [
     moods: ['차갑고 절제된', '황량한'],
     era: '2010s',
     locations: ['로스앤젤레스'],
-    editorialConnections: [{ movieId: 'her', strength: 0.55 }],
+    editorialConnections: [{ movieId: 'her', strength: 0.55, reason: '인공지능이 만드는 고독한 사랑' }],
+    posterPath: '/fJZmCJpLeBFKktLFEIKPEhllWlU.jpg',
   },
   {
     id: 'arrival',
@@ -158,6 +173,7 @@ export const movies: Movie[] = [
     moods: ['명상적', '차갑고 절제된'],
     era: '2010s',
     locations: ['시골'],
+    posterPath: '/yHEMUTIYZFHN3jjkKmTFrvhj64a.jpg',
   },
   {
     id: 'her',
@@ -169,6 +185,7 @@ export const movies: Movie[] = [
     moods: ['따뜻하지만 쓸쓸한', '몽환적'],
     era: '2010s',
     locations: ['로스앤젤레스'],
+    posterPath: '/thUJI82kWMxA2jtjLtPxDIj67tY.jpg',
   },
   {
     id: 'lost-in-translation',
@@ -180,6 +197,7 @@ export const movies: Movie[] = [
     moods: ['몽환적', '따뜻하지만 쓸쓸한'],
     era: '2000s',
     locations: ['도쿄'],
+    posterPath: '/rGyDyUyepFIdFQLnzBelp3vsSaB.jpg',
   },
   {
     id: 'drive',
@@ -191,7 +209,8 @@ export const movies: Movie[] = [
     moods: ['차갑고 절제된', '긴장감'],
     era: '2010s',
     locations: ['로스앤젤레스'],
-    editorialConnections: [{ movieId: 'taxi-driver', strength: 0.6 }],
+    editorialConnections: [{ movieId: 'taxi-driver', strength: 0.6, reason: '도시의 그림자 속, 고립된 남자' }],
+    posterPath: '/ukDRwCEnVwBVSJ13xpzSzegIi1u.jpg',
   },
   {
     id: 'under-the-skin',
@@ -203,6 +222,7 @@ export const movies: Movie[] = [
     moods: ['차갑고 절제된', '황량한'],
     era: '2010s',
     locations: ['스코틀랜드'],
+    posterPath: '/36UYGehLNBpQ3d0mCGFC6L9iQWb.jpg',
   },
   {
     id: 'eternal-sunshine',
@@ -214,6 +234,7 @@ export const movies: Movie[] = [
     moods: ['몽환적', '우울'],
     era: '2000s',
     locations: ['뉴욕'],
+    posterPath: '/jULvvUymAqM18gIDHbMRfKHbCSB.jpg',
   },
   {
     id: 'taxi-driver',
@@ -225,6 +246,7 @@ export const movies: Movie[] = [
     moods: ['황량한', '긴장감'],
     era: '1970s',
     locations: ['뉴욕'],
+    posterPath: '/g3VlHCbkgC23yCtCrnWcBP8ONhT.jpg',
   },
   {
     id: 'pulp-fiction',
@@ -236,6 +258,7 @@ export const movies: Movie[] = [
     moods: ['냉소적', '긴장감'],
     era: '1990s',
     locations: ['로스앤젤레스'],
+    posterPath: '/lnRkeQstaCvfMahZq7p9eAWzK1a.jpg',
   },
   {
     id: '2001-a-space-odyssey',
@@ -247,7 +270,8 @@ export const movies: Movie[] = [
     moods: ['명상적', '차갑고 절제된'],
     era: '1960s',
     locations: ['우주'],
-    editorialConnections: [{ movieId: 'solaris', strength: 0.7 }],
+    editorialConnections: [{ movieId: 'solaris', strength: 0.7, reason: '우주를 거울 삼아 인간을 묻다' }],
+    posterPath: '/2qJjH5mYNlGPdVrPqfEq1J6Mgb4.jpg',
   },
   {
     id: 'the-shining',
@@ -259,6 +283,7 @@ export const movies: Movie[] = [
     moods: ['긴장감', '그로테스크'],
     era: '1980s',
     locations: ['산장'],
+    posterPath: '/aaItbIXZlC2C7Arg3PI0IglKi0.jpg',
   },
   {
     id: 'portrait-of-a-lady-on-fire',
@@ -270,6 +295,7 @@ export const movies: Movie[] = [
     moods: ['명상적', '우울'],
     era: '2010s',
     locations: ['프랑스'],
+    posterPath: '/M0mm1VGMZRa6eRzgoZmYW9zPd8.jpg',
   },
   {
     id: 'amelie',
@@ -281,6 +307,7 @@ export const movies: Movie[] = [
     moods: ['따뜻하지만 쓸쓸한', '몽환적'],
     era: '2000s',
     locations: ['파리'],
+    posterPath: '/EkQ9Lu1NFnxfPSGizktuLJuxdv.jpg',
   },
   {
     id: 'perfect-blue',
@@ -292,6 +319,7 @@ export const movies: Movie[] = [
     moods: ['그로테스크', '긴장감'],
     era: '1990s',
     locations: ['도쿄'],
+    posterPath: '/cpsxJP7lUNEozPtDLIM5gPC9gJH.jpg',
   },
   {
     id: 'solaris',
@@ -303,5 +331,6 @@ export const movies: Movie[] = [
     moods: ['명상적', '우울'],
     era: '1970s',
     locations: ['우주'],
+    posterPath: '/dvDSdKFjdnm5chM4KR4IAnDyCvH.jpg',
   },
 ]

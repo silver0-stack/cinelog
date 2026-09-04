@@ -39,7 +39,7 @@ export function ShareButton({ initialUrl = null }: { initialUrl?: string | null 
 
   return (
     <button type="button" onClick={handleShare} disabled={loading} className={navLinkClass}>
-      {loading ? '만드는 중' : '공유'}
+      {loading ? '만드는 중' : '우주 공유'}
     </button>
   )
 }

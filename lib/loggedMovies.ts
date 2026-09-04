@@ -159,6 +159,32 @@ export async function addViewing(loggedMovieId: string, input: NewViewing) {
   if (error) throw error
 }
 
+export type ViewingUpdate = {
+  rating: number | null
+  note: string | null
+  watchedAt: string
+}
+
+/** 이미 남긴 감상(평점/한줄메모/날짜)을 고친다 — 잘못 입력했을 때를 위한 것. */
+export async function updateViewing(viewingId: string, input: ViewingUpdate) {
+  const supabase = createClient()
+
+  const { error } = await supabase
+    .from('viewings')
+    .update({ rating: input.rating, note: input.note, watched_at: input.watchedAt })
+    .eq('id', viewingId)
+
+  if (error) throw error
+}
+
+/** 감상 하나를 지운다. 그 영화의 마지막 남은 감상은 호출부에서 지우지 못하게 막는다 —
+ * combineLoggedMovie/latestWatchedAt이 항상 최소 1개의 viewing을 전제하기 때문이다. */
+export async function deleteViewing(viewingId: string) {
+  const supabase = createClient()
+  const { error } = await supabase.from('viewings').delete().eq('id', viewingId)
+  if (error) throw error
+}
+
 export type MovieMetadataUpdate = {
   title: string
   year: number

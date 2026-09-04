@@ -7,7 +7,9 @@ import { FadeIn } from '@/components/archive/FadeIn'
 import { combineLoggedMovies, type LoggedMovieRow, type ViewingRow } from '@/lib/loggedMovies'
 import { attachEditorialConnections, type EditorialConnectionRow } from '@/lib/editorialConnections'
 import { ShareButton } from '@/components/archive/ShareButton'
+import { AccountMenu } from '@/components/archive/AccountMenu'
 import { UniverseInsightPanel } from '@/components/archive/UniverseInsightPanel'
+import { GuidePanel } from '@/components/guide/GuidePanel'
 import { summarizeUniverse } from '@/lib/universeInsights'
 
 const navLinkClass =
@@ -45,6 +47,9 @@ export default async function ArchivePage() {
         <Link href="/archive/new" className={navLinkClass}>
           첫 영화 기록하기
         </Link>
+        <div className="absolute right-6 top-6 z-10">
+          <AccountMenu email={user.email ?? ''} />
+        </div>
       </main>
     )
   }
@@ -78,8 +83,14 @@ export default async function ArchivePage() {
         <Link href="/archive/new" className={navLinkClass}>
           + 기록
         </Link>
+        <AccountMenu email={user.email ?? ''} />
       </div>
       <UniverseInsightPanel insights={insights} />
+      <GuidePanel
+        variant="archive"
+        triggerClassName="absolute bottom-6 right-6 z-10 text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
+        panelClassName="absolute bottom-14 right-6"
+      />
     </main>
   )
 }

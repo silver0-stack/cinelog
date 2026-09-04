@@ -11,6 +11,9 @@ export type Tier = 'core' | 'near' | 'mid' | 'far'
 
 type Props = {
   movie: Movie
+  /** 현재 중심 영화. peek 패널에서 이 영화와 movie 사이의 editorial 큐레이터 노트를
+   * 찾는 데 쓴다(자기 자신이면 표시하지 않는다). */
+  center: Movie
   x: number
   y: number
   tier: Tier
@@ -76,6 +79,7 @@ function ratingTintRgb(rating: number | undefined): string {
 
 export function MovieBody({
   movie,
+  center,
   x,
   y,
   tier,
@@ -341,6 +345,7 @@ export function MovieBody({
             >
               <MoviePeekPanel
                 movie={movie}
+                center={center}
                 editable={!!editable}
                 onClose={() => onPeek?.(null)}
                 onRecenter={onSelect ? () => onSelect(movie.id) : undefined}

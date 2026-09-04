@@ -11,9 +11,16 @@ export function Entrance({ onEnter }: Props) {
   return (
     <div className="flex h-full w-full flex-col items-center justify-center bg-black">
       <div className="flex flex-col items-center gap-16">
-        <h1 className="text-center text-sm font-light tracking-[0.55em] text-white/70 sm:text-base">
-          CINELOG
-        </h1>
+        <div className="flex flex-col items-center gap-4">
+          <h1 className="text-center text-sm font-light tracking-[0.55em] text-white/70 sm:text-base">
+            CINELOG
+          </h1>
+          {/* 첫 화면에 아무 설명 없이 로고와 ENTER만 있으면 "이게 뭔지" 감이 안
+              온다는 피드백이 있었다 — 절제된 톤을 지키면서 딱 한 줄로만 밝힌다. */}
+          <p className="text-center text-[10px] font-light leading-relaxed tracking-[0.3em] text-white/25">
+            심야, 좌석 하나에서 시작되는 영화의 우주
+          </p>
+        </div>
         <button
           type="button"
           onClick={onEnter}

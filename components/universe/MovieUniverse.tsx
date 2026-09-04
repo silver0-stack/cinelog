@@ -1,16 +1,25 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { motion, useMotionValue, useSpring } from 'framer-motion'
+import { AnimatePresence, motion, useMotionValue, useSpring } from 'framer-motion'
 import { movies as staticMovies, type Movie } from '@/data/movies'
 import { calculateMovieGravity } from '@/lib/gravity'
 import { MIN_RADIUS, MAX_RADIUS } from '@/lib/universeLayout'
 import { orderPair, upsertEditorialConnection } from '@/lib/editorialConnections'
 import { EASE_SLOW } from '@/lib/motion'
+import { useIdleHint } from '@/lib/useIdleHint'
 import { MovieBody, type Tier } from '@/components/movie/MovieBody'
 
 const GOLDEN_ANGLE = 137.508 * (Math.PI / 180)
 const IDLE_HINT_DELAY = 5000
+const IDLE_HINT_CYCLE = 4200
+// 조작이 없을 때 순서대로 돌아가며 뜨는 힌트. 첫 문장은 조작법, 나머지는 "왜
+// 이렇게 배치돼 있는지"(중력/관계) — 처음 온 사람이 화면을 보고도 그 규칙을
+// 짐작할 수 없다는 피드백이 있어서 추가했다.
+const IDLE_HINTS = ['확대해서 둘러봐', '가까운 별일수록 관계가 깊어', '별을 눌러 다른 영화로 이동해'] as const
+// 이 배열을 이펙트 의존성으로 그대로 쓰면 매 렌더 새 참조가 생겨 리스너가 계속
+// 재등록된다 — 모듈 스코프 상수로 고정해서 참조가 항상 같게 유지한다.
+const UNIVERSE_IDLE_EVENTS = ['wheel', 'mousedown', 'touchstart'] as const
 
 const MIN_ZOOM = 0.5
 const MAX_ZOOM = 10
@@ -56,7 +65,6 @@ export function MovieUniverse({
   const containerRef = useRef<HTMLDivElement>(null)
   const [centerId, setCenterId] = useState(defaultCenterId ?? movies[0]?.id ?? '')
   const [peekedId, setPeekedId] = useState<string | null>(null)
-  const [showHint, setShowHint] = useState(false)
   // 드래그로 조정한 관계 강도의 현재 세션 미리보기. movie.editorialConnections에는
   // 이전에 저장된 값이 이미 들어있으므로, 여기 없으면(undefined) 그 값을 그대로 쓴다.
   const [strengthOverrides, setStrengthOverrides] = useState<Map<string, number>>(new Map())
@@ -347,30 +355,18 @@ export function MovieUniverse({
 
   // 몇 초간 아무 조작이 없으면 힌트를 아주 옅게 띄운다. 조작이 시작되는 순간
   // 바로 사라지고, 다시 가만히 있으면 또 뜬다 — 강요가 아니라 옆에서 살짝 건드리는 정도.
+  const showHint = useIdleHint(containerRef, showIdleHint, UNIVERSE_IDLE_EVENTS, IDLE_HINT_DELAY)
+
+  // idle이 이어지는 동안 힌트 문장을 순서대로 돌린다 — 조작법 하나만 반복하지 않고
+  // "왜 이렇게 배치되는지"까지 차례로 알려준다.
+  // showHint가 꺼져도 인덱스는 리셋하지 않는다 — 다음에 다시 idle이 되면 이어서
+  // 돌아간다(어차피 opacity가 0이라 안 보이는 동안의 값은 무의미하다).
+  const [hintIndex, setHintIndex] = useState(0)
   useEffect(() => {
-    if (!showIdleHint) return
-    const el = containerRef.current
-    if (!el) return
-
-    let timer: number
-    const resetIdle = () => {
-      setShowHint(false)
-      window.clearTimeout(timer)
-      timer = window.setTimeout(() => setShowHint(true), IDLE_HINT_DELAY)
-    }
-
-    resetIdle()
-    el.addEventListener('wheel', resetIdle)
-    el.addEventListener('mousedown', resetIdle)
-    el.addEventListener('touchstart', resetIdle)
-
-    return () => {
-      window.clearTimeout(timer)
-      el.removeEventListener('wheel', resetIdle)
-      el.removeEventListener('mousedown', resetIdle)
-      el.removeEventListener('touchstart', resetIdle)
-    }
-  }, [showIdleHint])
+    if (!showHint) return
+    const timer = window.setInterval(() => setHintIndex((i) => (i + 1) % IDLE_HINTS.length), IDLE_HINT_CYCLE)
+    return () => window.clearInterval(timer)
+  }, [showHint])
 
   return (
     <div
@@ -390,6 +386,7 @@ export function MovieUniverse({
           <MovieBody
             key={movie.id}
             movie={movie}
+            center={center}
             x={x}
             y={y}
             tier={tier}
@@ -414,7 +411,17 @@ export function MovieUniverse({
           animate={{ opacity: showHint ? 1 : 0 }}
           transition={{ duration: 1.6, ease: EASE_SLOW }}
         >
-          확대해서 둘러봐
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={hintIndex}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1, ease: EASE_SLOW }}
+            >
+              {IDLE_HINTS[hintIndex]}
+            </motion.span>
+          </AnimatePresence>
         </motion.div>
       )}
     </div>
