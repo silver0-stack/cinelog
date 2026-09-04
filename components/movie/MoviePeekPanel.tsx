@@ -220,6 +220,13 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
               transition={FLIP_TRANSITION}
               style={{ transformPerspective: 900 }}
               className="flex w-full flex-col items-center gap-2"
+              // 버튼/텍스트가 아닌 여백을 클릭해도 앞면(포스터)으로 뒤집힌다 —
+              // "← 포스터"까지 일부러 찾아 누를 필요는 없게. e.target이 이
+              // 컨테이너 자신일 때만(=자식 버튼/텍스트 위가 아닐 때만) 반응하므로
+              // 버튼 클릭이 이중으로 뒤집는 일은 없다.
+              onClick={(e) => {
+                if (e.target === e.currentTarget) onFlip()
+              }}
             >
               <button
                 type="button"
@@ -234,7 +241,12 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
                   "닫기" 버튼조차 화면 밖으로 밀려날 수 있다(스크롤 없는 화면이라
                   도달 불가). 그래서 이 내용 영역만 최대 높이 + 내부 스크롤을 주고,
                   액션 버튼 줄은 이 스크롤 밖에 둬서 항상 화면에 남게 한다. */}
-              <div className="themed-scroll flex max-h-[32vh] w-full flex-col items-center gap-2 overflow-y-auto">
+              <div
+                className="themed-scroll flex max-h-[32vh] w-full flex-col items-center gap-2 overflow-y-auto"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) onFlip()
+                }}
+              >
                 {movie.rating != null && (
                   <div className="text-[10px] tracking-[0.2em] text-white/50">
                     {'★'.repeat(movie.rating)}
@@ -291,7 +303,12 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBa
                 )}
               </div>
 
-              <div className="mt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5">
+              <div
+                className="mt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) onFlip()
+                }}
+              >
                 {onRecenter && (
                   <button type="button" onClick={onRecenter} className={actionClass}>
                     이 영화를 중심으로
