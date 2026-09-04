@@ -21,6 +21,19 @@ body {
 body {
   background: var(--background);
   color: var(--foreground);
+  /* 기본 화살표 커서 대신, 우주의 별과 같은 문법(부드러운 광채를 두른 작은 점)의
+     커서를 쓴다 — 클릭 가능한 요소의 pointer/grab 같은 기능적 커서는 그대로 두고,
+     "지금 아무 것도 안 가리키는" 기본 상태만 톤에 맞춘다. */
+  cursor: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScyMicgaGVpZ2h0PScyMic+PGNpcmNsZSBjeD0nMTEnIGN5PScxMScgcj0nNycgZmlsbD0nd2hpdGUnIGZpbGwtb3BhY2l0eT0nMC4xNCcvPjxjaXJjbGUgY3g9JzExJyBjeT0nMTEnIHI9JzIuNScgZmlsbD0nd2hpdGUnIGZpbGwtb3BhY2l0eT0nMC45Jy8+PC9zdmc+")
+    11 11,
+    auto;
+}
+
+/* 브라우저 기본 파란 텍스트 선택 하이라이트도 톤과 어긋난다 — 별의 따뜻한
+   광채와 같은 색(rating glow에 쓰는 rgba(255,214,150,...))으로 옅게 바꾼다. */
+::selection {
+  background: rgba(255, 214, 150, 0.22);
+  color: #fff;
 }
 
 /* Tailwind가 button 기본 커서를 pointer로 안 준다(v3.4+의 의도된 변경) — 그래서

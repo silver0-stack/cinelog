@@ -51,7 +51,7 @@ export function Entrance({ onEnter }: Props) {
             CINELOG
           </h1>
           <p className="max-w-xs text-center text-[10px] font-light leading-relaxed tracking-[0.3em] text-white/25">
-            심야, 별 하나에서 시작되는 영화의 우주
+            영화와 영화 사이, 당신만의 우주
           </p>
           <p className="max-w-xs text-center text-[11px] font-light leading-loose tracking-[0.15em] text-white/40">
             영화 한 편이 하나의 우주가 된다.

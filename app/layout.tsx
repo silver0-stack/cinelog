@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "CINELOG",
-  description: "심야 영화관, 그리고 그 너머의 우주.",
+  description: "영화와 영화 사이, 당신만의 우주.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
