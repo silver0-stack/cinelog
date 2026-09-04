@@ -38,7 +38,7 @@ export function HomeRitual({ userEmail }: { userEmail: string | null }) {
             key="entrance"
             exit={{ opacity: 0 }}
             transition={{ duration: DURATION.fade, ease: EASE_SLOW }}
-            className="absolute inset-0 overflow-y-auto"
+            className="themed-scroll absolute inset-0 overflow-y-auto"
           >
             <Entrance onEnter={handleEnter} userEmail={userEmail} />
           </motion.div>
