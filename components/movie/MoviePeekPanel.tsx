@@ -202,7 +202,7 @@ export function MoviePeekPanel({ movie, center, editable, onClose, onRecenter }:
               "닫기" 버튼조차 화면 밖으로 밀려날 수 있다(스크롤 없는 화면이라
               도달 불가). 그래서 이 내용 영역만 최대 높이 + 내부 스크롤을 주고,
               액션 버튼 줄은 이 스크롤 밖에 둬서 항상 화면에 남게 한다. */}
-          <div className="peek-scroll flex max-h-[32vh] w-full flex-col items-center gap-2 overflow-y-auto">
+          <div className="themed-scroll flex max-h-[32vh] w-full flex-col items-center gap-2 overflow-y-auto">
             {movie.posterPath && (
               // eslint-disable-next-line @next/next/no-img-element
               <img

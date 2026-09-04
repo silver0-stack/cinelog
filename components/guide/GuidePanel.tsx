@@ -54,7 +54,7 @@ export function GuidePanel({ variant, triggerClassName, panelClassName }: Props)
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.7, ease: EASE_SLOW }}
-            className={`z-20 max-h-[60vh] w-64 overflow-y-auto bg-black px-4 py-4 ${panelClassName}`}
+            className={`themed-scroll z-20 max-h-[60vh] w-64 overflow-y-auto bg-black px-4 py-4 ${panelClassName}`}
           >
             <ul className="flex flex-col gap-4">
               {items.map((item) => (
