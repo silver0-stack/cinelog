@@ -134,6 +134,17 @@ export function MovieBody({
     setFlipUp(Boolean(rect && rect.top > window.innerHeight * 0.42))
   }, [peeked])
 
+  // 앞면(포스터)/뒷면(내 평점·메모·액션) 중 뭘 보여줄지 — 열람이 닫히면 다음에
+  // 다시 열었을 때 항상 앞면부터 보이도록 리셋한다.
+  const [showBack, setShowBack] = useState(false)
+
+  useEffect(() => {
+    if (!peeked) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShowBack(false)
+    }
+  }, [peeked])
+
   const handlePointerDown = (e: React.PointerEvent) => {
     if (!draggable || e.pointerType !== 'mouse' || e.button !== 0) return
     e.currentTarget.setPointerCapture(e.pointerId)
@@ -187,12 +198,19 @@ export function MovieBody({
   // peek 패널 안의 "이 영화를 중심으로" 버튼에서만 일어난다. 열람 하나 하려고
   // 우주 전체가 재배치되는 게 이상하다는 지적이 있었다(리뷰 하나 읽자고 클릭했는데
   // 관계도가 통째로 바뀌는 문제) — 그래서 둘을 완전히 분리했다.
+  //
+  // 이미 열람 중인 별을 다시 클릭하면 닫지 않고 뒤집는다(포스터 ↔ 내 평점/메모) —
+  // 닫기는 여백 클릭이나 패널의 "닫기" 버튼이 대신 맡는다.
   const handleClick = () => {
     if (suppressClickRef.current) {
       suppressClickRef.current = false
       return
     }
-    onPeek?.(peeked ? null : movie.id)
+    if (!peeked) {
+      onPeek?.(movie.id)
+      return
+    }
+    setShowBack((v) => !v)
   }
 
   // 관계(중력)가 강할수록 궤도가 안정적이다(작은 진폭, 짧은 주기).
@@ -351,6 +369,8 @@ export function MovieBody({
                 center={center}
                 editable={!!editable}
                 initialCardUrl={initialCardUrl}
+                showBack={showBack}
+                onFlip={() => setShowBack((v) => !v)}
                 onClose={() => onPeek?.(null)}
                 onRecenter={onSelect ? () => onSelect(movie.id) : undefined}
               />

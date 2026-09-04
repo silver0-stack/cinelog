@@ -2,14 +2,22 @@
 
 import { useEffect, useState, useTransition, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import { AnimatePresence, motion } from 'framer-motion'
 import { addViewing, deleteViewing, updateLoggedMovie, updateViewing } from '@/lib/loggedMovies'
 import { searchTmdbMovies, fetchTmdbMovieDetail, type TmdbSearchResult } from '@/lib/tmdbClient'
 import { editorialReason } from '@/lib/gravity'
+import { EASE_SLOW } from '@/lib/motion'
 import { RatingPicker } from '@/components/archive/RatingPicker'
 import { GenreChipPicker } from '@/components/archive/GenreChipPicker'
 import { ShareCardButton } from './ShareCardButton'
 import { ViewingHistoryStepper } from './ViewingHistoryStepper'
 import type { Movie } from '@/data/movies'
+
+// 앞면(포스터 카드, 객관적 정보) ↔ 뒷면(내 평점/메모/액션)을 오가는 회전 애니메이션.
+// 두 면의 실제 콘텐츠 높이가 서로 달라서(포스터 카드는 세로로 길고, 뒷면은
+// 액션이 많다) 두 면을 겹쳐 쌓아두는 진짜 3D 카드보다, AnimatePresence로 한
+// 면씩 마운트/언마운트하면서 그 사이만 회전하는 쪽이 레이아웃이 안 깨지지 않는다.
+const FLIP_TRANSITION = { duration: 0.9, ease: EASE_SLOW }
 
 // 처음 이 컨트롤을 마주쳤을 때 딱 한 번, 뭘 하는 건지 아주 작게 알려준다 —
 // 두 번째부터는 다시 안 뜬다(로컬스토리지로 기억). "중심 옮기기"/"다시 보기"가
@@ -28,6 +36,10 @@ type Props = {
   editable: boolean
   /** 이미 만들어진 영화 카드 공유 URL(서버에서 미리 조회) — ShareCardButton으로 그대로 전달된다. */
   initialCardUrl?: string | null
+  /** true면 뒷면(내 평점/메모/액션)을, false면 앞면(포스터 카드)을 보여준다. */
+  showBack: boolean
+  /** 앞뒤를 뒤집는다 — 별을 다시 클릭하거나, 앞면 카드/뒷면의 "포스터" 링크를 눌러도 호출된다. */
+  onFlip: () => void
   onClose: () => void
   /** core가 아닌 위성에만 있다 — core 자체를 다시 중심으로 만들 수는 없다. */
   onRecenter?: () => void
@@ -38,7 +50,7 @@ type Props = {
 // 같은 이유로 감상은 덮어쓰지 않는다: rating/note는 movie.viewings의 최신 항목일
 // 뿐이고, "다시 봤어"는 그 위에 새 항목을 쌓는다 — 다시 봤을 때 감상이 달라져도
 // 이전 감상이 사라지지 않는다.
-export function MoviePeekPanel({ movie, center, editable, initialCardUrl, onClose, onRecenter }: Props) {
+export function MoviePeekPanel({ movie, center, editable, initialCardUrl, showBack, onFlip, onClose, onRecenter }: Props) {
   const router = useRouter()
   const [mode, setMode] = useState<'view' | 'add' | 'edit' | 'edit-viewing'>('view')
   const [saving, setSaving] = useState(false)
@@ -198,127 +210,170 @@ export function MoviePeekPanel({ movie, center, editable, initialCardUrl, onClos
   return (
     <div data-star="" className="pointer-events-auto flex w-56 flex-col items-center gap-2 bg-black px-3 py-3">
       {mode === 'view' && (
-        <>
-          {/* 메모는 여기서 일부러 안 자른다 — peek는 "전체를 보러" 클릭한
-              상태니까. 대신 메모가 아주 길어지면 패널 자체가 뷰포트보다 커져서
-              "닫기" 버튼조차 화면 밖으로 밀려날 수 있다(스크롤 없는 화면이라
-              도달 불가). 그래서 이 내용 영역만 최대 높이 + 내부 스크롤을 주고,
-              액션 버튼 줄은 이 스크롤 밖에 둬서 항상 화면에 남게 한다. */}
-          <div className="themed-scroll flex max-h-[32vh] w-full flex-col items-center gap-2 overflow-y-auto">
-            {movie.posterPath && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={`https://image.tmdb.org/t/p/w154${movie.posterPath}`}
-                alt=""
-                loading="lazy"
-                className="h-24 w-16 shrink-0 object-cover opacity-70 saturate-[0.65] brightness-[0.82]"
-              />
-            )}
-
-            {movie.rating != null && (
-              <div className="text-[10px] tracking-[0.2em] text-white/50">
-                {'★'.repeat(movie.rating)}
-                {'☆'.repeat(5 - movie.rating)}
-              </div>
-            )}
-
-            {movie.genres.length > 0 && (
-              <div className="whitespace-nowrap text-[9px] tracking-[0.1em] text-white/35">{movie.genres.join(' · ')}</div>
-            )}
-
-            {movie.note && (
-              // 왼쪽 정렬로 뒀다 — 한 줄짜리 메모는 가운데 정렬이 괜찮지만, 여러
-              // 문단짜리 리뷰는 가운데 정렬이면 읽기 어렵다.
-              <div className="w-full max-w-full whitespace-pre-line text-left text-[9px] leading-relaxed tracking-wide text-white/40">
-                {movie.note}
-              </div>
-            )}
-
-            {reason && (
-              <div className="max-w-full text-center text-[9px] italic leading-relaxed tracking-wide text-white/35">
-                “{reason}”
-              </div>
-            )}
-
-            {viewings[0] && (
-              <div className="flex items-center gap-2">
-                <span className="text-[8px] tracking-[0.2em] text-white/25">{viewings[0].watchedAt}</span>
-                {editable && (
-                  <>
-                    <button type="button" onClick={startEditLatestViewing} className="text-[8px] tracking-[0.2em] text-white/25 outline-none transition-colors duration-500 hover:text-white/60">
-                      고치기
-                    </button>
-                    {viewings.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={handleDeleteLatestViewing}
-                        className="text-[8px] tracking-[0.2em] text-white/25 outline-none transition-colors duration-500 hover:text-white/60"
-                      >
-                        삭제
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-
-            {priorViewings.length > 0 && (
-              <button type="button" onClick={() => setExpanded((v) => !v)} className={actionClass}>
-                {expanded ? '접기' : `이전 감상 ${priorViewings.length}개`}
-              </button>
-            )}
-
-            {expanded && (
-              <div className="w-full border-t border-white/10 pt-2">
-                <ViewingHistoryStepper viewings={priorViewings} />
-              </div>
-            )}
-          </div>
-
-          <div className="mt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5">
-            {onRecenter && (
-              <button type="button" onClick={onRecenter} className={actionClass}>
-                이 영화를 중심으로
-              </button>
-            )}
-            {editable && (
-              <button type="button" onClick={() => setMode('add')} className={actionClass}>
-                다시 본 감상 남기기
-              </button>
-            )}
-            {editable && (
+        <AnimatePresence mode="wait" initial={false}>
+          {showBack ? (
+            <motion.div
+              key="back"
+              initial={{ rotateY: -90, opacity: 0 }}
+              animate={{ rotateY: 0, opacity: 1 }}
+              exit={{ rotateY: 90, opacity: 0 }}
+              transition={FLIP_TRANSITION}
+              style={{ transformPerspective: 900 }}
+              className="flex w-full flex-col items-center gap-2"
+            >
               <button
                 type="button"
-                onClick={() => {
-                  resetMetadataDraft()
-                  setMode('edit')
-                }}
-                className={actionClass}
+                onClick={onFlip}
+                className="self-start text-[8px] tracking-[0.2em] text-white/20 outline-none transition-colors duration-500 hover:text-white/50"
               >
-                정보 수정
+                ← 포스터
               </button>
-            )}
-            {editable && <ShareCardButton loggedMovieId={movie.id} initialUrl={initialCardUrl} />}
-            <button type="button" onClick={onClose} className="text-[9px] tracking-[0.25em] text-white/25 outline-none transition-colors duration-500 hover:text-white/60">
-              닫기
-            </button>
-          </div>
 
-          {(showRecenterHint || showRewatchHint) && (
-            <div className="flex flex-col items-center gap-1 px-2">
-              {showRecenterHint && (
-                <p className="text-center text-[8px] leading-relaxed tracking-wide text-white/25">
-                  중심을 옮기면 우주 전체가 이 영화와의 관계로 다시 배치돼
-                </p>
+              {/* 메모는 여기서 일부러 안 자른다 — peek는 "전체를 보러" 클릭한
+                  상태니까. 대신 메모가 아주 길어지면 패널 자체가 뷰포트보다 커져서
+                  "닫기" 버튼조차 화면 밖으로 밀려날 수 있다(스크롤 없는 화면이라
+                  도달 불가). 그래서 이 내용 영역만 최대 높이 + 내부 스크롤을 주고,
+                  액션 버튼 줄은 이 스크롤 밖에 둬서 항상 화면에 남게 한다. */}
+              <div className="themed-scroll flex max-h-[32vh] w-full flex-col items-center gap-2 overflow-y-auto">
+                {movie.rating != null && (
+                  <div className="text-[10px] tracking-[0.2em] text-white/50">
+                    {'★'.repeat(movie.rating)}
+                    {'☆'.repeat(5 - movie.rating)}
+                  </div>
+                )}
+
+                {movie.note && (
+                  // 왼쪽 정렬로 뒀다 — 한 줄짜리 메모는 가운데 정렬이 괜찮지만, 여러
+                  // 문단짜리 리뷰는 가운데 정렬이면 읽기 어렵다.
+                  <div className="w-full max-w-full whitespace-pre-line text-left text-[9px] leading-relaxed tracking-wide text-white/40">
+                    {movie.note}
+                  </div>
+                )}
+
+                {reason && (
+                  <div className="max-w-full text-center text-[9px] italic leading-relaxed tracking-wide text-white/35">
+                    “{reason}”
+                  </div>
+                )}
+
+                {viewings[0] && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[8px] tracking-[0.2em] text-white/25">{viewings[0].watchedAt}</span>
+                    {editable && (
+                      <>
+                        <button type="button" onClick={startEditLatestViewing} className="text-[8px] tracking-[0.2em] text-white/25 outline-none transition-colors duration-500 hover:text-white/60">
+                          고치기
+                        </button>
+                        {viewings.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={handleDeleteLatestViewing}
+                            className="text-[8px] tracking-[0.2em] text-white/25 outline-none transition-colors duration-500 hover:text-white/60"
+                          >
+                            삭제
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {priorViewings.length > 0 && (
+                  <button type="button" onClick={() => setExpanded((v) => !v)} className={actionClass}>
+                    {expanded ? '접기' : `이전 감상 ${priorViewings.length}개`}
+                  </button>
+                )}
+
+                {expanded && (
+                  <div className="w-full border-t border-white/10 pt-2">
+                    <ViewingHistoryStepper viewings={priorViewings} />
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5">
+                {onRecenter && (
+                  <button type="button" onClick={onRecenter} className={actionClass}>
+                    이 영화를 중심으로
+                  </button>
+                )}
+                {editable && (
+                  <button type="button" onClick={() => setMode('add')} className={actionClass}>
+                    다시 본 감상 남기기
+                  </button>
+                )}
+                {editable && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetMetadataDraft()
+                      setMode('edit')
+                    }}
+                    className={actionClass}
+                  >
+                    정보 수정
+                  </button>
+                )}
+                {editable && <ShareCardButton loggedMovieId={movie.id} initialUrl={initialCardUrl} />}
+                <button type="button" onClick={onClose} className="text-[9px] tracking-[0.25em] text-white/25 outline-none transition-colors duration-500 hover:text-white/60">
+                  닫기
+                </button>
+              </div>
+
+              {(showRecenterHint || showRewatchHint) && (
+                <div className="flex flex-col items-center gap-1 px-2">
+                  {showRecenterHint && (
+                    <p className="text-center text-[8px] leading-relaxed tracking-wide text-white/25">
+                      중심을 옮기면 우주 전체가 이 영화와의 관계로 다시 배치돼
+                    </p>
+                  )}
+                  {showRewatchHint && (
+                    <p className="text-center text-[8px] leading-relaxed tracking-wide text-white/25">
+                      같은 영화를 또 봤다면 새 감상을 남겨 — 이전 감상은 지워지지 않고 쌓여
+                    </p>
+                  )}
+                </div>
               )}
-              {showRewatchHint && (
-                <p className="text-center text-[8px] leading-relaxed tracking-wide text-white/25">
-                  같은 영화를 또 봤다면 새 감상을 남겨 — 이전 감상은 지워지지 않고 쌓여
-                </p>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="front"
+              initial={{ rotateY: 90, opacity: 0 }}
+              animate={{ rotateY: 0, opacity: 1 }}
+              exit={{ rotateY: -90, opacity: 0 }}
+              transition={FLIP_TRANSITION}
+              style={{ transformPerspective: 900 }}
+              className="flex w-full cursor-pointer flex-col items-center gap-2"
+              onClick={onFlip}
+            >
+              {movie.posterPath ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`https://image.tmdb.org/t/p/w342${movie.posterPath}`}
+                  alt=""
+                  loading="lazy"
+                  className="h-64 w-44 object-cover opacity-90 saturate-[0.8] brightness-[0.9]"
+                />
+              ) : (
+                <div className="flex h-64 w-44 items-center justify-center border border-white/10">
+                  <span className="text-[9px] tracking-[0.2em] text-white/20">포스터 없음</span>
+                </div>
               )}
-            </div>
+
+              <div className="mt-1 flex flex-col items-center gap-1 px-2 text-center">
+                <p className="text-[11px] tracking-[0.1em] text-white/80">
+                  {movie.title} <span className="text-white/40">{movie.year}</span>
+                </p>
+                {movie.director && <p className="text-[9px] tracking-[0.15em] text-white/40">{movie.director}</p>}
+                {movie.genres.length > 0 && (
+                  <p className="text-[9px] tracking-[0.1em] text-white/30">{movie.genres.join(' · ')}</p>
+                )}
+              </div>
+
+              <p className="mt-1 text-[8px] tracking-[0.2em] text-white/20">눌러서 뒤집기</p>
+            </motion.div>
           )}
-        </>
+        </AnimatePresence>
       )}
 
       {mode === 'add' && (
