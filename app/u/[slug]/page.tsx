@@ -4,6 +4,7 @@ import { MovieUniverse } from '@/components/universe/MovieUniverse'
 import { FadeIn } from '@/components/archive/FadeIn'
 import { combineLoggedMovies, type LoggedMovieRow, type ViewingRow } from '@/lib/loggedMovies'
 import { attachEditorialConnections, type EditorialConnectionRow } from '@/lib/editorialConnections'
+import { GuidePanel } from '@/components/guide/GuidePanel'
 import { secondaryNavLinkClass as loginLinkClass } from '@/lib/uiStyles'
 
 export const dynamic = 'force-dynamic'
@@ -56,8 +57,13 @@ export default async function SharedUniversePage({ params }: { params: Promise<{
   return (
     <main className="relative h-dvh w-screen overflow-hidden bg-black">
       <FadeIn>
-        <MovieUniverse movies={movies} defaultCenterId={movies[0].id} />
+        <MovieUniverse movies={movies} defaultCenterId={movies[0].id} showIdleHint />
       </FadeIn>
+      <GuidePanel
+        variant="shared"
+        triggerClassName="absolute right-6 top-6 z-10 text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
+        panelClassName="absolute right-6 top-14"
+      />
       <Link href="/login" className={`absolute bottom-6 right-6 z-10 ${loginLinkClass}`}>
         나도 기록하기
       </Link>

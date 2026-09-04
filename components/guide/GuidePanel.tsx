@@ -27,20 +27,34 @@ const ARCHIVE_QA: QA[] = [
   { q: '우주 공유랑 영화 카드 공유는 뭐가 달라?', a: '우주 공유는 내 아카이브 전체를 보여주는 링크고, 영화 카드 공유는 그 영화 한 편만 보여주는 링크야.' },
 ]
 
+// 공유 링크로 들어온 사람은 CINELOG를 이때 처음 볼 수도 있다 — 데모/내 우주와
+// 달리 "이게 데모인지 진짜인지"가 아니라 "이게 누구 건지"가 가장 먼저 드는
+// 의문이라 질문을 따로 둔다.
+const SHARED_QA: QA[] = [
+  { q: '이 우주는 뭐야?', a: '이 링크를 보낸 사람이 실제로 기록한 영화들이야. 너도 로그인하면 똑같은 방식으로 네 우주를 만들 수 있어(화면 구석 "나도 기록하기").' },
+]
+
 type Props = {
-  /** 'demo'면 비로그인 데모 우주용 질문을, 'archive'면 로그인한 개인 아카이브용 질문을 더한다. */
-  variant: 'demo' | 'archive'
+  /** 'demo'면 비로그인 데모 우주용, 'archive'면 로그인한 개인 아카이브용,
+   * 'shared'면 남의 공유 링크로 들어온 읽기 전용 화면용 질문을 더한다. */
+  variant: 'demo' | 'archive' | 'shared'
   /** 트리거 버튼 위치. 화면마다 이미 차지된 구석이 달라서 호출부에서 지정한다. */
   triggerClassName: string
   /** 패널이 트리거 기준 어느 방향으로 펼쳐질지. */
   panelClassName: string
 }
 
+const EXTRA_QA: Record<Props['variant'], QA[]> = {
+  demo: DEMO_QA,
+  archive: ARCHIVE_QA,
+  shared: SHARED_QA,
+}
+
 export function GuidePanel({ variant, triggerClassName, panelClassName }: Props) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   useClickOutside(containerRef, open, () => setOpen(false))
-  const items = [...UNIVERSE_QA, ...(variant === 'demo' ? DEMO_QA : ARCHIVE_QA)]
+  const items = [...UNIVERSE_QA, ...EXTRA_QA[variant]]
 
   return (
     <div ref={containerRef}>
