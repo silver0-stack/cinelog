@@ -6,8 +6,8 @@ import { getOrCreateShareSlug } from '@/lib/shareLinks'
 const navLinkClass =
   'text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80'
 
-export function ShareButton() {
-  const [url, setUrl] = useState<string | null>(null)
+export function ShareButton({ initialUrl = null }: { initialUrl?: string | null }) {
+  const [url, setUrl] = useState<string | null>(initialUrl)
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
 
