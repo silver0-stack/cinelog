@@ -1,5 +1,5 @@
 import { ImageResponse } from 'next/og'
-import { fetchCardMovie } from './_data'
+import { getCachedCardMovie } from './_data'
 import { ratingLine, truncate, loadKoreanFont, loadPosterDataUri } from './_shareImage'
 
 export const runtime = 'nodejs'
@@ -20,7 +20,7 @@ export const revalidate = 3600
 
 export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const movie = await fetchCardMovie(slug)
+  const movie = await getCachedCardMovie(slug)
 
   const noteText = movie?.note ? truncate(movie.note, 46) : ''
   // 감상의 연혁은 이 사진에서 항목별로 보여주지 않는다(고정 크기라 넘치면 잘리니까)

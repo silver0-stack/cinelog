@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { unstable_cache } from 'next/cache'
+import { createPublicClient } from '@/lib/supabase/public'
 import { MovieUniverse } from '@/components/universe/MovieUniverse'
 import { FadeIn } from '@/components/archive/FadeIn'
 import { combineLoggedMovies, type LoggedMovieRow, type ViewingRow } from '@/lib/loggedMovies'
@@ -7,18 +8,46 @@ import { attachEditorialConnections, type EditorialConnectionRow } from '@/lib/e
 import { GuidePanel } from '@/components/guide/GuidePanel'
 import { secondaryNavLinkClass as loginLinkClass } from '@/lib/uiStyles'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+// revalidate route 설정은 fetch() 호출에만 적용된다 — Supabase 클라이언트는
+// fetch를 캐시 옵션 없이 쓰기 때문에 이 값 하나만으로는 아무것도 캐시되지
+// 않는다(Next 공식 문서: "unstable_cache allows you to cache the result of
+// database queries and other async functions that don't use fetch"). 그래서
+// 실제 조회를 unstable_cache로 직접 감싼다 — 바이럴로 같은 slug에 요청이
+// 몰릴 때 Supabase를 매번 다시 안 부르는 게 핵심. slug별로 캐시되고, 1분
+// 정도 지연 반영되는 건 이 페이지 특성상 체감하기 어렵다.
+const getSharedUniverseData = unstable_cache(
+  async (slug: string) => {
+    const supabase = createPublicClient()
+
+    const { data: link } = await supabase.from('share_links').select('user_id').eq('slug', slug).maybeSingle()
+    if (!link) return null
+
+    const { data } = await supabase.rpc('get_shared_universe_movies', { p_slug: slug })
+    const rows = (data ?? []) as LoggedMovieRow[]
+    if (rows.length === 0) return { rows: [] as LoggedMovieRow[], viewingRows: [] as ViewingRow[], connectionRows: [] as EditorialConnectionRow[] }
+
+    const [{ data: viewingData }, { data: connectionData }] = await Promise.all([
+      supabase.rpc('get_shared_universe_viewings', { p_slug: slug }),
+      supabase.rpc('get_shared_universe_connections', { p_slug: slug }),
+    ])
+
+    return {
+      rows,
+      viewingRows: (viewingData ?? []) as ViewingRow[],
+      connectionRows: (connectionData ?? []) as EditorialConnectionRow[],
+    }
+  },
+  ['shared-universe'],
+  { revalidate: 60 },
+)
 
 // 비동기 공유 링크의 읽기 전용 뷰(P2-8). 로그인 없이도 볼 수 있고, 드래그로
 // 관계를 조정하는 건 여기서는 안 된다 — editable을 아예 안 켠다.
 export default async function SharedUniversePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const supabase = await createClient()
+  const result = await getSharedUniverseData(slug)
 
-  const { data: link } = await supabase.from('share_links').select('user_id').eq('slug', slug).maybeSingle()
-
-  if (!link) {
+  if (!result) {
     return (
       <main className="flex h-dvh w-screen flex-col items-center justify-center gap-6 bg-black">
         <p className="text-xs font-light tracking-widest text-white/40">링크를 찾을 수 없어.</p>
@@ -29,11 +58,7 @@ export default async function SharedUniversePage({ params }: { params: Promise<{
     )
   }
 
-  const { data } = await supabase.rpc('get_shared_universe_movies', { p_slug: slug })
-
-  const rows = (data ?? []) as LoggedMovieRow[]
-
-  if (rows.length === 0) {
+  if (result.rows.length === 0) {
     return (
       <main className="flex h-dvh w-screen flex-col items-center justify-center gap-6 bg-black">
         <p className="text-xs font-light tracking-widest text-white/40">아직 기록된 영화가 없어.</p>
@@ -44,14 +69,9 @@ export default async function SharedUniversePage({ params }: { params: Promise<{
     )
   }
 
-  const [{ data: viewingData }, { data: connectionData }] = await Promise.all([
-    supabase.rpc('get_shared_universe_viewings', { p_slug: slug }),
-    supabase.rpc('get_shared_universe_connections', { p_slug: slug }),
-  ])
-
   const movies = attachEditorialConnections(
-    combineLoggedMovies(rows, (viewingData ?? []) as ViewingRow[]),
-    (connectionData ?? []) as EditorialConnectionRow[],
+    combineLoggedMovies(result.rows, result.viewingRows),
+    result.connectionRows,
   )
 
   return (

@@ -1,11 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { fetchCardMovie } from './_data'
+import { getCachedCardMovie } from './_data'
 import { MovieShareCard } from '@/components/movie/MovieShareCard'
 import { secondaryNavLinkClass as loginLinkClass } from '@/lib/uiStyles'
-
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
 
 function ratingLine(rating: number | undefined): string {
   if (rating == null) return ''
@@ -14,7 +11,7 @@ function ratingLine(rating: number | undefined): string {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
-  const movie = await fetchCardMovie(slug)
+  const movie = await getCachedCardMovie(slug)
 
   if (!movie) return { title: 'CINELOG' }
 
@@ -33,7 +30,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 // 미리보기 이미지를 그려준다.
 export default async function MovieCardPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const movie = await fetchCardMovie(slug)
+  const movie = await getCachedCardMovie(slug)
 
   if (!movie) {
     return (
