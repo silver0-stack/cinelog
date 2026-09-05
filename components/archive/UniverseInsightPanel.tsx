@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { EASE_SLOW } from '@/lib/motion'
 import { secondaryNavLinkClass } from '@/lib/uiStyles'
@@ -10,6 +10,10 @@ import type { RewatchedMovie, UniverseInsight } from '@/lib/universeInsights'
 const defaultTriggerClass =
   'absolute bottom-6 left-4 z-10 text-xs font-light tracking-[0.2em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80 sm:left-6 sm:tracking-[0.4em]'
 const defaultPanelClass = 'absolute bottom-14 left-4 z-10 sm:left-6'
+
+// "탐색"이라는 이름만 보고는 이 패널이 뭘 보여주는지 감이 안 올 수 있어서,
+// 처음 열었을 때 딱 한 번만 짧게 알려준다(로컬스토리지로 기억).
+const INSIGHT_HINT_KEY = 'cinelog:hint-seen:insight'
 
 type Props = {
   insights: UniverseInsight[]
@@ -52,6 +56,20 @@ export function UniverseInsightPanel({
   const panelRef = useRef<HTMLDivElement>(null)
   useClickOutside(panelRef, open, () => setOpen(false))
 
+  const [showHint, setShowHint] = useState(false)
+  useEffect(() => {
+    if (!open) return
+    try {
+      if (!localStorage.getItem(INSIGHT_HINT_KEY)) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setShowHint(true)
+        localStorage.setItem(INSIGHT_HINT_KEY, '1')
+      }
+    } catch {
+      // 로컬스토리지를 못 쓰는 환경에서는 그냥 힌트 없이 넘어간다.
+    }
+  }, [open])
+
   if (insights.length === 0 && rewatched.length === 0) return null
 
   return (
@@ -76,6 +94,12 @@ export function UniverseInsightPanel({
             style={{ width: 'min(72vw, 240px)' }}
             className={`flex flex-col gap-3 border border-white/10 bg-black px-3 py-3 ${panelClassName ?? defaultPanelClass}`}
           >
+            {showHint && (
+              <p className="text-[9px] leading-relaxed tracking-wide text-white/30">
+                재관람한 영화와 감독·장르 경향을 여기서 볼 수 있어
+              </p>
+            )}
+
             {rewatched.length > 0 && (
               <div className="themed-scroll flex max-h-[40vh] flex-col gap-1 overflow-y-auto">
                 {rewatched.map((m) => (
@@ -102,7 +126,7 @@ export function UniverseInsightPanel({
                 key={insight.label}
                 className="text-[10px] font-light leading-relaxed tracking-[0.15em] text-white/35 sm:text-[11px] sm:tracking-[0.25em]"
               >
-                {insight.label} — {insight.value} ({insight.detail})
+                {insight.label} · {insight.value} ({insight.detail})
               </p>
             ))}
 

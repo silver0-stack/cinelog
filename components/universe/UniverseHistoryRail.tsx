@@ -65,13 +65,16 @@ export function UniverseHistoryRail({ minDate, maxDate, value, onChange, onExit 
 
   return (
     <div className="fixed inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-6">
-      {/* 날짜 라벨은 스크럽 중일 때만 잠깐 뜬다 — 상시 노출하면 절제된 톤과 안 맞는다. */}
+      {/* 처음 보면 이 트랙이 뭘 하는 건지 감이 안 올 수 있다 — 새 팝업을 따로
+          만드는 대신, 조작 중이 아닐 때 날짜가 뜨던 바로 그 자리를 설명 문구가
+          대신 채운다(빈 자리 재활용이라 화면이 더 복잡해지지 않는다). 드래그를
+          시작하는 순간 실제 날짜로 자연스럽게 바뀐다. */}
       <span
-        className={`text-[9px] tracking-[0.25em] text-white/50 transition-opacity duration-300 ${
-          dragging ? 'opacity-100' : 'opacity-0'
+        className={`max-w-[260px] text-center text-[9px] leading-relaxed tracking-[0.15em] transition-opacity duration-300 ${
+          dragging ? 'text-white/50 tracking-[0.25em]' : 'text-white/30'
         }`}
       >
-        {value}
+        {dragging ? value : '드래그해서 영화가 기록된 순서대로 우주가 자라나는 걸 봐'}
       </span>
       <div className="flex w-full max-w-sm items-center gap-4">
         <div

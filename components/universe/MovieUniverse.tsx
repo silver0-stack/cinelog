@@ -253,7 +253,16 @@ export function MovieUniverse({
   // 이펙트가 맡는다(클릭으로 peek할 때와 같은 경로를 타게 하기 위해).
   useEffect(() => {
     if (!focusMovieId) return
-    setPeekedId(focusMovieId)
+    // 검색/재관람 목록은 클릭(MovieBody의 clickable=!dimmed 가드)을 거치지
+    // 않고 이 경로로 곧장 열람을 연다 — 히스토리 스크럽 중 아직 dimmed인
+    // 별까지 이걸로 우회해서 열어버리면(제목 없는 흐린 점 옆에 평점/메모
+    // 패널이 뜨는 이상한 모습) "아직 발견 전"이라는 전제가 깨진다. 그래서
+    // 여기서도 같은 가드를 한 번 더 본다. setPeekedId를 직접 부르지 않고
+    // setPeeked를 거쳐야 peekedIdRef도 같이 갱신된다(안 그러면 열람 종료
+    // 깜빡임 방지 로직의 기준 ref가 실제 상태와 어긋난다).
+    const targetDimmed = bodies.find((b) => b.movie.id === focusMovieId)?.dimmed
+    if (targetDimmed) return
+    setPeeked(focusMovieId)
     // /archive?focus=... 로 들어온 경우, 처리하고 나면 주소창에서 지운다 —
     // 안 그러면 새로고침할 때마다 계속 같은 별로 다시 팬된다. 서버 데이터를
     // 다시 조회할 필요는 없는 순수 URL 정리라 router.replace 대신 history API를
@@ -261,7 +270,7 @@ export function MovieUniverse({
     if (window.location.search.includes('focus=')) {
       window.history.replaceState(null, '', window.location.pathname)
     }
-  }, [focusMovieId])
+  }, [focusMovieId, bodies, setPeeked])
 
   // peekedId가 바뀔 때마다 카메라를 그 별로 pan+zoom한다(Figma의 "오브젝트로
   // 줌인"과 같은 느낌) — 화면 좌표는 pan + world*zoom으로 계산되므로(zoomAt
