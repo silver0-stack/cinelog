@@ -84,6 +84,19 @@ export function MovieUniverse({
   existingByTmdbId,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
+  // 화면 밖으로 한참 벗어난 별의 렌더링 비용(이미지 2장+blur+무한 흔들림)을
+  // MovieBody가 스스로 아끼려면 뷰포트 크기를 알아야 한다 — 기록이 수백 편으로
+  // 늘어도 실제로 보이는 별만 그 비용을 쓰게 하기 위함(리사이즈는 드문 이벤트라
+  // 그때만 갱신해도 충분하다).
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window === 'undefined' ? 1200 : window.innerWidth,
+    height: typeof window === 'undefined' ? 800 : window.innerHeight,
+  }))
+  useEffect(() => {
+    const onResize = () => setViewport({ width: window.innerWidth, height: window.innerHeight })
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
   const [centerId, setCenterId] = useState(defaultCenterId ?? movies[0]?.id ?? '')
   const [peekedId, setPeekedId] = useState<string | null>(null)
   // 드래그로 조정한 관계 강도의 현재 세션 미리보기. movie.editorialConnections에는
@@ -110,16 +123,55 @@ export function MovieUniverse({
   // 영화를 기준으로 부드럽게 재배치된다. peekedId는 그대로 두어(같은 movieId)
   // 방금 보고 있던 포커스가 끊기지 않게 한다 — 아래 peekedId 이펙트가 새
   // 중심(항상 원점)으로 카메라를 다시 맞춰준다.
-  const handleSelect = useCallback((movieId: string) => {
-    setCenterId(movieId)
+  // 열람을 닫으면 peekedId는 그 즉시 null이 되지만, 카메라가 원래 자리로
+  // 돌아오는 스프링 전환은 그 뒤로도 한동안(peek 패널 위치 재측정과 같은
+  // 600ms 기준) 계속된다. anyPeeked를 peekedId만으로 판단하면 그 사이엔 줌
+  // 값이 아직 안 내려가 있어서, 닫자마자 다른 별들의 평점/메모 미리보기가
+  // 잠깐 반짝였다 사라진다 — 이걸 useEffect로 뒤늦게 보정하면(렌더 이후에
+  // 실행되므로) "닫힘" 상태가 이미 한 프레임 그려진 뒤에야 켜져서 그 찰나의
+  // 반짝임 자체를 못 막는다. 그래서 setPeekedId를 부르는 바로 그 자리에서
+  // 같은 렌더에 동시에 반영한다 — ref로 "직전까지 열람 중이었는지"를 들고
+  // 있어서 이 콜백들의 정체성(useCallback deps)은 그대로 안정적으로 둔다.
+  const peekedIdRef = useRef<string | null>(null)
+  const peekExitTimerRef = useRef<number | null>(null)
+  const [peekExiting, setPeekExiting] = useState(false)
+
+  const setPeeked = useCallback((movieId: string | null) => {
+    const wasPeeked = peekedIdRef.current !== null
+    peekedIdRef.current = movieId
+    if (peekExitTimerRef.current) {
+      window.clearTimeout(peekExitTimerRef.current)
+      peekExitTimerRef.current = null
+    }
+    if (movieId === null && wasPeeked) {
+      setPeekExiting(true)
+      peekExitTimerRef.current = window.setTimeout(() => setPeekExiting(false), 650)
+    } else {
+      // 같은 값이면 React가 알아서 리렌더를 건너뛴다 — 매번 분기해서 지금
+      // peekExiting이 켜져 있는지 굳이 확인할 필요가 없다(그러면 이 콜백이
+      // peekExiting을 의존성으로 물게 되어, 아래 배경 pan 리스너 이펙트가
+      // peek을 여닫을 때마다 다시 등록되는 부작용이 생긴다).
+      setPeekExiting(false)
+    }
     setPeekedId(movieId)
   }, [])
 
+  const handleSelect = useCallback(
+    (movieId: string) => {
+      setCenterId(movieId)
+      setPeeked(movieId)
+    },
+    [setPeeked],
+  )
+
   // 클릭은 열람(peek)만 연다 — 우주를 재배치하지 않는다. 같은 별을 다시 클릭하면
   // 닫히고, 다른 별을 클릭하면 그쪽으로 넘어간다.
-  const handlePeek = useCallback((movieId: string | null) => {
-    setPeekedId(movieId)
-  }, [])
+  const handlePeek = useCallback(
+    (movieId: string | null) => {
+      setPeeked(movieId)
+    },
+    [setPeeked],
+  )
 
   // 중심과 위성을 하나의 배열로 합쳐서 동일한 key(movie.id)로 렌더링한다.
   // 이전에는 중심을 별도 슬롯으로 그려서, 중심이 바뀔 때마다 "이전 중심"과
@@ -475,7 +527,12 @@ export function MovieUniverse({
             naturalGravity={naturalGravity}
             driftSeed={stableSeed(movie.id)}
             zoomScale={zoom}
+            panX={panX}
+            panY={panY}
+            viewportWidth={viewport.width}
+            viewportHeight={viewport.height}
             peeked={movie.id === peekedId}
+            anyPeeked={peekedId !== null || peekExiting}
             editable={editable}
             initialCardUrl={movieCardUrls?.[movie.id] ?? null}
             onSelect={tier === 'core' ? undefined : handleSelect}

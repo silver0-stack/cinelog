@@ -26,8 +26,21 @@ type Props = {
   driftSeed: number
   /** 현재 우주의 확대 배율(1 = 기본). 멀리 있는 영화일수록 더 확대해야 정보가 드러난다. */
   zoomScale: MotionValue<number>
+  /** 카메라 팬 오프셋(MovieUniverse의 panX/panY). 이 별이 지금 화면 안에 있는지
+   * 스스로 계산해서, 화면 밖으로 벗어났을 때 이미지/애니메이션 비용을 아끼는 데 쓴다. */
+  panX: MotionValue<number>
+  panY: MotionValue<number>
+  /** 뷰포트 크기(px) — 화면 밖 판정의 기준. 리사이즈 때만 갱신되는 일반 값이라
+   * MotionValue가 아니어도 된다. */
+  viewportWidth: number
+  viewportHeight: number
   /** 지금 이 영화가 열람(peek) 상태인지 — 클릭 한 번으로 열리고, 우주를 재배치하지 않는다. */
   peeked: boolean
+  /** 우주 전체에서 아무 별이든 하나라도 열람 중인지. 열람은 카메라를 그 별로
+   * 확대(FOCUS_ZOOM)하는데, 이 확대된 줌 값을 모든 별이 공유해서 참조하다 보니
+   * 열람과 무관한 다른 별들까지 "많이 확대됐다"고 착각해 평점/메모 미리보기를
+   * 드러내는 부작용이 있었다 — 그걸 막는 데 쓴다. */
+  anyPeeked: boolean
   /** true면 peek 패널에서 "다시 본 감상 남기기"/"정보 수정"이 가능해진다(로그인한 본인 아카이브에서만). */
   editable?: boolean
   /** 이미 만들어진 영화 카드 공유 URL(서버에서 미리 조회). ShareCardButton의 initialUrl로 전달된다. */
@@ -109,7 +122,12 @@ export function MovieBody({
   naturalGravity,
   driftSeed,
   zoomScale,
+  panX,
+  panY,
+  viewportWidth,
+  viewportHeight,
   peeked,
+  anyPeeked,
   editable,
   initialCardUrl,
   onSelect,
@@ -126,6 +144,25 @@ export function MovieBody({
   // "정보 수정"은 core에서도 그대로 필요하다.
   const clickable = !!onPeek
   const draggable = !isCore && !!onDragStrength
+
+  // 화면 밖으로 한참 벗어난 별은 이미지 2장(포스터+블러 글로우)과 무한 반복
+  // 흔들림 애니메이션을 그릴 이유가 없다 — 기록이 수백 편으로 늘어도 실제로
+  // 보이는 별만 이 비용을 쓰게 한다. core/peeked는 카메라가 항상 그 별을
+  // 화면 안으로 데려오므로 계산할 필요 없이 항상 제외한다. 여유(padding)를
+  // 넉넉히 둬서 화면 가장자리에서 갑자기 팝인/팝아웃하는 게 보이지 않게 한다.
+  const OFFSCREEN_PADDING = 300
+  const offscreenDistance = useTransform([panX, panY, zoomScale], (latest) => {
+    const [px, py, z] = latest as number[]
+    const sx = px + x * z
+    const sy = py + y * z
+    return Math.max(Math.abs(sx) - viewportWidth / 2 - OFFSCREEN_PADDING, Math.abs(sy) - viewportHeight / 2 - OFFSCREEN_PADDING)
+  })
+  const [isOffscreen, setIsOffscreen] = useState(false)
+  useMotionValueEvent(offscreenDistance, 'change', (d) => {
+    const next = d > 0
+    setIsOffscreen((prev) => (prev === next ? prev : next))
+  })
+  const culled = isOffscreen && !isCore && !peeked
 
   // editorial connection 드래그(P2-6): 반지름(거리)만 조절한다 — 각도는 건드리지
   // 않는다. 마우스로만 동작한다(터치는 팬/핀치와 제스처가 겹치므로 건드리지 않는다).
@@ -346,7 +383,7 @@ export function MovieBody({
         ref={peekAnchorRef}
         className="group relative flex flex-col items-center"
         initial={isCore ? undefined : { x: -driftX, y: -driftY }}
-        animate={isCore || peeked ? undefined : { x: [-driftX, driftX, -driftX], y: [-driftY, driftY, -driftY] }}
+        animate={isCore || peeked || culled ? undefined : { x: [-driftX, driftX, -driftX], y: [-driftY, driftY, -driftY] }}
         transition={isCore ? undefined : { duration, repeat: Infinity, ease: 'easeInOut' }}
       >
         {/* core와 위성이 항상 같은 종류의 요소(button)를 쓴다 — 그래야 중심이
@@ -395,7 +432,7 @@ export function MovieBody({
                 }}
               />
             )}
-            {movie.posterPath && !posterFailed ? (
+            {movie.posterPath && !posterFailed && !culled ? (
               <>
                 {/* 앰비언트 글로우 — 포스터를 크게 확대해 흐리게 깐 사본. 대표색을
                     픽셀로 뽑는 건 TMDB가 외부 CDN이라 캔버스로 읽으면 CORS에
@@ -465,8 +502,13 @@ export function MovieBody({
               제목/연도/감독과 달리 이건 AMBIENT_DETAIL_ZOOM 이상 줌인했을
               때만 보인다 — 전체 우주를 멀리서 훑어볼 땐 별마다 평점/메모까지
               다 뜨면 복잡하다는 피드백. 살짝만 줌인해도(열람할 정도로 가까이
-              안 가도) 드러나서 "눌러보고 싶게 만드는 훅" 역할은 그대로 남는다. */}
-          {!peeked && showAmbientDetail && (hasDetail || viewingCount > 1) && (
+              안 가도) 드러나서 "눌러보고 싶게 만드는 훅" 역할은 그대로 남는다.
+              anyPeeked도 함께 본다 — 다른 별을 열람하느라 카메라가 확대된
+              경우까지 이 조건을 만족해버리면, 정작 보고 싶은 건 열람한 그
+              별 하나인데 화면의 다른 별들까지 죄다 평점/메모를 드러내
+              산만해진다(줌 값 자체가 열람 여부와 무관하게 우주 전체가
+              공유하는 값이라 생기는 부작용). */}
+          {!peeked && !anyPeeked && showAmbientDetail && (hasDetail || viewingCount > 1) && (
             <div className="pointer-events-none mt-3 flex w-28 flex-col items-center gap-1.5">
               {(movie.rating || viewingCount > 1) && (
                 <div className="flex items-center gap-1.5 text-[9px] tracking-[0.2em] text-white/40">
