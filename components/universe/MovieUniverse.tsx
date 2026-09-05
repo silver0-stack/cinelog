@@ -230,8 +230,11 @@ export function MovieUniverse({
         const radius = MIN_RADIUS + (1 - gravity) * (MAX_RADIUS - MIN_RADIUS)
         // "우주 성장 히스토리" 스크럽 — 레이아웃(각도/반지름)은 절대 다시 계산하지
         // 않는다, 지금의 최종 배치 위에서 이 시점에 아직 기록 전인 영화만 dimmed로
-        // 표시한다(core는 호출부에서 별도로 항상 제외).
-        const dimmed = historyDate != null && firstWatchedAt(movie) > historyDate
+        // 표시한다(core는 호출부에서 별도로 항상 제외). 지금 열람 중인 별도
+        // 예외로 둔다 — 안 그러면 레일을 드래그하다가 열람 패널을 띄워둔 별의
+        // 날짜를 지나치는 순간, 패널은 열려 있는데 별 자체는 이름 없는 흐린
+        // 점으로 바뀌어버린다(culled가 peeked를 예외로 두는 것과 같은 이유).
+        const dimmed = historyDate != null && movie.id !== peekedId && firstWatchedAt(movie) > historyDate
         return {
           movie,
           gravity,
@@ -247,7 +250,7 @@ export function MovieUniverse({
       { movie: center, gravity: 1, naturalGravity: 1, tier: 'core' as Tier, x: 0, y: 0, dimmed: false },
       ...satellites,
     ]
-  }, [movies, center, movieIndex, strengthOverrides, historyDate])
+  }, [movies, center, movieIndex, strengthOverrides, historyDate, peekedId])
 
   // focusMovieId가 가리키는 별을 peek한다 — 실제 카메라 이동은 아래 peekedId
   // 이펙트가 맡는다(클릭으로 peek할 때와 같은 경로를 타게 하기 위해).
