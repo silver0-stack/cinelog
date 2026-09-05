@@ -109,9 +109,18 @@ export function MovieUniverse({
   // 이전에 저장된 값이 이미 들어있으므로, 여기 없으면(undefined) 그 값을 그대로 쓴다.
   const [strengthOverrides, setStrengthOverrides] = useState<Map<string, number>>(new Map())
 
-  // 각 영화의 각도를 정할 때 쓰는 고정 순번. movies 목록 순서는 렌더링 중
-  // 바뀌지 않으므로, 어떤 영화가 중심이든 이 순번은 항상 같다.
-  const movieIndex = useMemo(() => new Map(movies.map((movie, index) => [movie.id, index])), [movies])
+  // 각 영화의 각도를 정할 때 쓰는 고정 순번. movies 배열이 들어온 순서를 그대로
+  // 쓰면 안 된다 — combineLoggedMovies가 "최근 감상순"으로 정렬해서 넘기기
+  // 때문에, 리뷰의 감상 날짜만 고쳐도(router.refresh로 서버에서 다시 정렬된
+  // 목록을 받으면) 그 영화뿐 아니라 사이에 낀 다른 영화들까지 순번이 밀려서
+  // 각도가 우르르 바뀌어버린다(실제로 겪은 버그) — "날짜 하나 고쳤을 뿐인데
+  // 우주 전체가 재배치되는" 것처럼 보였다. movie.id(불변) 기준으로 직접 정렬해서
+  // 순번을 매기면, 영화가 추가/삭제될 때만 바뀌고 그 외엔 서버가 무엇을 어떤
+  // 순서로 내려주든 항상 같은 순번을 유지한다.
+  const movieIndex = useMemo(() => {
+    const sortedIds = movies.map((m) => m.id).sort()
+    return new Map(sortedIds.map((id, index) => [id, index]))
+  }, [movies])
 
   const rawZoom = useMotionValue(1)
   const rawPanX = useMotionValue(0)
