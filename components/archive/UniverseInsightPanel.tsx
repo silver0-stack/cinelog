@@ -24,6 +24,10 @@ type Props = {
    * 왕복) 없이 즉시 옮기려고 콜백으로 받는다(ArchiveShell의 focusMovieId
    * state를 직접 바꾼다). */
   onFocusMovie?: (id: string) => void
+  /** 인사이트 항목을 누르면 그 movieIds를, 다시 누르거나 패널을 닫으면 null을
+   * 준다 — 위치는 그대로 두고 해당 별만 밝히는 "하이라이트"에 쓴다(재배치는
+   * 하지 않는다: 위치는 항상 중심과의 관계로만 정해진다는 규칙을 지킨다). */
+  onHighlightChange?: (ids: string[] | null) => void
   triggerClassName?: string
   panelClassName?: string
   /** 지정하면 controlled 모드 — 자체 트리거 버튼을 그리지 않고, 외부(예: 계정
@@ -44,6 +48,7 @@ export function UniverseInsightPanel({
   insights,
   rewatched = [],
   onFocusMovie,
+  onHighlightChange,
   triggerClassName,
   panelClassName,
   open: openProp,
@@ -55,6 +60,26 @@ export function UniverseInsightPanel({
   const setOpen = (v: boolean) => (controlled ? onOpenChange?.(v) : setInternalOpen(v))
   const panelRef = useRef<HTMLDivElement>(null)
   useClickOutside(panelRef, open, () => setOpen(false))
+
+  const [activeLabel, setActiveLabel] = useState<string | null>(null)
+  function toggleHighlight(insight: UniverseInsight) {
+    if (activeLabel === insight.label) {
+      setActiveLabel(null)
+      onHighlightChange?.(null)
+    } else {
+      setActiveLabel(insight.label)
+      onHighlightChange?.(insight.movieIds)
+    }
+  }
+  // 패널을 닫으면(배경 클릭/닫기 버튼/재관람 목록 클릭 등 경로 무관하게) 하이라이트도
+  // 같이 지운다 — 안 그러면 패널만 닫혀있고 우주는 계속 어두운 채로 남아서 "왜
+  // 이렇게 됐지" 하는 상태가 된다. 다시 켜려면 패널을 열어서 또 눌러야 한다.
+  useEffect(() => {
+    if (open) return
+    setActiveLabel(null)
+    onHighlightChange?.(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   const [showHint, setShowHint] = useState(false)
   useEffect(() => {
@@ -121,13 +146,20 @@ export function UniverseInsightPanel({
               </div>
             )}
 
+            {/* 인사이트 항목을 누르면 위치는 그대로 두고 그 영화들만 밝히고
+                나머지는 어둡게 한다("하이라이트") — 재배치는 절대 안 한다.
+                다시 누르면 꺼진다(대칭적인 토글). */}
             {insights.map((insight) => (
-              <p
+              <button
                 key={insight.label}
-                className="text-[10px] font-light leading-relaxed tracking-[0.15em] text-white/35 sm:text-[11px] sm:tracking-[0.25em]"
+                type="button"
+                onClick={() => toggleHighlight(insight)}
+                className={`text-left text-[10px] font-light leading-relaxed tracking-[0.15em] outline-none transition-colors duration-300 sm:text-[11px] sm:tracking-[0.25em] ${
+                  activeLabel === insight.label ? 'text-white/80' : 'text-white/35 hover:text-white/60'
+                }`}
               >
                 {insight.label} · {insight.value} ({insight.detail})
-              </p>
+              </button>
             ))}
 
             {/* 예전엔 트리거를 다시 누르면 닫혔는데(토글), controlled 모드(계정

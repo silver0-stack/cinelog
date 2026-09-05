@@ -89,6 +89,7 @@ export function ArchiveShell({
   }, [movies])
 
   const [historyDate, setHistoryDate] = useState<string | null>(null)
+  const [highlightedIds, setHighlightedIds] = useState<Set<string> | null>(null)
 
   return (
     <main className="relative h-dvh w-screen overflow-hidden bg-black">
@@ -101,6 +102,7 @@ export function ArchiveShell({
           focusMovieId={focusMovieId}
           existingByTmdbId={existingByTmdbId}
           historyDate={historyDate}
+          highlightedIds={highlightedIds}
         />
       </FadeIn>
       {historyRange && historyDate !== null && (
@@ -143,6 +145,7 @@ export function ArchiveShell({
           insights={insights}
           rewatched={rewatched}
           onFocusMovie={setFocusMovieId}
+          onHighlightChange={(ids) => setHighlightedIds(ids ? new Set(ids) : null)}
           historyEligible={historyRange !== null}
           onOpenHistory={() => historyRange && setHistoryDate(historyRange.min)}
         />

@@ -80,6 +80,10 @@ type Props = {
    * 날짜보다 늦은 위성은 dimmed로 렌더링된다. null/undefined면 평소처럼 전부
    * 켜진 상태(ArchiveShell 밖의 데모/공유 우주는 이 prop 자체를 안 넘긴다). */
   historyDate?: string | null
+  /** "탐색" 패널에서 인사이트 항목을 눌렀을 때 켜지는 하이라이트 대상 id 목록.
+   * 위치는 절대 재계산하지 않는다 — 이 목록에 없는 위성만 어둡게 만든다.
+   * null/undefined면 평소처럼 전부 정상 밝기. */
+  highlightedIds?: Set<string> | null
 }
 
 function pairKey(a: string, b: string): string {
@@ -96,6 +100,7 @@ export function MovieUniverse({
   onGuestMutate,
   existingByTmdbId,
   historyDate,
+  highlightedIds,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   // 화면 밖으로 한참 벗어난 별의 렌더링 비용(이미지 2장+blur+무한 흔들림)을
@@ -243,6 +248,9 @@ export function MovieUniverse({
         // 날짜를 지나치는 순간, 패널은 열려 있는데 별 자체는 이름 없는 흐린
         // 점으로 바뀌어버린다(culled가 peeked를 예외로 두는 것과 같은 이유).
         const dimmed = historyDate != null && movie.id !== peekedId && firstWatchedAt(movie) > historyDate
+        // "탐색" 패널의 인사이트 하이라이트 — 위치는 그대로 두고 해당 안 하는
+        // 위성만 어둡게 한다(재배치 없음).
+        const dimmedByHighlight = !!highlightedIds && !highlightedIds.has(movie.id)
         return {
           movie,
           gravity,
@@ -251,14 +259,15 @@ export function MovieUniverse({
           x: Math.cos(angle) * radius,
           y: Math.sin(angle) * radius,
           dimmed,
+          dimmedByHighlight,
         }
       })
 
     return [
-      { movie: center, gravity: 1, naturalGravity: 1, tier: 'core' as Tier, x: 0, y: 0, dimmed: false },
+      { movie: center, gravity: 1, naturalGravity: 1, tier: 'core' as Tier, x: 0, y: 0, dimmed: false, dimmedByHighlight: false },
       ...satellites,
     ]
-  }, [movies, center, movieIndex, strengthOverrides, historyDate, peekedId])
+  }, [movies, center, movieIndex, strengthOverrides, historyDate, peekedId, highlightedIds])
 
   // focusMovieId가 가리키는 별을 peek한다 — 실제 카메라 이동은 아래 peekedId
   // 이펙트가 맡는다(클릭으로 peek할 때와 같은 경로를 타게 하기 위해).
@@ -555,7 +564,7 @@ export function MovieUniverse({
       />
 
       <motion.div className="absolute inset-0" style={{ x: panX, y: panY, scale: zoom }}>
-        {bodies.map(({ movie, gravity, naturalGravity, x, y, tier, dimmed }) => (
+        {bodies.map(({ movie, gravity, naturalGravity, x, y, tier, dimmed, dimmedByHighlight }) => (
           <MovieBody
             key={movie.id}
             movie={movie}
@@ -574,6 +583,7 @@ export function MovieUniverse({
             peeked={movie.id === peekedId}
             anyPeeked={peekedId !== null || peekExiting}
             dimmed={dimmed}
+            dimmedByHighlight={dimmedByHighlight}
             editable={editable}
             initialCardUrl={movieCardUrls?.[movie.id] ?? null}
             onSelect={tier === 'core' ? undefined : handleSelect}

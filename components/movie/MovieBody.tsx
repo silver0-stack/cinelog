@@ -46,6 +46,12 @@ type Props = {
    * (포스터/제목)를 통째로 가리고, 클릭도 열람도 안 되는 "아직 태어나지 않은 별"로
    * 보여준다 — 정체를 안 가리면 리플레이의 재미(하나씩 켜지는 걸 발견하는 것)가 없다. */
   dimmed?: boolean
+  /** "탐색" 패널에서 인사이트 항목(같은 감독/장르/시대/평점)을 눌렀을 때, 그
+   * 목록에 없는 위성만 켜진다. dimmed와 달리 정체는 그대로 다 보이고 밝기만
+   * 낮아진다 — 이미 다 아는 영화라 굳이 숨길 이유가 없고, 클릭/드래그도 계속
+   * 된다. 위치 재계산은 절대 하지 않는다(중심과의 관계로만 자리가 정해진다는
+   * 규칙을 그대로 지킨다). */
+  dimmedByHighlight?: boolean
   /** true면 peek 패널에서 "다시 본 감상 남기기"/"정보 수정"이 가능해진다(로그인한 본인 아카이브에서만). */
   editable?: boolean
   /** 이미 만들어진 영화 카드 공유 URL(서버에서 미리 조회). ShareCardButton의 initialUrl로 전달된다. */
@@ -134,6 +140,7 @@ export function MovieBody({
   peeked,
   anyPeeked,
   dimmed,
+  dimmedByHighlight,
   editable,
   initialCardUrl,
   onSelect,
@@ -349,6 +356,10 @@ export function MovieBody({
   // 그대로 밝게 남아 있으면 시선이 갈라져 패널이 사나워 보인다는 피드백. 클릭은
   // 막지 않는다(dim된 별을 눌러서 그쪽으로 열람을 옮기는 건 여전히 가능해야 한다).
   const focusDimmed = anyPeeked && !peeked
+  // 두 종류의 "밝기 낮추기"가 동시에 적용될 수 있어서(열람 포커스 vs 탐색
+  // 하이라이트) 곱해서 하나의 값으로 합친다 — 극단적인 경우(둘 다 해당) 아주
+  // 어두워지는 건 자연스럽다, 어차피 둘 다 "지금 여기 말고 저기를 봐"라는 뜻이니까.
+  const wrapperOpacity = (focusDimmed ? 0.16 : 1) * (dimmedByHighlight ? 0.15 : 1)
 
   const satelliteTint = ratingTintRgb(movie.rating)
   // 평점이 높을수록 포스터 고유 색 글로우가 더 밝고 크게 번진다(색은 그대로 포스터 것).
@@ -396,7 +407,7 @@ export function MovieBody({
       <motion.div
         ref={peekAnchorRef}
         className="group relative flex flex-col items-center transition-opacity duration-500 ease-out"
-        style={{ opacity: focusDimmed ? 0.16 : 1 }}
+        style={{ opacity: wrapperOpacity }}
         initial={isCore ? undefined : { x: -driftX, y: -driftY }}
         animate={isCore || peeked || culled || dimmed ? undefined : { x: [-driftX, driftX, -driftX], y: [-driftY, driftY, -driftY] }}
         transition={isCore ? undefined : { duration, repeat: Infinity, ease: 'easeInOut' }}

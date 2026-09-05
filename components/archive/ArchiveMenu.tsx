@@ -15,6 +15,7 @@ export function ArchiveMenu({
   insights,
   rewatched,
   onFocusMovie,
+  onHighlightChange,
   historyEligible,
   onOpenHistory,
 }: {
@@ -22,6 +23,7 @@ export function ArchiveMenu({
   insights: UniverseInsight[]
   rewatched: RewatchedMovie[]
   onFocusMovie: (id: string) => void
+  onHighlightChange: (ids: string[] | null) => void
   /** 기록 수가 리플레이할 만큼 쌓였는지 — 너무 적으면 "히스토리" 메뉴 자체를 숨긴다. */
   historyEligible: boolean
   onOpenHistory: () => void
@@ -48,6 +50,7 @@ export function ArchiveMenu({
         insights={insights}
         rewatched={rewatched}
         onFocusMovie={onFocusMovie}
+        onHighlightChange={onHighlightChange}
         open={patternOpen}
         onOpenChange={setPatternOpen}
         panelClassName="absolute right-4 top-16 z-20 sm:right-6"
