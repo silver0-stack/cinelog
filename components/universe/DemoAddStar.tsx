@@ -144,7 +144,7 @@ export function DemoAddStar({ onAdd }: { onAdd: (movie: Movie) => void }) {
           >
             <div className="flex w-full max-w-xs flex-col items-center gap-6">
               <p className="text-center text-[11px] font-light leading-relaxed tracking-widest text-white/30">
-                이 별은 저장되지 않아.
+                이 포스터는 저장되지 않아.
                 <br />
                 어떻게 자리 잡는지만 잠깐 볼 수 있어.
               </p>
@@ -219,7 +219,7 @@ export function DemoAddStar({ onAdd }: { onAdd: (movie: Movie) => void }) {
           >
             <form onSubmit={handleSubmit} className="flex w-full max-w-xs flex-col items-center gap-6">
               <p className="text-center text-[11px] font-light leading-relaxed tracking-widest text-white/30">
-                이 별은 저장되지 않아.
+                이 포스터는 저장되지 않아.
                 <br />
                 어떻게 자리 잡는지만 잠깐 볼 수 있어.
               </p>
@@ -282,7 +282,7 @@ export function DemoAddStar({ onAdd }: { onAdd: (movie: Movie) => void }) {
             {/* 로그인 링크는 따로 안 둔다 — 이 화면엔 이미 우측 하단에 상시
                 LOG IN 링크가 있어서(HomeRitual), 여기서 또 띄우면 LOG IN이
                 위아래로 두 번 겹쳐 보였다. */}
-            <p className="text-[10px] font-light tracking-widest text-white/30">로그인하지 않으면 이 별은 사라져.</p>
+            <p className="text-[10px] font-light tracking-widest text-white/30">로그인하지 않으면 이 포스터는 사라져.</p>
           </motion.div>
         )}
       </AnimatePresence>

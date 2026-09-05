@@ -501,7 +501,7 @@ export function MoviePeekPanel({
                   href={`/archive?focus=${duplicateTargetId}`}
                   className="text-[9px] tracking-[0.25em] text-white/40 outline-none transition-colors duration-500 hover:text-white/70"
                 >
-                  그 별로 가기
+                  그 포스터로 가기
                 </Link>
               )}
             </div>

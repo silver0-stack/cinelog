@@ -202,7 +202,7 @@ export function LogMovieForm({ existingByTmdbId = {}, onFocusMovie, onSaved }: P
         <p className="max-w-xs text-center text-xs font-light leading-relaxed tracking-widest text-white/60">
           {duplicate.title}, 이미 기록했어.
           <br />
-          다시 봤다면 그 별을 열어서 새 감상을 남겨봐.
+          다시 봤다면 그 포스터를 열어서 새 감상을 남겨봐.
         </p>
         <div className="flex items-center gap-8">
           <button
@@ -218,14 +218,14 @@ export function LogMovieForm({ existingByTmdbId = {}, onFocusMovie, onSaved }: P
               onClick={() => onFocusMovie(duplicate.id)}
               className="text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
             >
-              그 별로 가기
+              그 포스터로 가기
             </button>
           ) : (
             <Link
               href={`/archive?focus=${duplicate.id}`}
               className="text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
             >
-              그 별로 가기
+              그 포스터로 가기
             </Link>
           )}
         </div>
