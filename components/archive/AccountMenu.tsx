@@ -32,11 +32,21 @@ export function AccountMenu({ email, links = [], menuActions = [] }: Props) {
 
   return (
     <div ref={containerRef} className="relative">
+      {/* 화면 위쪽을 지나가는 밝은 포스터·글로우 위에서도 테두리/글자가 보여야
+          한다는 피드백 — <button>은 부모의 text-shadow를 자동으로 물려받지
+          않는(폼 컨트롤이라 그런) 브라우저 기본 동작이 있어서 버튼 자신에
+          직접 건다(MovieUniverse의 idle 힌트와 같은 값). 원형 테두리는
+          text-shadow의 영향을 안 받는 실제 테두리선이라, drop-shadow로
+          따로 어둡게 깔아 같이 보호한다. */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="계정"
         className="group -m-2.5 flex items-center justify-center p-2.5 outline-none"
+        style={{
+          textShadow: '0 0 10px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.9)',
+          filter: 'drop-shadow(0 0 3px rgba(0,0,0,0.9))',
+        }}
       >
         <span className="flex h-6 w-6 items-center justify-center rounded-full border border-white/20 text-[10px] font-light text-white/50 transition-colors duration-500 group-hover:border-white/40 group-hover:text-white/80">
           {initial}

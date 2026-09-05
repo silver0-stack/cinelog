@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type MouseEvent } from 'react'
+import { useState } from 'react'
 import { getOrCreateMovieCardSlug } from '@/lib/movieShareLinks'
 import { CopyIcon } from '@/components/icons/CopyIcon'
 import { CheckIcon } from '@/components/icons/CheckIcon'
@@ -13,20 +13,17 @@ type Props = {
    * 클릭 시점에 "있는지 확인"하느라 매번 "만드는 중"이 잠깐 뜬다(ShareButton과
    * 같은 문제였다). */
   initialUrl?: string | null
-  /** 'icon'이면 포스터 앞면 구석에 놓는 아이콘 전용 버튼(텍스트 라벨 없음)이 된다. */
+  /** 'icon'이면 아이콘 전용 버튼(텍스트 라벨 없음)이 된다. */
   variant?: 'text' | 'icon'
-  /** icon 변형에서 부모(포스터 카드 전체)의 클릭(뒤집기)으로 이 클릭이 새지 않게 한다. */
-  onClick?: (e: MouseEvent) => void
 }
 
 /** 영화 하나를 카드 링크로 공유한다 — 우주 전체 공유와 독립적인 slug(0004)를 쓴다. */
-export function ShareCardButton({ loggedMovieId, initialUrl = null, variant = 'text', onClick }: Props) {
+export function ShareCardButton({ loggedMovieId, initialUrl = null, variant = 'text' }: Props) {
   const [url, setUrl] = useState<string | null>(initialUrl)
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  async function handleClick(e: MouseEvent) {
-    onClick?.(e)
+  async function handleClick() {
     if (url) {
       await navigator.clipboard.writeText(url)
       setCopied(true)

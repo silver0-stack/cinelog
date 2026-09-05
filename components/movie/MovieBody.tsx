@@ -256,6 +256,9 @@ export function MovieBody({
   // 그냥 분류 정보라 훅으로서 힘이 없고 좁은 미리보기에 잡음만 늘렸다. 클릭
   // (peek)하면 앞면에서 여전히 보이니 정보 자체가 사라지는 건 아니다.
   const hasDetail = Boolean(movie.rating || movie.note)
+  // 다시 본 영화는 줌아웃 상태(열람 전)에서도 알 수 있어야 한다는 피드백 —
+  // "이 별을 열어봐야만 알 수 있는 정보"이던 걸 미리보기로 끌어올렸다.
+  const viewingCount = movie.viewings?.length ?? 0
 
   const tierShadow = tier === 'near' ? '0 0 12px 3px rgba(230,234,244,0.12)' : null
   const starShadow = tierShadow ?? 'none'
@@ -404,15 +407,25 @@ export function MovieBody({
             </div>
           )}
 
-          {/* 열람 중이 아닐 때만 보이는 아주 작은 평점/메모 미리보기 — 클릭 없이도
-              드러나는 훅이다. 열람 중엔 아래 패널이 같은 내용을 더 자세히 보여주므로
-              중복을 피해 숨긴다. */}
-          {!peeked && hasDetail && (
+          {/* 열람 중이 아닐 때만 보이는 아주 작은 평점/메모/다시보기 미리보기 —
+              클릭 없이도 드러나는 훅이다. 포스터 모서리에 마커를 얹었더니 바로
+              아래(mt-2) 제목과 겹쳐서 도로 걷어냈다 — 제목 위에 무언가 겹치는
+              건 어떤 이유로도 감수할 수 없는 레이아웃이라, 원래대로 별점 옆에
+              텍스트로 표시한다. 열람 중엔 아래 패널이 같은 내용을 더 자세히
+              보여주므로 중복을 피해 숨긴다. */}
+          {!peeked && (hasDetail || viewingCount > 1) && (
             <div className="pointer-events-none mt-3 flex w-28 flex-col items-center gap-1.5">
-              {movie.rating && (
-                <div className="text-[9px] tracking-[0.2em] text-white/40">
-                  {'★'.repeat(movie.rating)}
-                  {'☆'.repeat(5 - movie.rating)}
+              {(movie.rating || viewingCount > 1) && (
+                <div className="flex items-center gap-1.5 text-[9px] tracking-[0.2em] text-white/40">
+                  {movie.rating && (
+                    <span>
+                      {'★'.repeat(movie.rating)}
+                      {'☆'.repeat(5 - movie.rating)}
+                    </span>
+                  )}
+                  {/* "×N"은 문맥 없이 보면 뭔지 알기 힘들다는 피드백 — "N회"는
+                      그 자체로 "N번 봤다"는 뜻이 바로 읽힌다. */}
+                  {viewingCount > 1 && <span className="text-white/25">{viewingCount}회</span>}
                 </div>
               )}
               {movie.note && (

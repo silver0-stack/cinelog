@@ -40,9 +40,17 @@ type Props = {
   /** tmdbId → 이미 기록한 이 영화의 logged_movie id. 검색 결과를 고를 때 이미
    * 기록한 영화면 새 별을 또 만드는 대신 기존 기록으로 안내하는 데 쓴다. */
   existingByTmdbId?: Record<number, string>
+  /** 지정하면(아카이브 화면 위 모달로 쓰일 때) "우주에서 보기"/"그 별로 가기"가
+   * `/archive?focus=` 링크 대신 이 콜백으로 즉시 카메라를 옮긴다(서버 왕복
+   * 없이). 없으면(/archive/new 단독 페이지로 쓰일 때) 기존처럼 실제 링크로
+   * 이동한다. */
+  onFocusMovie?: (id: string) => void
+  /** 저장에 성공했을 때 한 번 호출된다(모달 모드에서 서버 데이터를 조용히
+   * 갱신하는 데 쓴다 — router.refresh()). */
+  onSaved?: () => void
 }
 
-export function LogMovieForm({ existingByTmdbId = {} }: Props) {
+export function LogMovieForm({ existingByTmdbId = {}, onFocusMovie, onSaved }: Props) {
   const [step, setStep] = useState<'search' | 'details' | 'done'>('search')
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<TmdbSearchResult[]>([])
@@ -142,6 +150,7 @@ export function LogMovieForm({ existingByTmdbId = {} }: Props) {
       })
       setSavedId(id)
       setStep('done')
+      onSaved?.()
     } catch {
       setError('저장하지 못했어. 잠시 후 다시 시도해줘.')
     } finally {
@@ -166,12 +175,22 @@ export function LogMovieForm({ existingByTmdbId = {} }: Props) {
           >
             다른 영화 기록하기
           </button>
-          <Link
-            href={savedId ? `/archive?focus=${savedId}` : '/archive'}
-            className="text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
-          >
-            우주에서 보기
-          </Link>
+          {onFocusMovie ? (
+            <button
+              type="button"
+              onClick={() => savedId && onFocusMovie(savedId)}
+              className="text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
+            >
+              우주에서 보기
+            </button>
+          ) : (
+            <Link
+              href={savedId ? `/archive?focus=${savedId}` : '/archive'}
+              className="text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
+            >
+              우주에서 보기
+            </Link>
+          )}
         </div>
       </div>
     )
@@ -193,12 +212,22 @@ export function LogMovieForm({ existingByTmdbId = {} }: Props) {
           >
             다른 영화 검색
           </button>
-          <Link
-            href={`/archive?focus=${duplicate.id}`}
-            className="text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
-          >
-            그 별로 가기
-          </Link>
+          {onFocusMovie ? (
+            <button
+              type="button"
+              onClick={() => onFocusMovie(duplicate.id)}
+              className="text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
+            >
+              그 별로 가기
+            </button>
+          ) : (
+            <Link
+              href={`/archive?focus=${duplicate.id}`}
+              className="text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
+            >
+              그 별로 가기
+            </Link>
+          )}
         </div>
       </div>
     )

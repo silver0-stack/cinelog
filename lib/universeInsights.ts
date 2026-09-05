@@ -49,3 +49,16 @@ export function summarizeUniverse(movies: Movie[]): UniverseInsight[] {
 
   return insights
 }
+
+export type RewatchedMovie = { id: string; title: string; count: number }
+
+// 시간이 지나면 어떤 영화에 감상(다시보기) 타래가 몇 개 쌓여있는지 스스로도
+// 기억이 안 난다는 피드백 — 포스터를 하나하나 열어보지 않고도 한곳에서 볼 수
+// 있게 한다. 개수 많은 순으로, 너무 길어지지 않게 상위 몇 개만 추린다.
+export function rewatchedMovies(movies: Movie[]): RewatchedMovie[] {
+  return movies
+    .filter((m) => (m.viewings?.length ?? 0) > 1)
+    .map((m) => ({ id: m.id, title: m.title, count: m.viewings!.length }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6)
+}

@@ -2,14 +2,11 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
-import { MovieUniverse } from '@/components/universe/MovieUniverse'
-import { FadeIn } from '@/components/archive/FadeIn'
 import { combineLoggedMovies, type LoggedMovieRow, type ViewingRow } from '@/lib/loggedMovies'
 import { attachEditorialConnections, type EditorialConnectionRow } from '@/lib/editorialConnections'
-import { ShareButton } from '@/components/archive/ShareButton'
 import { AccountMenu } from '@/components/archive/AccountMenu'
-import { ArchiveMenu } from '@/components/archive/ArchiveMenu'
-import { summarizeUniverse } from '@/lib/universeInsights'
+import { ArchiveShell } from '@/components/archive/ArchiveShell'
+import { summarizeUniverse, rewatchedMovies } from '@/lib/universeInsights'
 
 const navLinkClass =
   'text-xs font-light tracking-[0.2em] sm:tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80'
@@ -70,6 +67,10 @@ export default async function ArchivePage({
     (connectionData ?? []) as EditorialConnectionRow[],
   )
   const insights = summarizeUniverse(movies)
+  const rewatched = rewatchedMovies(movies)
+  // 검색은 제목/감독만 필요하다 — 메모·테마 같은 무거운 필드까지 클라이언트로
+  // 내려보낼 필요 없다.
+  const searchIndex = movies.map((m) => ({ id: m.id, title: m.title, director: m.director }))
 
   // "정보 수정"에서 다른 이미 기록한 영화와 같은 작품으로 바꾸려는 걸 저장 버튼
   // 누르기 전에 미리 막는 데 쓴다(DB 유니크 제약은 그 뒤의 안전장치).
@@ -93,24 +94,16 @@ export default async function ArchivePage({
   }
 
   return (
-    <main className="relative h-dvh w-screen overflow-hidden bg-black">
-      <FadeIn>
-        <MovieUniverse
-          movies={movies}
-          defaultCenterId={movies[0].id}
-          editable
-          movieCardUrls={movieCardUrls}
-          focusMovieId={focus ?? null}
-          existingByTmdbId={existingByTmdbId}
-        />
-      </FadeIn>
-      <div className="absolute right-4 top-4 z-10 flex items-center gap-3 sm:right-6 sm:top-6 sm:gap-8">
-        <ShareButton initialUrl={initialShareUrl} />
-        <Link href="/archive/new" className={navLinkClass}>
-          + 기록
-        </Link>
-        <ArchiveMenu email={user.email ?? ''} insights={insights} />
-      </div>
-    </main>
+    <ArchiveShell
+      movies={movies}
+      movieCardUrls={movieCardUrls}
+      existingByTmdbId={existingByTmdbId}
+      initialFocusId={focus ?? null}
+      initialShareUrl={initialShareUrl}
+      email={user.email ?? ''}
+      insights={insights}
+      rewatched={rewatched}
+      searchIndex={searchIndex}
+    />
   )
 }
