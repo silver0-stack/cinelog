@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion, useMotionValue, useSpring } from 'framer-motion'
 import { movies as staticMovies, type Movie } from '@/data/movies'
 import { calculateMovieGravity } from '@/lib/gravity'
-import { MIN_RADIUS, MAX_RADIUS } from '@/lib/universeLayout'
+import { MIN_RADIUS, MAX_RADIUS, MIN_ZOOM, MAX_ZOOM } from '@/lib/universeLayout'
 import { orderPair, upsertEditorialConnection } from '@/lib/editorialConnections'
 import { EASE_SLOW } from '@/lib/motion'
 import { useIdleHint } from '@/lib/useIdleHint'
@@ -21,8 +21,6 @@ const IDLE_HINTS = ['확대해서 둘러봐', '가까운 별일수록 관계가 
 // 재등록된다 — 모듈 스코프 상수로 고정해서 참조가 항상 같게 유지한다.
 const UNIVERSE_IDLE_EVENTS = ['wheel', 'mousedown', 'touchstart'] as const
 
-const MIN_ZOOM = 0.5
-const MAX_ZOOM = 10
 const ZOOM_SPEED = 0.0016
 const ZOOM_SPRING = { stiffness: 260, damping: 30, mass: 1 }
 // 별을 열람(peek)하면 카메라가 이 배율까지 확대해서 그 별로 다가간다(Figma의

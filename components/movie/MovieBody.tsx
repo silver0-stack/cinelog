@@ -70,6 +70,18 @@ const TIER_OPACITY: Record<Tier, number> = { core: 1, near: 0.9, mid: 0.65, far:
 // 자세히 보고 싶은지"를 표현하는 컨트롤이 되게 했다.
 const AMBIENT_DETAIL_ZOOM = 1.15
 
+// 줌아웃할수록 위성이 다시 "멀리서는 점처럼 보인다"(CLAUDE.md 섹션 12/13)로
+// 수렴하게 만드는 두 구간. 기본 줌(1)에서는 둘 다 벗어나 있어 평소엔 지금처럼
+// 포스터+메타가 그대로 보인다. 처음엔 MIN_ZOOM(0.5, 가장 멀리 줌아웃한 지점)
+// 바로 위 좁은 구간에만 묶어뒀더니 별이 되는 걸 보려면 최소 줌까지 거의
+// 다다라야 해서 체감이 안 됐다 — 완전한 별로 접히는 지점을 MIN_ZOOM보다
+// 한참 위(0.65)로 끌어올려서, 살짝만 줌아웃해도 감독/연도가 먼저 옅어지고
+// 이어서 포스터가 자기 고유 색의 흐린 빛(이미 있던 앰비언트 글로우 레이어)으로
+// 뭉쳐드는 게 바로 느껴지게 했다. zoomScale(스프링으로 보간되는 실시간 값)에서
+// 바로 파생하므로 줌인/줌아웃 어느 방향이든 같은 경로를 매끄럽게 되짚는다.
+const META_FADE_ZOOM: [number, number] = [0.85, 0.97]
+const STAR_FORM_ZOOM: [number, number] = [0.65, 0.85]
+
 // 평점(P2-4)은 이제 포스터 앰비언트 글로우의 밝기/크기를 키우는 데 쓴다 — 그
 // 영화 고유의 색 위에 금색을 덧씌우면 포스터가 다 달라도 죄다 노랗게 보인다
 // (실제로 그랬다). 대신 평점이 높을수록 "그 포스터 자신의 색"이 더 크고 밝게
@@ -135,6 +147,12 @@ export function MovieBody({
   // 그대로 따라 커지되, 텍스트가 많은 패널까지 커지면 확대할수록 오히려 읽기
   // 어려워진다.
   const inverseZoom = useTransform(zoomScale, (z) => 1 / (z || 1))
+
+  // core는 항상 "지금 보고 있는 중심"이라 별로 접히지 않는다 — core에도 같은
+  // 훅을 호출은 해두되(훅 규칙), 실제 값은 스타일 적용 시점에 고정값으로 바꿔치기한다.
+  const metaOpacity = useTransform(zoomScale, META_FADE_ZOOM, [0, 1], { clamp: true })
+  const starProgress = useTransform(zoomScale, STAR_FORM_ZOOM, [1, 0], { clamp: true })
+  const posterOpacity = useTransform(starProgress, (p) => TIER_OPACITY[tier] * (1 - p))
 
   // AMBIENT_DETAIL_ZOOM을 넘겼는지는 렌더링(JSX 표시 여부)에 쓰이므로 스타일
   // 변환(useTransform)이 아니라 실제 리액트 state가 필요하다 — 줌이 그
@@ -266,9 +284,10 @@ export function MovieBody({
   const driftY = 2 + (1 - gravity) * 9 + ((driftSeed * 7) % 3)
   const duration = 9 + (1 - gravity) * 14 + (driftSeed % 6)
 
-  // 모든 별이 core처럼 항상 제목/메타/포스터를 다 보여준다 — 줌에 따라 서서히
-  // 드러나던 단계적 노출을 없앴다(의도적인 방향 전환. CLAUDE.md 섹션 12/13/P2-5의
-  // "멀리서는 점, 가까워지면 드러난다" 원칙과 다른 선택이라는 걸 알고 반영함).
+  // 기본 줌에서는 core처럼 항상 제목/메타/포스터를 다 보여준다 — 다만 이제
+  // 살짝만 줌아웃해도(META_FADE_ZOOM/STAR_FORM_ZOOM 참고) 감독/연도 → 포스터
+  // 순으로 다시 접힌다. CLAUDE.md 섹션 12/13/P2-5의 "멀리서는 점, 가까워지면
+  // 드러난다" 원칙을 완전히 없앴던 걸, 줌아웃했을 때만 되살린 절충안.
   // 장르는 뺐다 — 평점/메모는 감정을 건드려서 클릭을 유도하는 훅인데, 장르는
   // 그냥 분류 정보라 훅으로서 힘이 없고 좁은 미리보기에 잡음만 늘렸다. 클릭
   // (peek)하면 앞면에서 여전히 보이니 정보 자체가 사라지는 건 아니다.
@@ -285,6 +304,14 @@ export function MovieBody({
   const ratingStrength = ratingGlowStrength(movie.rating)
   const glowOpacity = (0.4 + ratingStrength * 0.35) * TIER_OPACITY[tier]
   const glowSpread = 3 + ratingStrength * 6
+
+  // 포스터가 접히는 동안 그 자리를 대신하는 건 새 레이어가 아니라 원래 있던
+  // 앰비언트 글로우 자체다 — 별이 될수록 이 흐린 사본이 더 밝고 크게 번져서
+  // "포스터가 자기 색의 빛으로 뭉쳐든" 것처럼 보이게 한다.
+  const starGlowOpacity = useTransform(starProgress, (p) => glowOpacity + p * (0.95 - glowOpacity))
+  const starGlowInset = useTransform(starProgress, (p) => -(glowSpread + p * 14))
+  const starScale = useTransform(starProgress, (p) => 1 - p * 0.35)
+  const starRadius = useTransform(starProgress, (p) => `${2 + p * 48}%`)
 
   // 별끼리 가까이 있으면(특히 far 여러 개가 몰린 자리) 탭 영역(-m-3 p-3)이 서로
   // 겹친다 — 겹친 자리를 클릭했을 때 어느 별이 반응할지가 DOM 순서(=movies 목록
@@ -354,7 +381,7 @@ export function MovieBody({
             className="relative block overflow-visible rounded-sm"
             animate={{ width: posterSize.w, height: posterSize.h }}
             transition={{ duration: DURATION.approach, ease: EASE_SLOW }}
-            style={{ boxShadow: starShadow }}
+            style={{ boxShadow: starShadow, scale: isCore ? 1 : starScale, borderRadius: isCore ? undefined : starRadius }}
           >
             {/* core 전용 따뜻한 후광 — 포스터 색과 무관하게 항상 은은히 깔려서
                 "이게 지금 중심"이라는 신호를 준다(더 크고, 안 흔들리는 것과 더해서). */}
@@ -375,21 +402,21 @@ export function MovieBody({
                     막히는데(MoviePeekPanel과 같은 제약), CSS blur는 픽셀을 안
                     읽고 그냥 흐리게 "그리기"만 하니 문제없다. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <motion.img
                   src={`https://image.tmdb.org/t/p/w154${movie.posterPath}`}
                   alt=""
                   aria-hidden="true"
                   className="pointer-events-none absolute -z-10 rounded-sm object-cover blur-xl"
-                  style={{ inset: -glowSpread, opacity: glowOpacity }}
+                  style={{ inset: isCore ? -glowSpread : starGlowInset, opacity: isCore ? glowOpacity : starGlowOpacity }}
                 />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <motion.img
                   src={`https://image.tmdb.org/t/p/w154${movie.posterPath}`}
                   alt=""
                   loading="lazy"
                   onError={() => setPosterFailed(true)}
                   className="relative h-full w-full rounded-sm object-cover"
-                  style={{ opacity: TIER_OPACITY[tier] }}
+                  style={{ opacity: isCore ? TIER_OPACITY[tier] : posterOpacity }}
                 />
               </>
             ) : (
@@ -407,14 +434,19 @@ export function MovieBody({
         </motion.button>
 
         <div className="mt-2 text-center">
-          {/* 제목/연도/감독은 열람 여부와 무관하게 항상 보인다 — 더 이상 별도의
-              "앞면 카드"가 없으니 여기가 유일한 표시 자리다. */}
+          {/* 제목은 열람 여부/줌과 무관하게 항상 보인다 — 더 이상 별도의
+              "앞면 카드"가 없으니 여기가 유일한 표시 자리다. 감독/연도만 극단적으로
+              줌아웃하면 먼저 옅어진다(META_FADE_ZOOM) — 별을 알아보는 데 꼭
+              필요한 최소 정보(제목)는 남기고, 부가 정보부터 접는다. */}
           <div className="line-clamp-2 max-w-28 text-[11px] leading-snug tracking-[0.08em] text-white/70">
             {movie.title}
           </div>
-          <div className="mt-0.5 max-w-28 truncate text-[9px] tracking-[0.15em] text-white/35">
+          <motion.div
+            className="mt-0.5 max-w-28 truncate text-[9px] tracking-[0.15em] text-white/35"
+            style={{ opacity: isCore ? 1 : metaOpacity }}
+          >
             {movie.year} · {movie.director}
-          </div>
+          </motion.div>
 
           {/* 장르는 평소엔 안 보여준다 — 화면에 별이 여러 개일 때 잡음만 는다.
               열람 중일 때만, 여유가 생긴 이 순간에만 보여준다. */}

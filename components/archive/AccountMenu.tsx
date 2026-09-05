@@ -2,7 +2,9 @@
 
 import { useRef, useState } from 'react'
 import Link from 'next/link'
+import { AnimatePresence, motion } from 'framer-motion'
 import { SignOutButton } from '@/components/auth/SignOutButton'
+import { EASE_SLOW } from '@/lib/motion'
 import { useClickOutside } from '@/lib/useClickOutside'
 
 type Props = {
@@ -52,34 +54,49 @@ export function AccountMenu({ email, links = [], menuActions = [] }: Props) {
           {initial}
         </span>
       </button>
-      {open && (
-        <div className="absolute right-0 top-9 z-20 flex flex-col items-end gap-3 whitespace-nowrap border border-white/10 bg-black px-3 py-3">
-          <p className="text-[10px] tracking-[0.15em] text-white/40">{email}</p>
-          {links.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-xs font-light tracking-[0.5em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80 focus-visible:text-white/80"
-            >
-              {link.label}
-            </Link>
-          ))}
-          {menuActions.map((action) => (
-            <button
-              key={action.label}
-              type="button"
-              onClick={() => {
-                action.onClick()
-                setOpen(false)
-              }}
-              className="text-xs font-light tracking-[0.5em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80 focus-visible:text-white/80"
-            >
-              {action.label}
-            </button>
-          ))}
-          <SignOutButton />
-        </div>
-      )}
+      {/* 이 앱의 다른 팝업(열람 패널/검색/가이드/탐색)은 전부 AnimatePresence로
+          부드럽게 나타났다 사라지는데, 이 드롭다운만 순간적으로 뚝뚝 나타났다
+          사라져서 유독 투박하게 느껴진다는 피드백 — 같은 결로 맞춘다. 모서리도
+          카드형 패널들과 맞춰 둥글게 하고, SIGN OUT은 되돌릴 수 없는 종료
+          액션이라 구분선으로 나머지 항목들과 시각적으로 떼어둔다. */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4, ease: EASE_SLOW }}
+            className="absolute right-0 top-9 z-20 flex flex-col items-end gap-3 whitespace-nowrap rounded-lg border border-white/10 bg-black px-3 py-3"
+          >
+            <p className="text-[10px] tracking-[0.15em] text-white/40">{email}</p>
+            {links.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-xs font-light tracking-[0.5em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80 focus-visible:text-white/80"
+              >
+                {link.label}
+              </Link>
+            ))}
+            {menuActions.map((action) => (
+              <button
+                key={action.label}
+                type="button"
+                onClick={() => {
+                  action.onClick()
+                  setOpen(false)
+                }}
+                className="text-xs font-light tracking-[0.5em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80 focus-visible:text-white/80"
+              >
+                {action.label}
+              </button>
+            ))}
+            <div className="mt-1 flex w-full justify-end border-t border-white/10 pt-3">
+              <SignOutButton />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

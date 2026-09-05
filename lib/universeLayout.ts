@@ -3,6 +3,11 @@
 export const MIN_RADIUS = 90
 export const MAX_RADIUS = 420
 
+// 카메라 줌 배율의 하한/상한. MovieBody가 줌 구간별로 메타 정보/포스터를
+// 단계적으로 감추는 애니메이션(별로 수렴)의 기준점을 잡는 데도 이 값이 필요하다.
+export const MIN_ZOOM = 0.5
+export const MAX_ZOOM = 10
+
 export function clampRadius(radius: number, min = MIN_RADIUS, max = MAX_RADIUS): number {
   return Math.min(max, Math.max(min, radius))
 }
