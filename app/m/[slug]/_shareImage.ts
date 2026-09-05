@@ -10,8 +10,8 @@ export function ratingLine(rating: number | undefined): string {
 }
 
 // 고정 크기 캔버스라 스크롤이 없다 — 이 사진들은 요약용 미리보기일 뿐이고,
-// 전체 감상 이력은 이 이미지가 링크하는 웹페이지(page.tsx)에서 한 장씩
-// 넘겨볼 수 있다(ViewingHistoryStepper). 그래서 여기서는 넘치지 않을 만큼만
+// 전체 감상 이력은 이 이미지가 링크하는 웹페이지(page.tsx)에서 타임라인으로
+// 따로 볼 수 있다(ViewingHistoryTimeline). 그래서 여기서는 넘치지 않을 만큼만
 // 짧게 자른다.
 export function truncate(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max)}…` : text

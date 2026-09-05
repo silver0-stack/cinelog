@@ -25,6 +25,10 @@ const MIN_ZOOM = 0.5
 const MAX_ZOOM = 10
 const ZOOM_SPEED = 0.0016
 const ZOOM_SPRING = { stiffness: 260, damping: 30, mass: 1 }
+// 별을 열람(peek)하면 카메라가 이 배율까지 확대해서 그 별로 다가간다(Figma의
+// "오브젝트로 줌인"과 같은 느낌). MAX_ZOOM보다 낮게 둬서, 그 상태에서도
+// 사용자가 원하면 손으로 더 확대할 여지를 남긴다.
+const FOCUS_ZOOM = 3
 
 function tierFor(gravity: number): Tier {
   if (gravity >= 0.5) return 'near'
@@ -98,19 +102,20 @@ export function MovieUniverse({
   const zoom = useSpring(rawZoom, ZOOM_SPRING)
   const panX = useSpring(rawPanX, ZOOM_SPRING)
   const panY = useSpring(rawPanY, ZOOM_SPRING)
+  // 별에 포커스하기 직전의 카메라 상태 — 포커스를 빠져나올 때 여기로 되돌아간다.
+  // "탐색하다가 잠깐 들여다보고 제자리로 돌아오는" 느낌을 위한 것.
+  const cameraSnapshotRef = useRef<{ zoom: number; panX: number; panY: number } | null>(null)
 
   const center = useMemo(() => movies.find((m) => m.id === centerId) ?? movies[0], [movies, centerId])
 
   // 영화 하나를 선택하면 그 영화가 새로운 중력의 중심이 된다 — 우주 전체가 그
-  // 영화를 기준으로 부드럽게 재배치된다. 카메라(팬)도 함께 원점으로 되돌려야
-  // 한다 — 그렇지 않으면 영화들만 새 위치로 움직이고 시점은 그대로 멈춰 있어서,
-  // 마치 화면이 다른 장면으로 컷 편집된 것처럼 보인다.
+  // 영화를 기준으로 부드럽게 재배치된다. peekedId는 그대로 두어(같은 movieId)
+  // 방금 보고 있던 포커스가 끊기지 않게 한다 — 아래 peekedId 이펙트가 새
+  // 중심(항상 원점)으로 카메라를 다시 맞춰준다.
   const handleSelect = useCallback((movieId: string) => {
     setCenterId(movieId)
-    setPeekedId(null)
-    rawPanX.set(0)
-    rawPanY.set(0)
-  }, [rawPanX, rawPanY])
+    setPeekedId(movieId)
+  }, [])
 
   // 클릭은 열람(peek)만 연다 — 우주를 재배치하지 않는다. 같은 별을 다시 클릭하면
   // 닫히고, 다른 별을 클릭하면 그쪽으로 넘어간다.
@@ -174,16 +179,10 @@ export function MovieUniverse({
     ]
   }, [movies, center, movieIndex, strengthOverrides])
 
-  // focusMovieId가 가리키는 별로 카메라를 팬하고 peek을 연다. 화면 좌표는
-  // pan + world*zoom으로 계산되므로(zoomAt 참고), 그 별을 화면 중앙(world 원점)에
-  // 두려면 pan을 -world*zoom으로 맞추면 된다.
+  // focusMovieId가 가리키는 별을 peek한다 — 실제 카메라 이동은 아래 peekedId
+  // 이펙트가 맡는다(클릭으로 peek할 때와 같은 경로를 타게 하기 위해).
   useEffect(() => {
     if (!focusMovieId) return
-    const body = bodies.find((b) => b.movie.id === focusMovieId)
-    if (!body) return
-    const z = rawZoom.get()
-    rawPanX.set(-body.x * z)
-    rawPanY.set(-body.y * z)
     setPeekedId(focusMovieId)
     // /archive?focus=... 로 들어온 경우, 처리하고 나면 주소창에서 지운다 —
     // 안 그러면 새로고침할 때마다 계속 같은 별로 다시 팬된다. 서버 데이터를
@@ -192,7 +191,31 @@ export function MovieUniverse({
     if (window.location.search.includes('focus=')) {
       window.history.replaceState(null, '', window.location.pathname)
     }
-  }, [focusMovieId, bodies, rawZoom, rawPanX, rawPanY])
+  }, [focusMovieId])
+
+  // peekedId가 바뀔 때마다 카메라를 그 별로 pan+zoom한다(Figma의 "오브젝트로
+  // 줌인"과 같은 느낌) — 화면 좌표는 pan + world*zoom으로 계산되므로(zoomAt
+  // 참고), 그 별을 화면 중앙(world 원점)에 두려면 pan을 -world*zoom으로
+  // 맞추면 된다. peek을 닫으면(null) 포커스 진입 전 카메라 상태로 되돌아간다 —
+  // "잠깐 들여다보고 제자리로 돌아오는" 느낌을 위한 것.
+  useEffect(() => {
+    if (peekedId) {
+      if (!cameraSnapshotRef.current) {
+        cameraSnapshotRef.current = { zoom: rawZoom.get(), panX: rawPanX.get(), panY: rawPanY.get() }
+      }
+      const body = bodies.find((b) => b.movie.id === peekedId)
+      if (!body) return
+      rawZoom.set(FOCUS_ZOOM)
+      rawPanX.set(-body.x * FOCUS_ZOOM)
+      rawPanY.set(-body.y * FOCUS_ZOOM)
+    } else if (cameraSnapshotRef.current) {
+      const snap = cameraSnapshotRef.current
+      rawZoom.set(snap.zoom)
+      rawPanX.set(snap.panX)
+      rawPanY.set(snap.panY)
+      cameraSnapshotRef.current = null
+    }
+  }, [peekedId, bodies, rawZoom, rawPanX, rawPanY])
 
   // 드래그 중 실시간 미리보기 — 별이 즉시 새 반지름으로 반응해야 한다.
   const handleDragStrength = useCallback(
@@ -402,6 +425,17 @@ export function MovieUniverse({
     }
   }, [rawZoom, rawPanX, rawPanY, handlePeek])
 
+  // 별에 포커스한 상태에서는 언제든 Escape로 빠져나올 수 있어야 한다 — 잘못
+  // 눌렀을 때를 위한 안전장치. 배경 클릭/터치, 별 재클릭, 고정 "나가기" 버튼과
+  // 함께 "빠져나오는 방법"을 여러 개 겹쳐 둔다.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handlePeek(null)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [handlePeek])
+
   // 몇 초간 아무 조작이 없으면 힌트를 아주 옅게 띄운다. 조작이 시작되는 순간
   // 바로 사라지고, 다시 가만히 있으면 또 뜬다 — 강요가 아니라 옆에서 살짝 건드리는 정도.
   const showHint = useIdleHint(containerRef, showIdleHint, UNIVERSE_IDLE_EVENTS, IDLE_HINT_DELAY)
@@ -455,6 +489,19 @@ export function MovieUniverse({
           />
         ))}
       </motion.div>
+
+      {/* 별에 포커스된 동안 항상 보이는 나가기 버튼 — 마우스 위치나 키보드와
+          무관하게 항상 접근 가능한 탈출구. 배경 클릭/터치, 별 재클릭, Escape와
+          더해 "언제든 빠져나올 수 있어야 한다"를 여러 경로로 보장한다. */}
+      {peekedId && (
+        <button
+          type="button"
+          onClick={() => handlePeek(null)}
+          className="absolute left-4 top-4 z-[60] text-[10px] tracking-[0.3em] text-white/40 outline-none transition-colors duration-500 hover:text-white/80"
+        >
+          ← 나가기
+        </button>
+      )}
 
       {showIdleHint && (
         <motion.div

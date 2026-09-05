@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { AnimatePresence, motion, type MotionValue } from 'framer-motion'
+import { motion, useTransform, type MotionValue } from 'framer-motion'
 import type { Movie } from '@/data/movies'
 import { DURATION, EASE_SLOW } from '@/lib/motion'
 import { MIN_RADIUS, MAX_RADIUS, clampRadius, gravityForRadius } from '@/lib/universeLayout'
@@ -119,19 +119,72 @@ export function MovieBody({
   const suppressClickRef = useRef(false)
   const lastStrengthRef = useRef(0)
 
-  // 앞면(포스터)/뒷면(내 평점·메모·액션) 중 뭘 보여줄지 — 열람이 닫히면 다음에
-  // 다시 열었을 때 항상 앞면부터 보이도록 리셋한다.
-  const [showBack, setShowBack] = useState(false)
   // 포스터 경로는 있는데 실제 로드가 실패하면 브라우저 기본 깨진 이미지 아이콘
-  // 대신 그냥 안 보이게 한다 — MoviePeekPanel의 앞면과 같은 이유.
+  // 대신 그냥 안 보이게 한다.
   const [posterFailed, setPosterFailed] = useState(false)
+  // 줌인해도 감상 이력/액션 패널의 글자 크기는 항상 일정하게 유지한다(지도
+  // 라이브러리가 마커 라벨에 흔히 쓰는 역스케일 패턴) — 포스터/제목은 줌을
+  // 그대로 따라 커지되, 텍스트가 많은 패널까지 커지면 확대할수록 오히려 읽기
+  // 어려워진다.
+  const inverseZoom = useTransform(zoomScale, (z) => 1 / (z || 1))
 
+  // 좁은(모바일) 화면에서는 포스터 옆/아래 어디에 붙여도 결국 뷰포트 밖으로
+  // 잘리는 경우가 계속 나왔다 — "포스터 기준으로 남은 공간"이라는 접근 자체가
+  // 모바일에선 너무 불안정했다(포스터가 화면 어디쯤 있는지가 줌 배율/드리프트/
+  // 카메라 스프링 진행 상태에 따라 계속 달라짐). 그래서 좁은 화면에서는 아예
+  // 포스터 위치와 무관하게 화면 하단에 고정된 "바텀시트"로 뗀다 — 항상 화면
+  // 자체를 기준으로 하니 포스터가 어디 있든 반드시 화면 안에 들어온다. 넓은
+  // 화면(포스터 옆 배치)에서는 기존처럼 포스터 옆에 계속 붙여서 보여준다.
+  const [isNarrowViewport, setIsNarrowViewport] = useState(false)
   useEffect(() => {
-    if (!peeked) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setShowBack(false)
-    }
+    if (!peeked) return
+    const mq = window.matchMedia('(max-width: 639px)')
+    const update = () => setIsNarrowViewport(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
   }, [peeked])
+
+  // 넓은 화면(포스터 옆 배치) 전용 — 패널이 포스터 오른쪽 끝과 같은 높이에서
+  // 시작하므로, 포스터+제목/장르 묶음의 실제 화면 좌표를 재서 남은 공간만큼만
+  // 최대 높이를 준다. 좁은 화면(바텀시트)에서는 이 계산이 필요 없다 — 화면
+  // 높이의 일정 비율로 고정하면 되고, 포스터 위치와 무관하다.
+  const peekAnchorRef = useRef<HTMLDivElement>(null)
+  const [panelMaxHeightPx, setPanelMaxHeightPx] = useState<number | null>(null)
+  useEffect(() => {
+    if (!peeked) return
+
+    if (isNarrowViewport) {
+      const measure = () => setPanelMaxHeightPx(Math.round(window.innerHeight * 0.55))
+      measure()
+      window.addEventListener('resize', measure)
+      return () => window.removeEventListener('resize', measure)
+    }
+
+    const bottomMargin = 24
+    const measure = () => {
+      const rect = peekAnchorRef.current?.getBoundingClientRect()
+      if (!rect) return
+      setPanelMaxHeightPx(Math.max(120, window.innerHeight - rect.top - bottomMargin))
+    }
+
+    measure()
+    // 포커스 카메라의 pan/zoom 스프링이 자리 잡을 때까지(대략 0.6초) 매
+    // 프레임 다시 재서, 최종적으로 카메라가 멈춘 자리 기준 값으로 수렴시킨다.
+    let raf = 0
+    const start = performance.now()
+    const tick = (now: number) => {
+      measure()
+      if (now - start < 600) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+
+    window.addEventListener('resize', measure)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', measure)
+    }
+  }, [peeked, isNarrowViewport])
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (!draggable || e.pointerType !== 'mouse' || e.button !== 0) return
@@ -187,18 +240,16 @@ export function MovieBody({
   // 우주 전체가 재배치되는 게 이상하다는 지적이 있었다(리뷰 하나 읽자고 클릭했는데
   // 관계도가 통째로 바뀌는 문제) — 그래서 둘을 완전히 분리했다.
   //
-  // 이미 열람 중인 별을 다시 클릭하면 닫지 않고 뒤집는다(포스터 ↔ 내 평점/메모) —
-  // 닫기는 여백 클릭이나 패널의 "닫기" 버튼이 대신 맡는다.
+  // 이미 열람(포커스) 중인 별을 다시 클릭하면 닫힌다 — 탭하면 카메라가 확대해서
+  // 다가가고, 다시 탭하면 원래 보던 곳으로 돌아오는 대칭적인 토글. 여백 클릭/
+  // Escape/화면 고정 "나가기" 버튼도 같은 동작(onPeek(null))으로 이어진다 —
+  // "언제든 빠져나올 수 있어야 한다"는 요구를 여러 경로로 충족한다.
   const handleClick = () => {
     if (suppressClickRef.current) {
       suppressClickRef.current = false
       return
     }
-    if (!peeked) {
-      onPeek?.(movie.id)
-      return
-    }
-    setShowBack((v) => !v)
+    onPeek?.(peeked ? null : movie.id)
   }
 
   // 관계(중력)가 강할수록 궤도가 안정적이다(작은 진폭, 짧은 주기).
@@ -224,6 +275,15 @@ export function MovieBody({
   const glowOpacity = (0.4 + ratingStrength * 0.35) * TIER_OPACITY[tier]
   const glowSpread = 3 + ratingStrength * 6
 
+  // 별끼리 가까이 있으면(특히 far 여러 개가 몰린 자리) 탭 영역(-m-3 p-3)이 서로
+  // 겹친다 — 겹친 자리를 클릭했을 때 어느 별이 반응할지가 DOM 순서(=movies 목록
+  // 순서, 화면상 위치와 무관)로 정해지면 "분명 이 포스터를 눌렀는데 다른(안 보이는)
+  // 별이 열린다"거나 아예 반응이 없는 것처럼 느껴진다. 중심에 가까운(반지름이
+  // 작은=관계가 강한) 별이 실제로도 더 크고 앞에 있는 느낌이니, 그 순서대로
+  // 겹친 자리의 우선권을 준다 — "가까운 게 먼 걸 가린다"는 자연스러운 규칙.
+  const radius = Math.hypot(x, y)
+  const proximityZIndex = Math.round(MAX_RADIUS - radius)
+
   return (
     // 위치 레이어: 중심이 바뀌면 모든 영화가 새 좌표로 부드럽게 이동한다(순간이동 없음).
     // peek 패널 내부의 z-10은 "같은 별 안에서만" 유효하다 — 다른 별이 DOM 순서상
@@ -232,7 +292,7 @@ export function MovieBody({
     // 모든 별보다 위로 올려서 이 문제를 원천적으로 막는다.
     <motion.div
       className="absolute left-1/2 top-1/2"
-      style={{ zIndex: peeked ? 50 : 'auto' }}
+      style={{ zIndex: peeked ? 1000 : proximityZIndex }}
       initial={{ x, y }}
       animate={{ x, y }}
       transition={{ duration: isDragging ? 0 : DURATION.approach, ease: EASE_SLOW }}
@@ -245,9 +305,10 @@ export function MovieBody({
       <div className="-translate-x-1/2 -translate-y-1/2">
       {/* 흔들림(궤도) 레이어: 위치 이동과 별개로 항상 제자리에서 미세하게 떠 있다. */}
       <motion.div
+        ref={peekAnchorRef}
         className="group relative flex flex-col items-center"
         initial={isCore ? undefined : { x: -driftX, y: -driftY }}
-        animate={isCore ? undefined : { x: [-driftX, driftX, -driftX], y: [-driftY, driftY, -driftY] }}
+        animate={isCore || peeked ? undefined : { x: [-driftX, driftX, -driftX], y: [-driftY, driftY, -driftY] }}
         transition={isCore ? undefined : { duration, repeat: Infinity, ease: 'easeInOut' }}
       >
         {/* core와 위성이 항상 같은 종류의 요소(button)를 쓴다 — 그래야 중심이
@@ -258,11 +319,10 @@ export function MovieBody({
             작은 포스터 미리보기가 또 있었는데, 포스터가 늘 보이는 지금은 그게
             같은 정보를 두 번 보여주는 중복이었다. 탭 영역(-m-3 p-3)은 실제
             보이는 포스터보다 넉넉하게 둬서, tier가 작아도(far) 누르기 어렵지 않게 한다. */}
-        {/* peek이 열리면 이 버튼 자체가 사라진다 — 대신 MoviePeekPanel의 바깥
-            컨테이너가 같은 layoutId를 이어받아서, 포스터가 "그 자리에서 커져서
-            카드가 되는" 것처럼 프레이머모션이 자동으로 위치/크기를 보간한다.
-            둘이 동시에 떠 있으면 같은 layoutId가 둘이라 애니메이션이 꼬인다. */}
-        {!peeked && (
+        {/* peek(열람)해도 이 버튼은 사라지지 않는다 — 열람은 이제 별도 카드로
+            "바뀌는" 게 아니라 카메라가 이 별로 확대해서 다가가는 것이고, 이
+            포스터 자체가 그 확대의 대상이다(MovieUniverse의 focus 이펙트).
+            다시 누르면 열람이 닫힌다(대칭적인 토글). */}
         <motion.button
           type="button"
           data-star=""
@@ -272,7 +332,7 @@ export function MovieBody({
           onPointerMove={draggable ? handlePointerMove : undefined}
           onPointerUp={draggable ? handlePointerUp : undefined}
           onPointerCancel={draggable ? handlePointerUp : undefined}
-          aria-label={clickable ? `${movie.title} 열람하기` : movie.title}
+          aria-label={clickable ? `${movie.title} ${peeked ? '닫기' : '열람하기'}` : movie.title}
           className={`relative -m-3 flex select-none items-center justify-center border-0 bg-transparent p-3 ${
             clickable
               ? 'cursor-pointer focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-4 focus-visible:outline-white/40'
@@ -280,7 +340,6 @@ export function MovieBody({
           }`}
         >
           <motion.span
-            layoutId={`star-${movie.id}`}
             className="relative block overflow-visible rounded-sm"
             animate={{ width: posterSize.w, height: posterSize.h }}
             transition={{ duration: DURATION.approach, ease: EASE_SLOW }}
@@ -335,28 +394,28 @@ export function MovieBody({
             )}
           </motion.span>
         </motion.button>
-        )}
 
         <div className="mt-2 text-center">
-          {/* peek 패널의 앞면이 제목/연도/감독을 다시 보여주므로, peek 중엔 여기서
-              중복으로 안 보여준다. */}
-          {!peeked && (
-            <>
-              {/* 제목이 포스터보다 몇 배는 넓게 한 줄로 쭉 늘어나면, 좁은
-                  포스터랑 같은 덩어리처럼 안 보이고 따로 떨어져 보인다 —
-                  포스터 폭과 비슷하게 줄바꿈되게 한다(최대 2줄, 그 이상은 자름). */}
-              <div className="line-clamp-2 max-w-28 text-[11px] leading-snug tracking-[0.08em] text-white/70">
-                {movie.title}
-              </div>
-              <div className="mt-0.5 max-w-28 truncate text-[9px] tracking-[0.15em] text-white/35">
-                {movie.year} · {movie.director}
-              </div>
-            </>
+          {/* 제목/연도/감독은 열람 여부와 무관하게 항상 보인다 — 더 이상 별도의
+              "앞면 카드"가 없으니 여기가 유일한 표시 자리다. */}
+          <div className="line-clamp-2 max-w-28 text-[11px] leading-snug tracking-[0.08em] text-white/70">
+            {movie.title}
+          </div>
+          <div className="mt-0.5 max-w-28 truncate text-[9px] tracking-[0.15em] text-white/35">
+            {movie.year} · {movie.director}
+          </div>
+
+          {/* 장르는 평소엔 안 보여준다 — 화면에 별이 여러 개일 때 잡음만 는다.
+              열람 중일 때만, 여유가 생긴 이 순간에만 보여준다. */}
+          {peeked && movie.genres.length > 0 && (
+            <div className="mt-0.5 max-w-[200px] text-center text-[9px] leading-relaxed tracking-[0.1em] text-white/30">
+              {movie.genres.join(' · ')}
+            </div>
           )}
 
-          {/* 클릭(peek)이 시작되면 이 수동적인 블록은 숨고, 대신 이력/액션까지
-              포함한 MoviePeekPanel이 뜬다 — 둘을 동시에 보여주면 같은 정보가
-              두 번 겹쳐 보인다. 포스터는 이제 별 자체라 여기서 다시 안 보여준다. */}
+          {/* 열람 중이 아닐 때만 보이는 아주 작은 평점/메모 미리보기 — 클릭 없이도
+              드러나는 훅이다. 열람 중엔 아래 패널이 같은 내용을 더 자세히 보여주므로
+              중복을 피해 숨긴다. */}
           {!peeked && hasDetail && (
             <div className="pointer-events-none mt-3 flex w-28 flex-col items-center gap-1.5">
               {movie.rating && (
@@ -366,8 +425,6 @@ export function MovieBody({
                 </div>
               )}
               {movie.note && (
-                // 클릭 안 해도 자연스럽게 드러나는 미리보기라서, 메모가 아무리 길어도
-                // 화면을 뒤덮지 않도록 2줄로 자른다 — 전체 메모는 클릭(peek)하면 보인다.
                 <div className="line-clamp-2 max-w-28 text-center text-[9px] leading-relaxed tracking-wide text-white/30">
                   {movie.note}
                 </div>
@@ -375,41 +432,69 @@ export function MovieBody({
             </div>
           )}
 
-          {/* 화면 중앙에 크게 띄운다 — 우주(줌/팬 transform이 걸린 조상)의 좌표계
-              안에 그대로 두면 position:fixed가 뷰포트가 아니라 그 transform
-              기준으로 잡혀서 확대/이동할 때 같이 움직여버린다. 포탈로
-              document.body에 바로 그려서 그 문제를 피한다 — layoutId 공유
-              애니메이션은 포탈을 넘어서도 정상 동작한다(framer-motion이 실제
-              화면 좌표를 기준으로 계산하기 때문). */}
-          {typeof document !== 'undefined' &&
+          {/* 열람(포커스) 패널 — 넓은 화면에서는 카메라가 이 별로 확대해서
+              다가온 뒤(MovieUniverse의 focus 이펙트) 포스터 오른쪽에 인라인으로
+              나타난다. 이 별과 같은 world-space 레이어 안에 있어서 pan/zoom을
+              그대로 따라오고, 별도의 위치 추적 코드가 필요 없다. 대신 내용까지
+              그대로 커지면 확대할수록 오히려 읽기 어려워지므로 inverseZoom으로
+              역스케일해서 화면상 크기를 항상 일정하게 유지한다(지도
+              라이브러리의 마커 라벨과 같은 패턴).
+              반드시 absolute여야 한다 — 일반 흐름에 두면(이전 버전) 메모가 긴
+              감상일 때 이 패널의 높이가 포스터+제목을 담은 세로 묶음의 전체
+              높이에 더해지고, 그 묶음 전체를 -50%로 가운데 정렬하다 보니 포스터
+              자체가 화면 중심에서 위로 밀려나 버렸다(포스터가 화면 밖으로
+              나가버리는 버그). absolute로 빼면 이 패널은 부모의 크기 계산에서
+              완전히 제외되어, 포스터는 항상 카메라가 조준한 자리에 그대로 있다. */}
+          {peeked && !isNarrowViewport && (
+            <motion.div
+              className="pointer-events-auto absolute"
+              style={{ left: '100%', top: 0, marginLeft: 16, scale: inverseZoom, transformOrigin: 'top left' }}
+            >
+              <MoviePeekPanel
+                movie={movie}
+                center={center}
+                editable={!!editable}
+                onGuestMutate={onGuestMutate}
+                existingByTmdbId={existingByTmdbId}
+                initialCardUrl={initialCardUrl}
+                maxHeightPx={panelMaxHeightPx}
+                onClose={() => onPeek?.(null)}
+                onRecenter={onSelect ? () => onSelect(movie.id) : undefined}
+              />
+            </motion.div>
+          )}
+
+          {/* 좁은(모바일) 화면에서는 포스터 옆/아래 어디에 붙여도 포스터가
+              어디쯤 있느냐(줌 배율, 드리프트, 카메라 스프링 진행 상태)에 따라
+              계속 화면 밖으로 잘렸다 — "포스터 기준으로 남은 공간"이라는
+              전제 자체가 좁은 화면에서는 불안정했다. 그래서 포스터 위치와
+              완전히 무관하게, 화면 자체 하단에 고정된 바텀시트로 띄운다.
+              world-space 레이어(줌/팬이 걸린 조상) 밖인 document.body로
+              포탈해야 한다 — 안에 그대로 두면 position:fixed가 뷰포트가 아니라
+              그 transform 조상을 기준으로 계산돼서 확대/이동할 때 같이
+              움직여버린다(MoviePeekPanel이 예전에 화면 중앙 팝업이던 시절과
+              같은 이유). 화면 자체를 기준으로 하니 포스터가 어디 있든, 얼마나
+              확대돼 있든 상관없이 반드시 화면 안에 들어온다 — 그래서 역스케일도
+              필요 없다(애초에 줌이 안 걸린 레이어에 있으니까). */}
+          {peeked &&
+            isNarrowViewport &&
+            typeof document !== 'undefined' &&
             createPortal(
-              <AnimatePresence>
-                {peeked && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.4, ease: EASE_SLOW }}
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-6"
-                    onClick={() => onPeek?.(null)}
-                  >
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <MoviePeekPanel
-                        movie={movie}
-                        center={center}
-                        editable={!!editable}
-                        onGuestMutate={onGuestMutate}
-                        existingByTmdbId={existingByTmdbId}
-                        initialCardUrl={initialCardUrl}
-                        showBack={showBack}
-                        onFlip={() => setShowBack((v) => !v)}
-                        onClose={() => onPeek?.(null)}
-                        onRecenter={onSelect ? () => onSelect(movie.id) : undefined}
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>,
+              <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[150] flex justify-center px-4 pb-4">
+                <div className="pointer-events-auto w-full max-w-[360px]">
+                  <MoviePeekPanel
+                    movie={movie}
+                    center={center}
+                    editable={!!editable}
+                    onGuestMutate={onGuestMutate}
+                    existingByTmdbId={existingByTmdbId}
+                    initialCardUrl={initialCardUrl}
+                    maxHeightPx={panelMaxHeightPx}
+                    onClose={() => onPeek?.(null)}
+                    onRecenter={onSelect ? () => onSelect(movie.id) : undefined}
+                  />
+                </div>
+              </div>,
               document.body,
             )}
         </div>

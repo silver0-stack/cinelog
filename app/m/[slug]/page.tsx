@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { fetchCardMovie } from './_data'
-import { MovieCardFlip } from '@/components/movie/MovieCardFlip'
+import { MovieShareCard } from '@/components/movie/MovieShareCard'
 import { secondaryNavLinkClass as loginLinkClass } from '@/lib/uiStyles'
 
 export const dynamic = 'force-dynamic'
@@ -69,7 +69,7 @@ export default async function MovieCardPage({ params }: { params: Promise<{ slug
         </Link>
       </div>
 
-      <MovieCardFlip movie={movie} slug={slug} />
+      <MovieShareCard movie={movie} slug={slug} />
     </main>
   )
 }
