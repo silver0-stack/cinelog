@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { AnimatePresence, motion, useTransform, type MotionValue } from 'framer-motion'
+import { AnimatePresence, motion, useMotionValueEvent, useTransform, type MotionValue } from 'framer-motion'
 import type { Movie } from '@/data/movies'
 import { DURATION, EASE_SLOW } from '@/lib/motion'
 import { MIN_RADIUS, MAX_RADIUS, clampRadius, gravityForRadius } from '@/lib/universeLayout'
@@ -61,6 +61,14 @@ const TIER_POSTER_SIZE: Record<Tier, { w: number; h: number }> = {
   far: { w: 40, h: 60 },
 }
 const TIER_OPACITY: Record<Tier, number> = { core: 1, near: 0.9, mid: 0.65, far: 0.5 }
+
+// 전체 우주를 멀리서 훑어볼 때(기본 줌 1)는 별이 여러 개 동시에 보여서, 평점·
+// 메모까지 다 뜨면 복잡해진다는 피드백 — 그렇다고 아예 숨기면 "눌러보고 싶게
+// 만드는 훅"이 사라진다. 그래서 제목/연도/감독은 항상 보이돼(별 자체를 알아보는
+// 데 필요한 최소 정보), 평점/메모/다시보기 표시만 이 배율 이상으로 살짝
+// 줌인했을 때부터 나타나게 한다 — 설정으로 만드는 대신 줌 자체가 "얼마나
+// 자세히 보고 싶은지"를 표현하는 컨트롤이 되게 했다.
+const AMBIENT_DETAIL_ZOOM = 1.15
 
 // 평점(P2-4)은 이제 포스터 앰비언트 글로우의 밝기/크기를 키우는 데 쓴다 — 그
 // 영화 고유의 색 위에 금색을 덧씌우면 포스터가 다 달라도 죄다 노랗게 보인다
@@ -127,6 +135,15 @@ export function MovieBody({
   // 그대로 따라 커지되, 텍스트가 많은 패널까지 커지면 확대할수록 오히려 읽기
   // 어려워진다.
   const inverseZoom = useTransform(zoomScale, (z) => 1 / (z || 1))
+
+  // AMBIENT_DETAIL_ZOOM을 넘겼는지는 렌더링(JSX 표시 여부)에 쓰이므로 스타일
+  // 변환(useTransform)이 아니라 실제 리액트 state가 필요하다 — 줌이 그
+  // 기준선을 넘나들 때만 리렌더하도록 구독한다.
+  const [showAmbientDetail, setShowAmbientDetail] = useState(() => zoomScale.get() >= AMBIENT_DETAIL_ZOOM)
+  useMotionValueEvent(zoomScale, 'change', (latest) => {
+    const next = latest >= AMBIENT_DETAIL_ZOOM
+    setShowAmbientDetail((prev) => (prev === next ? prev : next))
+  })
 
   // 처음엔 "화면 너비 639px 이하 = 좁은 화면"이라는 고정 기준값으로 나눴는데,
   // 그건 "폰이냐 아니냐"만 구분할 뿐 실제로 포스터 오른쪽에 패널(300px)이 들어갈
@@ -412,8 +429,12 @@ export function MovieBody({
               아래(mt-2) 제목과 겹쳐서 도로 걷어냈다 — 제목 위에 무언가 겹치는
               건 어떤 이유로도 감수할 수 없는 레이아웃이라, 원래대로 별점 옆에
               텍스트로 표시한다. 열람 중엔 아래 패널이 같은 내용을 더 자세히
-              보여주므로 중복을 피해 숨긴다. */}
-          {!peeked && (hasDetail || viewingCount > 1) && (
+              보여주므로 중복을 피해 숨긴다.
+              제목/연도/감독과 달리 이건 AMBIENT_DETAIL_ZOOM 이상 줌인했을
+              때만 보인다 — 전체 우주를 멀리서 훑어볼 땐 별마다 평점/메모까지
+              다 뜨면 복잡하다는 피드백. 살짝만 줌인해도(열람할 정도로 가까이
+              안 가도) 드러나서 "눌러보고 싶게 만드는 훅" 역할은 그대로 남는다. */}
+          {!peeked && showAmbientDetail && (hasDetail || viewingCount > 1) && (
             <div className="pointer-events-none mt-3 flex w-28 flex-col items-center gap-1.5">
               {(movie.rating || viewingCount > 1) && (
                 <div className="flex items-center gap-1.5 text-[9px] tracking-[0.2em] text-white/40">
