@@ -63,6 +63,13 @@ export function latestWatchedAt(movie: Movie): string {
   return movie.viewings?.[0]?.watchedAt ?? ''
 }
 
+/** "우주 성장 히스토리" 스크럽에서 이 영화가 언제 우주에 처음 나타났는지 —
+ * viewings는 항상 최신순 정렬이므로 마지막 항목이 가장 이른 감상이다. */
+export function firstWatchedAt(movie: Movie): string {
+  const viewings = movie.viewings
+  return viewings && viewings.length > 0 ? viewings[viewings.length - 1].watchedAt : ''
+}
+
 /**
  * logged_movies 행들과 viewings 행들을 합쳐서 Movie[]로 만든다. 순수 함수라(supabase를
  * 직접 호출하지 않는다) /archive와 /u/[slug] 양쪽 서버 컴포넌트에서 그대로 재사용한다.

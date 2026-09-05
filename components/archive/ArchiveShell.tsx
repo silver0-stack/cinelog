@@ -1,17 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { MovieUniverse } from '@/components/universe/MovieUniverse'
+import { UniverseHistoryRail } from '@/components/universe/UniverseHistoryRail'
 import { FadeIn } from '@/components/archive/FadeIn'
 import { ShareButton } from '@/components/archive/ShareButton'
 import { ArchiveMenu } from '@/components/archive/ArchiveMenu'
 import { MovieSearch } from '@/components/archive/MovieSearch'
 import { LogMovieForm } from '@/components/archive/LogMovieForm'
 import { EASE_SLOW } from '@/lib/motion'
+import { firstWatchedAt } from '@/lib/loggedMovies'
 import type { Movie } from '@/data/movies'
 import type { RewatchedMovie, UniverseInsight } from '@/lib/universeInsights'
+
+// 기록이 이 미만이면 "우주 성장 히스토리" 리플레이가 허전해 보인다는 CLAUDE.md의
+// 리스크 판단(5~10편 미만)에 따라, 메뉴 자체를 숨긴다.
+const MIN_HISTORY_MOVIES = 8
 
 const navLinkClass =
   'text-xs font-light tracking-[0.2em] sm:tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80'
@@ -73,6 +79,17 @@ export function ArchiveShell({
     setAddOpen(false)
   }
 
+  // "우주 성장 히스토리" 범위 — 레이아웃은 그대로 두고 firstWatchedAt만 기준으로
+  // 삼으므로, 서버에 새 쿼리를 보낼 필요 없이 이미 있는 movies로 순수 계산한다.
+  const historyRange = useMemo(() => {
+    if (movies.length < MIN_HISTORY_MOVIES) return null
+    const dates = movies.map(firstWatchedAt).filter(Boolean).sort()
+    if (dates.length === 0) return null
+    return { min: dates[0], max: dates[dates.length - 1] }
+  }, [movies])
+
+  const [historyDate, setHistoryDate] = useState<string | null>(null)
+
   return (
     <main className="relative h-dvh w-screen overflow-hidden bg-black">
       <FadeIn>
@@ -83,8 +100,18 @@ export function ArchiveShell({
           movieCardUrls={movieCardUrls}
           focusMovieId={focusMovieId}
           existingByTmdbId={existingByTmdbId}
+          historyDate={historyDate}
         />
       </FadeIn>
+      {historyRange && historyDate !== null && (
+        <UniverseHistoryRail
+          minDate={historyRange.min}
+          maxDate={historyRange.max}
+          value={historyDate}
+          onChange={setHistoryDate}
+          onExit={() => setHistoryDate(null)}
+        />
+      )}
       {/* 상단 우측 상시 버튼들(검색/+기록/계정 등)이 화면 위쪽을 지나가는 밝은
           포스터·글로우와 겹치면 거의 안 보인다는 피드백 — 그라데이션만으로는
           버튼 글자 자체가 원래 옅어서(text-white/40) 부족했다. 대신 이
@@ -111,7 +138,14 @@ export function ArchiveShell({
         <button type="button" onClick={() => setAddOpen(true)} className={navLinkClass} style={navTextShadow}>
           + 기록
         </button>
-        <ArchiveMenu email={email} insights={insights} rewatched={rewatched} onFocusMovie={setFocusMovieId} />
+        <ArchiveMenu
+          email={email}
+          insights={insights}
+          rewatched={rewatched}
+          onFocusMovie={setFocusMovieId}
+          historyEligible={historyRange !== null}
+          onOpenHistory={() => historyRange && setHistoryDate(historyRange.min)}
+        />
       </div>
 
       <AnimatePresence>

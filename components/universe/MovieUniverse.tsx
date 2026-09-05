@@ -6,6 +6,7 @@ import { movies as staticMovies, type Movie } from '@/data/movies'
 import { calculateMovieGravity } from '@/lib/gravity'
 import { MIN_RADIUS, MAX_RADIUS, MIN_ZOOM, MAX_ZOOM } from '@/lib/universeLayout'
 import { orderPair, upsertEditorialConnection } from '@/lib/editorialConnections'
+import { firstWatchedAt } from '@/lib/loggedMovies'
 import { EASE_SLOW } from '@/lib/motion'
 import { useIdleHint } from '@/lib/useIdleHint'
 import { MovieBody, type Tier } from '@/components/movie/MovieBody'
@@ -67,6 +68,10 @@ type Props = {
   /** tmdbId → 이미 기록한 그 영화의 logged_movie id. "정보 수정"에서 중복 저장을
    * 저장 버튼 누르기 전에 미리 막는 데 쓴다. */
   existingByTmdbId?: Record<number, string>
+  /** "우주 성장 히스토리" 스크럽 값(YYYY-MM-DD) — 있으면 firstWatchedAt이 이
+   * 날짜보다 늦은 위성은 dimmed로 렌더링된다. null/undefined면 평소처럼 전부
+   * 켜진 상태(ArchiveShell 밖의 데모/공유 우주는 이 prop 자체를 안 넘긴다). */
+  historyDate?: string | null
 }
 
 function pairKey(a: string, b: string): string {
@@ -82,6 +87,7 @@ export function MovieUniverse({
   focusMovieId,
   onGuestMutate,
   existingByTmdbId,
+  historyDate,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   // 화면 밖으로 한참 벗어난 별의 렌더링 비용(이미지 2장+blur+무한 흔들림)을
@@ -213,6 +219,10 @@ export function MovieUniverse({
       .map(({ movie, gravity, naturalGravity }) => {
         const angle = movieIndex.get(movie.id)! * GOLDEN_ANGLE
         const radius = MIN_RADIUS + (1 - gravity) * (MAX_RADIUS - MIN_RADIUS)
+        // "우주 성장 히스토리" 스크럽 — 레이아웃(각도/반지름)은 절대 다시 계산하지
+        // 않는다, 지금의 최종 배치 위에서 이 시점에 아직 기록 전인 영화만 dimmed로
+        // 표시한다(core는 호출부에서 별도로 항상 제외).
+        const dimmed = historyDate != null && firstWatchedAt(movie) > historyDate
         return {
           movie,
           gravity,
@@ -220,14 +230,15 @@ export function MovieUniverse({
           tier: tierFor(gravity),
           x: Math.cos(angle) * radius,
           y: Math.sin(angle) * radius,
+          dimmed,
         }
       })
 
     return [
-      { movie: center, gravity: 1, naturalGravity: 1, tier: 'core' as Tier, x: 0, y: 0 },
+      { movie: center, gravity: 1, naturalGravity: 1, tier: 'core' as Tier, x: 0, y: 0, dimmed: false },
       ...satellites,
     ]
-  }, [movies, center, movieIndex, strengthOverrides])
+  }, [movies, center, movieIndex, strengthOverrides, historyDate])
 
   // focusMovieId가 가리키는 별을 peek한다 — 실제 카메라 이동은 아래 peekedId
   // 이펙트가 맡는다(클릭으로 peek할 때와 같은 경로를 타게 하기 위해).
@@ -515,7 +526,7 @@ export function MovieUniverse({
       />
 
       <motion.div className="absolute inset-0" style={{ x: panX, y: panY, scale: zoom }}>
-        {bodies.map(({ movie, gravity, naturalGravity, x, y, tier }) => (
+        {bodies.map(({ movie, gravity, naturalGravity, x, y, tier, dimmed }) => (
           <MovieBody
             key={movie.id}
             movie={movie}
@@ -533,6 +544,7 @@ export function MovieUniverse({
             viewportHeight={viewport.height}
             peeked={movie.id === peekedId}
             anyPeeked={peekedId !== null || peekExiting}
+            dimmed={dimmed}
             editable={editable}
             initialCardUrl={movieCardUrls?.[movie.id] ?? null}
             onSelect={tier === 'core' ? undefined : handleSelect}

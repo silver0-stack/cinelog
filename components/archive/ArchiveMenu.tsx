@@ -15,11 +15,16 @@ export function ArchiveMenu({
   insights,
   rewatched,
   onFocusMovie,
+  historyEligible,
+  onOpenHistory,
 }: {
   email: string
   insights: UniverseInsight[]
   rewatched: RewatchedMovie[]
   onFocusMovie: (id: string) => void
+  /** 기록 수가 리플레이할 만큼 쌓였는지 — 너무 적으면 "히스토리" 메뉴 자체를 숨긴다. */
+  historyEligible: boolean
+  onOpenHistory: () => void
 }) {
   const [guideOpen, setGuideOpen] = useState(false)
   const [patternOpen, setPatternOpen] = useState(false)
@@ -32,6 +37,7 @@ export function ArchiveMenu({
   const menuActions = [
     { label: '가이드', onClick: () => setGuideOpen(true) },
     ...(insights.length > 0 || rewatched.length > 0 ? [{ label: '탐색', onClick: () => setPatternOpen(true) }] : []),
+    ...(historyEligible ? [{ label: '히스토리', onClick: onOpenHistory }] : []),
   ]
 
   return (
