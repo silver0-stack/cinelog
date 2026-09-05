@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { EASE_SLOW } from '@/lib/motion'
 import { secondaryNavLinkClass } from '@/lib/uiStyles'
 import { useClickOutside } from '@/lib/useClickOutside'
+import { OrbitIcon } from '@/components/icons/OrbitIcon'
 import type { RewatchedMovie, UniverseInsight } from '@/lib/universeInsights'
 
 const defaultTriggerClass =
@@ -34,6 +35,12 @@ type Props = {
    * 드롭다운 메뉴의 "탐색" 항목)에서 열고 닫는다. */
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  /** 기록 수가 리플레이할 만큼 쌓였는지 — true면 패널 안에 "히스토리 보기" 줄을
+   * 더한다. 예전엔 이 우주 화면 하단에 "탐색"과 "히스토리" 버튼이 나란히 있었는데,
+   * 좁은 화면에서 두 개가 붙어 있으니 답답해 보인다는 피드백으로 하나로 합쳤다 —
+   * "탐색"을 열면 그 안에서 히스토리로도 갈 수 있게. */
+  historyEligible?: boolean
+  onOpenHistory?: () => void
 }
 
 // 왓챠피디아류 리스트가 못 보여주는 것 — 항목이 아니라 항목 사이의 관계가 만든
@@ -53,6 +60,8 @@ export function UniverseInsightPanel({
   panelClassName,
   open: openProp,
   onOpenChange,
+  historyEligible = false,
+  onOpenHistory,
 }: Props) {
   const controlled = openProp !== undefined
   const [internalOpen, setInternalOpen] = useState(false)
@@ -95,12 +104,17 @@ export function UniverseInsightPanel({
     }
   }, [open])
 
-  if (insights.length === 0 && rewatched.length === 0) return null
+  if (insights.length === 0 && rewatched.length === 0 && !historyEligible) return null
 
   return (
     <>
       {!controlled && (
-        <button type="button" onClick={() => setOpen(!open)} className={triggerClassName ?? defaultTriggerClass}>
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className={`flex items-center gap-1 ${triggerClassName ?? defaultTriggerClass}`}
+        >
+          <OrbitIcon />
           탐색
         </button>
       )}
@@ -161,6 +175,19 @@ export function UniverseInsightPanel({
                 {insight.label} · {insight.value} ({insight.detail})
               </button>
             ))}
+
+            {historyEligible && onOpenHistory && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenHistory()
+                  setOpen(false)
+                }}
+                className="border-t border-white/10 pt-3 text-left text-[10px] font-light tracking-[0.15em] text-white/35 outline-none transition-colors duration-300 hover:text-white/60 sm:text-[11px] sm:tracking-[0.25em]"
+              >
+                히스토리 보기
+              </button>
+            )}
 
             {/* 예전엔 트리거를 다시 누르면 닫혔는데(토글), controlled 모드(계정
                 드롭다운에서 여는 지금)는 그 트리거가 안 보여서 닫을 방법이

@@ -1,0 +1,44 @@
+name: Supabase 백업
+
+# 무료 플랜은 자동 백업이 없다(Supabase 공식 정책) — 매주 한 번 데이터만
+# 덤프해서 개발자 본인 이메일로 첨부 발송한다. 이 저장소는 공개 저장소라
+# GitHub Actions 아티팩트로 올리면 누구나 내려받을 수 있다(공개 저장소의
+# 아티팩트는 공개다) — 그래서 아티팩트에 남기지 않고, 러너가 끝나면 사라지는
+# 임시 파일 상태에서 바로 이메일로 보내고 끝낸다. Resend는 매직링크 이메일
+# 발송용으로 이미 연결해둔 것과 같은 계정/키를 그대로 쓴다.
+on:
+  schedule:
+    - cron: '0 18 * * 0' # 매주 일요일 18:00 UTC(한국 시간 월요일 새벽 3시)
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # --linked(supabase login/link) 대신 연결 문자열을 직접 쓴다 — CI에
+      # 대화형 로그인을 태울 수 없어서다. --data-only는 스키마(테이블 구조)는
+      # 빼고 실제 데이터만 담는다 — 스키마는 마이그레이션 파일로 이미 git에
+      # 있으니 중복해서 백업할 필요가 없다. auth 스키마(로그인 계정)는
+      # 기본적으로 빠진다 — 필요하면 별도로 --schema auth를 추가해야 한다.
+      - name: 데이터 덤프
+        run: supabase db dump --db-url "${{ secrets.SUPABASE_DB_URL }}" --data-only -f backup.sql
+
+      - name: 이메일로 발송
+        run: |
+          BACKUP_B64=$(base64 -w0 backup.sql)
+          curl -fsS https://api.resend.com/emails \
+            -H "Authorization: Bearer ${{ secrets.RESEND_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d @- <<JSON
+          {
+            "from": "${{ secrets.RESEND_FROM_EMAIL }}",
+            "to": ["${{ secrets.BACKUP_EMAIL_TO }}"],
+            "subject": "CINELOG 주간 백업 $(date +%Y-%m-%d)",
+            "text": "자동 생성된 Supabase 데이터 백업이야. backup.sql을 안전한 곳에 옮겨서 보관해줘.",
+            "attachments": [{ "filename": "cinelog-backup-$(date +%Y-%m-%d).sql", "content": "$BACKUP_B64" }]
+          }
+          JSON

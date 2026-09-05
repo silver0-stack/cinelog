@@ -269,10 +269,21 @@ export function MovieUniverse({
     ]
   }, [movies, center, movieIndex, strengthOverrides, historyDate, peekedId, highlightedIds])
 
+  // 검색/재관람 목록에서 고른 영화는 focusMovieId로 넘어오는데, 부모(ArchiveShell
+  // 등)가 이 값을 다시 null로 되돌리지 않는다 — 그래서 이 값 자체는 열람을 닫아도
+  // 계속 남아있다. bodies는 peekedId가 바뀔 때마다 새 배열로 다시 만들어지므로
+  // (위 useMemo 의존성 참고), "나가기"로 peekedId를 null로 되돌리기만 해도 이
+  // 이펙트가 bodies 변경으로 다시 실행돼 같은 focusMovieId를 또 열어버린다 —
+  // 줌아웃이 아예 안 되는 것처럼 보이는 원인이었다. 이미 처리한 focusMovieId는
+  // 이 ref에 기억해두고, 같은 값이면(닫혔다 다시 열리는 게 아니라 그냥 남아있는
+  // 값이면) 무시한다.
+  const consumedFocusIdRef = useRef<string | null>(null)
+
   // focusMovieId가 가리키는 별을 peek한다 — 실제 카메라 이동은 아래 peekedId
   // 이펙트가 맡는다(클릭으로 peek할 때와 같은 경로를 타게 하기 위해).
   useEffect(() => {
     if (!focusMovieId) return
+    if (consumedFocusIdRef.current === focusMovieId) return
     // 검색/재관람 목록은 클릭(MovieBody의 clickable=!dimmed 가드)을 거치지
     // 않고 이 경로로 곧장 열람을 연다 — 히스토리 스크럽 중 아직 dimmed인
     // 별까지 이걸로 우회해서 열어버리면(제목 없는 흐린 점 옆에 평점/메모
@@ -282,6 +293,7 @@ export function MovieUniverse({
     // 깜빡임 방지 로직의 기준 ref가 실제 상태와 어긋난다).
     const targetDimmed = bodies.find((b) => b.movie.id === focusMovieId)?.dimmed
     if (targetDimmed) return
+    consumedFocusIdRef.current = focusMovieId
     setPeeked(focusMovieId)
     // /archive?focus=... 로 들어온 경우, 처리하고 나면 주소창에서 지운다 —
     // 안 그러면 새로고침할 때마다 계속 같은 별로 다시 팬된다. 서버 데이터를
@@ -609,7 +621,12 @@ export function MovieUniverse({
         </button>
       )}
 
-      {showIdleHint && (
+      {/* historyDate가 있으면(히스토리 스크럽 중) UniverseHistoryRail이 화면
+          하단 거의 같은 자리(bottom-6)에 자기 설명 문구를 띄운다 — 이 idle
+          힌트(bottom-12)와 위치가 겹쳐서 두 문구가 서로 겹쳐 읽혔다. 히스토리
+          모드에서는 이 힌트가 어차피 안 맞는 얘기이기도 해서(줌/클릭 안내인데
+          지금은 스크럽 중) 아예 끈다. */}
+      {showIdleHint && historyDate == null && (
         <motion.div
           className="pointer-events-none absolute bottom-12 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-light tracking-[0.3em] text-white/30"
           style={{ textShadow: '0 0 10px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.9)' }}

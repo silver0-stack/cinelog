@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { EASE_SLOW } from '@/lib/motion'
 import { useClickOutside } from '@/lib/useClickOutside'
+import { SearchIcon } from '@/components/icons/SearchIcon'
 
 const navLinkClass =
-  'text-xs font-light tracking-[0.2em] sm:tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80'
+  'flex items-center gap-1 text-xs font-light tracking-[0.2em] sm:tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80'
 
 // <button>은 부모의 text-shadow를 자동으로 물려받지 않는(폼 컨트롤이라 그런)
 // 브라우저 기본 동작이 있어서, 화면 위쪽의 밝은 포스터 위에서도 글자가
@@ -26,6 +27,14 @@ type SearchEntry = { id: string; title: string; director: string }
 // 3초 가까이 걸렸다 — 이미 다 로드된 영화로 "카메라만" 옮기는 거라 서버 왕복이
 // 필요 없다. 그래서 Link 대신 onSelect 콜백으로 바꿨다(ArchiveShell이 들고
 // 있는 focusMovieId state를 직접 바꾼다).
+//
+// 검색 결과 패널을 예전엔 이 버튼 자신의 `relative` wrapper 기준
+// `absolute right-0`로 띄웠다 — "검색" 버튼이 상단 버튼 줄의 맨 끝이었을 땐
+// 그 오른쪽 끝이 화면 오른쪽 끝과 같아서 문제가 없었는데, 가이드/+ 기록/계정이
+// 그 뒤에 추가되면서 "검색"이 줄 중간으로 밀렸다 — 그 좁은 wrapper 기준으로
+// `right-0`를 계속 쓰니 패널이 화면 왼쪽 밖으로 잘려나갔다(모바일에서 실제로
+// 확인됨). 트리거가 줄의 몇 번째에 있든 항상 화면 오른쪽 모서리에 붙도록
+// `fixed` + 실제 뷰포트 기준 오프셋으로 바꿨다.
 export function MovieSearch({ searchIndex, onSelect }: { searchIndex: SearchEntry[]; onSelect: (id: string) => void }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -53,6 +62,7 @@ export function MovieSearch({ searchIndex, onSelect }: { searchIndex: SearchEntr
   return (
     <div ref={panelRef} className="relative">
       <button type="button" onClick={() => setOpen((v) => !v)} className={navLinkClass} style={navTextShadow}>
+        <SearchIcon />
         검색
       </button>
       <AnimatePresence>
@@ -63,7 +73,7 @@ export function MovieSearch({ searchIndex, onSelect }: { searchIndex: SearchEntr
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4, ease: EASE_SLOW }}
             style={{ width: 'min(72vw, 240px)' }}
-            className="absolute right-0 top-9 z-20 flex flex-col gap-2 border border-white/10 bg-black px-3 py-3"
+            className="fixed right-4 top-16 z-20 flex flex-col gap-2 border border-white/10 bg-black px-3 py-3 sm:right-6"
           >
             <input
               ref={inputRef}

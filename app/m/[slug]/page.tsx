@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const description = [ratingLine(movie.rating), `${movie.year} · ${movie.director}`].filter(Boolean).join(' · ')
 
   return {
-    title: `${movie.title} — CINELOG`,
+    title: `${movie.title} · CINELOG`,
     description,
     openGraph: { title: movie.title, description, type: 'website' },
     twitter: { card: 'summary_large_image', title: movie.title, description },

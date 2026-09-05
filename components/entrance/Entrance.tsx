@@ -189,7 +189,11 @@ export function Entrance({ onEnter, userEmail }: Props) {
       </Section>
 
       <footer className="flex w-full flex-col items-center gap-4 px-6 py-16">
-        <p className="text-[9px] font-light tracking-[0.5em] text-white/20">CINELOG</p>
+        {/* "시네로그"(한글 표기)가 화면 어딘가에는 실제로 보여야 검색엔진이
+            title/설명뿐 아니라 페이지 본문에서도 그 연관성을 확인할 수 있다 —
+            히어로의 절제된 워드마크는 그대로 두고, 이미 옅게 처리된 푸터에만
+            눈에 안 띄게 얹는다. */}
+        <p className="text-[9px] font-light tracking-[0.5em] text-white/20">CINELOG · 시네로그</p>
       </footer>
     </div>
   )

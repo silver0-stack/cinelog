@@ -1,11 +1,10 @@
 import Link from 'next/link'
 import { unstable_cache } from 'next/cache'
 import { createPublicClient } from '@/lib/supabase/public'
-import { MovieUniverse } from '@/components/universe/MovieUniverse'
-import { FadeIn } from '@/components/archive/FadeIn'
+import { SharedUniverseShell } from '@/components/universe/SharedUniverseShell'
 import { combineLoggedMovies, type LoggedMovieRow, type ViewingRow } from '@/lib/loggedMovies'
 import { attachEditorialConnections, type EditorialConnectionRow } from '@/lib/editorialConnections'
-import { GuidePanel } from '@/components/guide/GuidePanel'
+import { summarizeUniverse, rewatchedMovies } from '@/lib/universeInsights'
 import { secondaryNavLinkClass as loginLinkClass } from '@/lib/uiStyles'
 
 // revalidate route 설정은 fetch() 호출에만 적용된다 — Supabase 클라이언트는
@@ -73,19 +72,8 @@ export default async function SharedUniversePage({ params }: { params: Promise<{
     combineLoggedMovies(result.rows, result.viewingRows),
     result.connectionRows,
   )
+  const insights = summarizeUniverse(movies)
+  const rewatched = rewatchedMovies(movies)
 
-  return (
-    <main className="relative h-dvh w-screen overflow-hidden bg-black">
-      <FadeIn>
-        <MovieUniverse movies={movies} defaultCenterId={movies[0].id} showIdleHint />
-      </FadeIn>
-      <GuidePanel
-        variant="shared"
-        triggerClassName="absolute right-6 top-6 z-10 text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
-      />
-      <Link href="/login" className={`absolute bottom-6 right-6 z-10 ${loginLinkClass}`}>
-        나도 기록하기
-      </Link>
-    </main>
-  )
+  return <SharedUniverseShell movies={movies} insights={insights} rewatched={rewatched} />
 }

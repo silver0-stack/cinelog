@@ -1,26 +1,30 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { MovieUniverse } from '@/components/universe/MovieUniverse'
 import { UniverseHistoryRail } from '@/components/universe/UniverseHistoryRail'
 import { FadeIn } from '@/components/archive/FadeIn'
 import { ShareButton } from '@/components/archive/ShareButton'
-import { ArchiveMenu } from '@/components/archive/ArchiveMenu'
+import { AccountMenu } from '@/components/archive/AccountMenu'
+import { UniverseInsightPanel } from '@/components/archive/UniverseInsightPanel'
 import { MovieSearch } from '@/components/archive/MovieSearch'
 import { LogMovieForm } from '@/components/archive/LogMovieForm'
+import { GuidePanel } from '@/components/guide/GuidePanel'
 import { EASE_SLOW } from '@/lib/motion'
-import { firstWatchedAt } from '@/lib/loggedMovies'
+import { computeHistoryRange } from '@/lib/loggedMovies'
 import type { Movie } from '@/data/movies'
 import type { RewatchedMovie, UniverseInsight } from '@/lib/universeInsights'
 
-// 기록이 이 미만이면 "우주 성장 히스토리" 리플레이가 허전해 보인다는 CLAUDE.md의
-// 리스크 판단(5~10편 미만)에 따라, 메뉴 자체를 숨긴다.
-const MIN_HISTORY_MOVIES = 8
-
 const navLinkClass =
   'text-xs font-light tracking-[0.2em] sm:tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80'
+
+// 데모/공유 우주와 같은 자리, 같은 스타일 — "탐색"(+히스토리)이 로그인 여부와
+// 상관없이 항상 화면 하단 왼쪽에 있다는 걸 일관되게 유지한다.
+const bottomLeftTriggerClass =
+  'absolute bottom-6 left-4 z-20 text-xs font-light tracking-[0.2em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80 sm:left-6 sm:tracking-[0.4em]'
 
 // <button>은 부모의 text-shadow를 자동으로 물려받지 않는(폼 컨트롤이라 그런)
 // 브라우저 기본 동작이 있어서, 화면 위쪽의 밝은 포스터 위에서도 글자가
@@ -81,12 +85,8 @@ export function ArchiveShell({
 
   // "우주 성장 히스토리" 범위 — 레이아웃은 그대로 두고 firstWatchedAt만 기준으로
   // 삼으므로, 서버에 새 쿼리를 보낼 필요 없이 이미 있는 movies로 순수 계산한다.
-  const historyRange = useMemo(() => {
-    if (movies.length < MIN_HISTORY_MOVIES) return null
-    const dates = movies.map(firstWatchedAt).filter(Boolean).sort()
-    if (dates.length === 0) return null
-    return { min: dates[0], max: dates[dates.length - 1] }
-  }, [movies])
+  // (데모/공유 우주와 같은 계산을 쓴다 — lib/loggedMovies.ts)
+  const historyRange = useMemo(() => computeHistoryRange(movies), [movies])
 
   const [historyDate, setHistoryDate] = useState<string | null>(null)
   const [highlightedIds, setHighlightedIds] = useState<Set<string> | null>(null)
@@ -137,44 +137,61 @@ export function ArchiveShell({
       <div className="absolute right-4 top-4 z-40 flex items-center gap-3 sm:right-6 sm:top-6 sm:gap-8">
         <ShareButton initialUrl={initialShareUrl} />
         <MovieSearch searchIndex={searchIndex} onSelect={setFocusMovieId} />
+        <GuidePanel variant="archive" triggerClassName={navLinkClass} />
         <button type="button" onClick={() => setAddOpen(true)} className={navLinkClass} style={navTextShadow}>
           + 기록
         </button>
-        <ArchiveMenu
-          email={email}
-          insights={insights}
-          rewatched={rewatched}
-          onFocusMovie={setFocusMovieId}
-          onHighlightChange={(ids) => setHighlightedIds(ids ? new Set(ids) : null)}
-          historyEligible={historyRange !== null}
-          onOpenHistory={() => historyRange && setHistoryDate(historyRange.min)}
-        />
+        <AccountMenu email={email} />
       </div>
 
-      <AnimatePresence>
-        {addOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4, ease: EASE_SLOW }}
-            className="themed-scroll fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-black/95 px-6 py-16 sm:items-center"
-            onClick={() => setAddOpen(false)}
-          >
-            <div className="flex w-full max-w-sm flex-col items-center gap-16" onClick={(e) => e.stopPropagation()}>
-              <button
-                type="button"
+      {/* 가이드/탐색/히스토리 전부 예전엔 계정 드롭다운 안에 있었다 — 데모/공유
+          우주에서는 셋 다 화면에 항상 보이는 독립 버튼인데 로그인한 내 우주에서만
+          "계정" 아이콘을 눌러야 나오는 게 일관성이 없다는 피드백. 계정 메뉴는
+          이제 이메일 확인/로그아웃 전용으로만 남기고, 나머지는 데모/공유와 같은
+          자리(가이드는 위 오른쪽 버튼 줄, 탐색+히스토리는 아래 왼쪽)로 옮긴다. */}
+      <UniverseInsightPanel
+        insights={insights}
+        rewatched={rewatched}
+        onFocusMovie={setFocusMovieId}
+        onHighlightChange={(ids) => setHighlightedIds(ids ? new Set(ids) : null)}
+        triggerClassName={bottomLeftTriggerClass}
+        panelClassName="absolute bottom-14 left-4 z-20 sm:left-6"
+        historyEligible={historyRange !== null}
+        onOpenHistory={() => historyRange && setHistoryDate(historyRange.min)}
+      />
+
+      {/* GuidePanel과 같은 이유로 document.body에 포탈한다 — z-index 숫자만으로는
+          믿을 수 없다는 걸 이미 한 번 겪었다(우주 안 위성이 자기만의 스택
+          컨텍스트를 만들어서, 그냥 형제 요소로 두는 것만으로는 부모 트리 어딘가의
+          숨은 스택 컨텍스트에 갇힐 수 있다). 확실하게 벗어나는 쪽을 택한다. */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {addOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.4, ease: EASE_SLOW }}
+                className="themed-scroll fixed inset-0 z-[1100] flex items-start justify-center overflow-y-auto bg-black/95 px-6 py-16 sm:items-center"
                 onClick={() => setAddOpen(false)}
-                className="self-start text-[11px] font-light tracking-[0.35em] text-white/45 outline-none transition-colors duration-500 hover:text-white/85"
               >
-                ← 닫기
-              </button>
-              <h1 className="-mt-10 text-center text-sm font-light tracking-[0.55em] text-white/70">영화 기록하기</h1>
-              <LogMovieForm existingByTmdbId={existingByTmdbId} onFocusMovie={focusAndClose} onSaved={() => router.refresh()} />
-            </div>
-          </motion.div>
+                <div className="flex w-full max-w-sm flex-col items-center gap-16" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => setAddOpen(false)}
+                    className="self-start text-[11px] font-light tracking-[0.35em] text-white/45 outline-none transition-colors duration-500 hover:text-white/85"
+                  >
+                    ← 닫기
+                  </button>
+                  <h1 className="-mt-10 text-center text-sm font-light tracking-[0.55em] text-white/70">영화 기록하기</h1>
+                  <LogMovieForm existingByTmdbId={existingByTmdbId} onFocusMovie={focusAndClose} onSaved={() => router.refresh()} />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
         )}
-      </AnimatePresence>
     </main>
   )
 }

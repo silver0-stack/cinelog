@@ -8,8 +8,13 @@ const isSupabaseConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>
+}) {
   const user = isSupabaseConfigured ? await getUser() : null
+  const { error } = await searchParams
 
   return (
     <main className="relative flex h-dvh w-screen flex-col items-center justify-center gap-16 bg-black">
@@ -41,7 +46,7 @@ export default async function LoginPage() {
           <SignOutButton />
         </div>
       ) : (
-        <LoginForm />
+        <LoginForm authError={error === 'auth'} />
       )}
     </main>
   )

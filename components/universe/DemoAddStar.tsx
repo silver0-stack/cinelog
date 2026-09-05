@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { EASE_SLOW } from '@/lib/motion'
 import { GenreChipPicker } from '@/components/archive/GenreChipPicker'
@@ -129,19 +130,26 @@ export function DemoAddStar({ onAdd }: { onAdd: (movie: Movie) => void }) {
     <>
       {stage === 'closed' && (
         <button type="button" onClick={openSearch} className={`absolute bottom-14 right-6 z-10 ${linkClass}`}>
-          + 내 영화 실험해보기
+          + 영화 등록해보기
         </button>
       )}
 
-      <AnimatePresence>
-        {stage === 'search' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.8, ease: EASE_SLOW }}
-            className="absolute inset-0 z-20 flex items-center justify-center bg-black/95"
-          >
+      {/* 검색/직접입력 모달을 document.body로 포탈한다 — 별을 peek(자세히 보기)한
+          상태에서 이 버튼을 누르면, peek된 별은 MovieBody.tsx에서 zIndex: 1000을
+          받아 여기 z-20보다 훨씬 위에 떠 있어서 이 모달을 완전히 가려버렸다
+          (입력창이 안 보이고 클릭도 안 먹히던 버그의 원인). GuidePanel/+ 기록
+          모달과 같은 이유로 같은 해법을 쓴다. */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {stage === 'search' && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.8, ease: EASE_SLOW }}
+                className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/95"
+              >
             <div className="flex w-full max-w-xs flex-col items-center gap-6">
               <p className="text-center text-[11px] font-light leading-relaxed tracking-widest text-white/30">
                 이 포스터는 저장되지 않아.
@@ -204,19 +212,23 @@ export function DemoAddStar({ onAdd }: { onAdd: (movie: Movie) => void }) {
                 </button>
               </div>
             </div>
-          </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
         )}
-      </AnimatePresence>
 
-      <AnimatePresence>
-        {stage === 'details' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.8, ease: EASE_SLOW }}
-            className="absolute inset-0 z-20 flex items-center justify-center bg-black/95"
-          >
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {stage === 'details' && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.8, ease: EASE_SLOW }}
+                className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/95"
+              >
             <form onSubmit={handleSubmit} className="flex w-full max-w-xs flex-col items-center gap-6">
               <p className="text-center text-[11px] font-light leading-relaxed tracking-widest text-white/30">
                 이 포스터는 저장되지 않아.
@@ -266,9 +278,11 @@ export function DemoAddStar({ onAdd }: { onAdd: (movie: Movie) => void }) {
                 </button>
               </div>
             </form>
-          </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
         )}
-      </AnimatePresence>
 
       <AnimatePresence>
         {stage === 'warning' && (

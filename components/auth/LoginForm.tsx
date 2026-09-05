@@ -3,7 +3,13 @@
 import { useActionState } from 'react'
 import { sendMagicLink } from '@/app/login/actions'
 
-export function LoginForm() {
+// 매직링크는 요청한 그 브라우저에 남겨둔 값(PKCE code verifier)과 짝을 맞춰야
+// 로그인이 완료된다 — 이메일 앱(지메일 앱, 카카오톡 인앱 브라우저 등)에서 링크를
+// 열면 요청했던 브라우저와 다른 곳이 되어 이 짝맞추기가 실패한다. 그럼 콜백이
+// `/login?error=auth`로 돌아오는데, 예전엔 여기서 그냥 빈 폼만 다시 보여줘서
+// "왜 안 되지" 하고 같은 절차를 반복하게 만들었다 — 실패 이유와 해결책(요청했던
+// 그 브라우저에서 다시 받기)을 바로 알려준다.
+export function LoginForm({ authError = false }: { authError?: boolean }) {
   const [state, formAction, pending] = useActionState(sendMagicLink, null)
 
   if (state && 'sent' in state) {
@@ -18,6 +24,13 @@ export function LoginForm() {
 
   return (
     <form action={formAction} className="flex flex-col items-center gap-8">
+      {authError && (
+        <p className="max-w-xs text-center text-xs font-light leading-relaxed tracking-widest text-white/40">
+          링크가 만료됐거나, 요청했던 것과 다른 브라우저(메일 앱 안의 브라우저 등)에서 열렸을 수 있어.
+          <br />
+          아래에서 새로 받아서, 받은 편지함 앱이 아니라 원래 쓰던 브라우저에서 열어봐.
+        </p>
+      )}
       <input
         type="email"
         name="email"

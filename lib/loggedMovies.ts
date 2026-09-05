@@ -70,6 +70,20 @@ export function firstWatchedAt(movie: Movie): string {
   return viewings && viewings.length > 0 ? viewings[viewings.length - 1].watchedAt : ''
 }
 
+// 기록이 이 미만이면 "우주 성장 히스토리" 리플레이가 허전해 보인다는 CLAUDE.md의
+// 리스크 판단(5~10편 미만)에 따라, 메뉴 자체를 숨긴다. archive/데모/공유 우주
+// 셋 다 같은 기준을 쓴다.
+export const MIN_HISTORY_MOVIES = 8
+
+/** "우주 성장 히스토리" 스크럽 가능 범위 — 레이아웃은 그대로 두고 firstWatchedAt만
+ * 기준으로 삼으므로 순수 계산이다. archive/데모/공유 우주 셋 다 같은 로직을 쓴다. */
+export function computeHistoryRange(movies: Movie[]): { min: string; max: string } | null {
+  if (movies.length < MIN_HISTORY_MOVIES) return null
+  const dates = movies.map(firstWatchedAt).filter(Boolean).sort()
+  if (dates.length === 0) return null
+  return { min: dates[0], max: dates[dates.length - 1] }
+}
+
 /**
  * logged_movies 행들과 viewings 행들을 합쳐서 Movie[]로 만든다. 순수 함수라(supabase를
  * 직접 호출하지 않는다) /archive와 /u/[slug] 양쪽 서버 컴포넌트에서 그대로 재사용한다.

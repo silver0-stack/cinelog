@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { EASE_SLOW } from '@/lib/motion'
 import { secondaryNavLinkClass } from '@/lib/uiStyles'
+import { HelpIcon } from '@/components/icons/HelpIcon'
 
 type QA = { q: string; a: string }
 
@@ -30,7 +32,7 @@ const UNIVERSE_QA: QA[] = [
 ]
 
 const DEMO_QA: QA[] = [
-  { q: '이 우주는 진짜야?', a: '내가 직접 고른 24편이야. 실제로 계속 채워가는 개인 아카이브는 화면 구석 "제작자의 진짜 우주 구경하기"에서 볼 수 있어.' },
+  { q: '이 우주는 진짜야?', a: '내가 직접 고른 24편이야. 로그인하면 이 자리에 네가 실제로 본 영화들로 채운 진짜 우주가 생겨.' },
   { q: '평점이나 메모를 남길 수 있어?', a: '응, 데모 24편 어디에나 자유롭게 남겨볼 수 있어. 저장은 안 되고 새로고침하면 사라져. 로그인하면 진짜로 쌓여.' },
 ]
 
@@ -81,39 +83,50 @@ export function GuidePanel({ variant, triggerClassName, open: openProp, onOpenCh
   return (
     <>
       {!controlled && triggerClassName && (
-        <button type="button" onClick={() => setOpen(!open)} className={triggerClassName}>
+        <button type="button" onClick={() => setOpen(!open)} className={`flex items-center gap-1 ${triggerClassName}`}>
+          <HelpIcon />
           가이드
         </button>
       )}
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4, ease: EASE_SLOW }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-6"
-            onClick={() => setOpen(false)}
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              className="themed-scroll max-h-[85vh] w-[min(90vw,420px)] overflow-y-auto rounded-lg border border-white/10 bg-black px-5 py-5"
-            >
-              <ul className="flex flex-col gap-5">
-                {items.map((item) => (
-                  <li key={item.q}>
-                    <p className="text-xs tracking-[0.15em] text-white/60">{item.q}</p>
-                    <p className="mt-2 text-xs leading-relaxed tracking-wide text-white/35">{item.a}</p>
-                  </li>
-                ))}
-              </ul>
-              <button type="button" onClick={() => setOpen(false)} className={`mt-6 ${secondaryNavLinkClass}`}>
-                닫기
-              </button>
-            </div>
-          </motion.div>
+      {/* z-index 숫자를 아무리 올려도 archive에서는 이 컴포넌트가 top bar의
+          z-40짜리 위치 지정 div 안에 중첩돼 있어서, 그 부모의 스택 컨텍스트
+          안에 갇혀 바깥(별들)과 직접 비교가 안 된다 — 밝은 중심 포스터가 패널을
+          뚫고 올라와 보이던 버그의 진짜 원인이었다(열람 패널 하단 시트가 겪었던
+          것과 같은 문제). document.body로 포탈해서 그 상위 스택 컨텍스트를
+          아예 벗어나야 확실히 해결된다. */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {open && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.4, ease: EASE_SLOW }}
+                className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/70 p-6"
+                onClick={() => setOpen(false)}
+              >
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="themed-scroll max-h-[85vh] w-[min(90vw,420px)] overflow-y-auto rounded-lg border border-white/10 bg-black px-5 py-5"
+                >
+                  <ul className="flex flex-col gap-5">
+                    {items.map((item) => (
+                      <li key={item.q}>
+                        <p className="text-xs tracking-[0.15em] text-white/60">{item.q}</p>
+                        <p className="mt-2 text-xs leading-relaxed tracking-wide text-white/35">{item.a}</p>
+                      </li>
+                    ))}
+                  </ul>
+                  <button type="button" onClick={() => setOpen(false)} className={`mt-6 ${secondaryNavLinkClass}`}>
+                    닫기
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
         )}
-      </AnimatePresence>
     </>
   )
 }
