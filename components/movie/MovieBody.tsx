@@ -41,6 +41,11 @@ type Props = {
    * 열람과 무관한 다른 별들까지 "많이 확대됐다"고 착각해 평점/메모 미리보기를
    * 드러내는 부작용이 있었다 — 그걸 막는 데 쓴다. */
   anyPeeked: boolean
+  /** "우주 성장 히스토리" 스크럽 중 — 지금 보고 있는 시점에 아직 이 영화를 기록하기
+   * 전이면 true. core에는 절대 적용하지 않는다(호출부에서 보장). 이 영화의 정체
+   * (포스터/제목)를 통째로 가리고, 클릭도 열람도 안 되는 "아직 태어나지 않은 별"로
+   * 보여준다 — 정체를 안 가리면 리플레이의 재미(하나씩 켜지는 걸 발견하는 것)가 없다. */
+  dimmed?: boolean
   /** true면 peek 패널에서 "다시 본 감상 남기기"/"정보 수정"이 가능해진다(로그인한 본인 아카이브에서만). */
   editable?: boolean
   /** 이미 만들어진 영화 카드 공유 URL(서버에서 미리 조회). ShareCardButton의 initialUrl로 전달된다. */
@@ -128,6 +133,7 @@ export function MovieBody({
   viewportHeight,
   peeked,
   anyPeeked,
+  dimmed,
   editable,
   initialCardUrl,
   onSelect,
@@ -142,8 +148,10 @@ export function MovieBody({
   // core(중심 별)도 클릭하면 peek이 열린다 — "이 영화를 중심으로"만 core에게는
   // 의미가 없을 뿐(자기 자신을 다시 중심으로 만들 수는 없다), "다시 봤어"/
   // "정보 수정"은 core에서도 그대로 필요하다.
-  const clickable = !!onPeek
-  const draggable = !isCore && !!onDragStrength
+  // dimmed(아직 기록 전인 시점으로 스크럽한 별)는 클릭도 드래그도 안 된다 —
+  // 아직 우주에 존재하지 않는 것처럼 다뤄야 리플레이가 "발견"으로 느껴진다.
+  const clickable = !!onPeek && !dimmed
+  const draggable = !isCore && !!onDragStrength && !dimmed
 
   // 화면 밖으로 한참 벗어난 별은 이미지 2장(포스터+블러 글로우)과 무한 반복
   // 흔들림 애니메이션을 그릴 이유가 없다 — 기록이 수백 편으로 늘어도 실제로
@@ -336,6 +344,12 @@ export function MovieBody({
   const tierShadow = tier === 'near' ? '0 0 12px 3px rgba(230,234,244,0.12)' : null
   const starShadow = tierShadow ?? 'none'
 
+  // 다른 별을 열람 중일 때는 이 별(core 포함, 열람 중인 별 본인만 제외)을 크게
+  // 죽여서 화면에서 물러나게 한다 — 배치상 우연히 열람 패널 옆에 겹친 포스터가
+  // 그대로 밝게 남아 있으면 시선이 갈라져 패널이 사나워 보인다는 피드백. 클릭은
+  // 막지 않는다(dim된 별을 눌러서 그쪽으로 열람을 옮기는 건 여전히 가능해야 한다).
+  const focusDimmed = anyPeeked && !peeked
+
   const satelliteTint = ratingTintRgb(movie.rating)
   // 평점이 높을수록 포스터 고유 색 글로우가 더 밝고 크게 번진다(색은 그대로 포스터 것).
   const ratingStrength = ratingGlowStrength(movie.rating)
@@ -381,9 +395,10 @@ export function MovieBody({
       {/* 흔들림(궤도) 레이어: 위치 이동과 별개로 항상 제자리에서 미세하게 떠 있다. */}
       <motion.div
         ref={peekAnchorRef}
-        className="group relative flex flex-col items-center"
+        className="group relative flex flex-col items-center transition-opacity duration-500 ease-out"
+        style={{ opacity: focusDimmed ? 0.16 : 1 }}
         initial={isCore ? undefined : { x: -driftX, y: -driftY }}
-        animate={isCore || peeked || culled ? undefined : { x: [-driftX, driftX, -driftX], y: [-driftY, driftY, -driftY] }}
+        animate={isCore || peeked || culled || dimmed ? undefined : { x: [-driftX, driftX, -driftX], y: [-driftY, driftY, -driftY] }}
         transition={isCore ? undefined : { duration, repeat: Infinity, ease: 'easeInOut' }}
       >
         {/* core와 위성이 항상 같은 종류의 요소(button)를 쓴다 — 그래야 중심이
@@ -432,7 +447,7 @@ export function MovieBody({
                 }}
               />
             )}
-            {movie.posterPath && !posterFailed && !culled ? (
+            {movie.posterPath && !posterFailed && !culled && !dimmed ? (
               <>
                 {/* 앰비언트 글로우 — 포스터를 크게 확대해 흐리게 깐 사본. 대표색을
                     픽셀로 뽑는 건 TMDB가 외부 CDN이라 캔버스로 읽으면 CORS에
@@ -456,6 +471,17 @@ export function MovieBody({
                   style={{ opacity: isCore ? TIER_OPACITY[tier] : posterOpacity }}
                 />
               </>
+            ) : dimmed ? (
+              // "아직 태어나지 않은 별" — 평점/포스터 색(satelliteTint)은 이 시점
+              // 이후에나 생길 정보라 그대로 쓰면 정체를 흘리게 된다. 그래서 중성적인
+              // 흰빛 미광점으로, 평소 fallback보다 훨씬 옅게 보여준다.
+              <span
+                className="block h-full w-full rounded-sm"
+                style={{
+                  background: 'radial-gradient(circle, rgba(255,255,255,0.4), rgba(255,255,255,0.05) 70%)',
+                  opacity: 0.22,
+                }}
+              />
             ) : (
               <span
                 className="block h-full w-full rounded-sm"
@@ -474,16 +500,22 @@ export function MovieBody({
           {/* 제목은 열람 여부/줌과 무관하게 항상 보인다 — 더 이상 별도의
               "앞면 카드"가 없으니 여기가 유일한 표시 자리다. 감독/연도만 극단적으로
               줌아웃하면 먼저 옅어진다(META_FADE_ZOOM) — 별을 알아보는 데 꼭
-              필요한 최소 정보(제목)는 남기고, 부가 정보부터 접는다. */}
-          <div className="line-clamp-2 max-w-28 text-[11px] leading-snug tracking-[0.08em] text-white/70">
-            {movie.title}
-          </div>
-          <motion.div
-            className="mt-0.5 max-w-28 truncate text-[9px] tracking-[0.15em] text-white/35"
-            style={{ opacity: isCore ? 1 : metaOpacity }}
-          >
-            {movie.year} · {movie.director}
-          </motion.div>
+              필요한 최소 정보(제목)는 남기고, 부가 정보부터 접는다. dimmed일 땐
+              둘 다 아예 숨긴다 — 아직 기록 전인 영화의 정체를 드러내면 리플레이의
+              "발견하는" 재미가 없어진다. */}
+          {!dimmed && (
+            <>
+              <div className="line-clamp-2 max-w-28 text-[11px] leading-snug tracking-[0.08em] text-white/70">
+                {movie.title}
+              </div>
+              <motion.div
+                className="mt-0.5 max-w-28 truncate text-[9px] tracking-[0.15em] text-white/35"
+                style={{ opacity: isCore ? 1 : metaOpacity }}
+              >
+                {movie.year} · {movie.director}
+              </motion.div>
+            </>
+          )}
 
           {/* 장르는 평소엔 안 보여준다 — 화면에 별이 여러 개일 때 잡음만 는다.
               열람 중일 때만, 여유가 생긴 이 순간에만 보여준다. */}
