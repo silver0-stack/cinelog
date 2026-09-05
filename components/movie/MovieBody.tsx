@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { motion, useTransform, type MotionValue } from 'framer-motion'
+import { AnimatePresence, motion, useTransform, type MotionValue } from 'framer-motion'
 import type { Movie } from '@/data/movies'
 import { DURATION, EASE_SLOW } from '@/lib/motion'
 import { MIN_RADIUS, MAX_RADIUS, clampRadius, gravityForRadius } from '@/lib/universeLayout'
@@ -128,44 +128,35 @@ export function MovieBody({
   // 어려워진다.
   const inverseZoom = useTransform(zoomScale, (z) => 1 / (z || 1))
 
-  // 좁은(모바일) 화면에서는 포스터 옆/아래 어디에 붙여도 결국 뷰포트 밖으로
-  // 잘리는 경우가 계속 나왔다 — "포스터 기준으로 남은 공간"이라는 접근 자체가
-  // 모바일에선 너무 불안정했다(포스터가 화면 어디쯤 있는지가 줌 배율/드리프트/
-  // 카메라 스프링 진행 상태에 따라 계속 달라짐). 그래서 좁은 화면에서는 아예
-  // 포스터 위치와 무관하게 화면 하단에 고정된 "바텀시트"로 뗀다 — 항상 화면
-  // 자체를 기준으로 하니 포스터가 어디 있든 반드시 화면 안에 들어온다. 넓은
-  // 화면(포스터 옆 배치)에서는 기존처럼 포스터 옆에 계속 붙여서 보여준다.
-  const [isNarrowViewport, setIsNarrowViewport] = useState(false)
-  useEffect(() => {
-    if (!peeked) return
-    const mq = window.matchMedia('(max-width: 639px)')
-    const update = () => setIsNarrowViewport(mq.matches)
-    update()
-    mq.addEventListener('change', update)
-    return () => mq.removeEventListener('change', update)
-  }, [peeked])
-
-  // 넓은 화면(포스터 옆 배치) 전용 — 패널이 포스터 오른쪽 끝과 같은 높이에서
-  // 시작하므로, 포스터+제목/장르 묶음의 실제 화면 좌표를 재서 남은 공간만큼만
-  // 최대 높이를 준다. 좁은 화면(바텀시트)에서는 이 계산이 필요 없다 — 화면
-  // 높이의 일정 비율로 고정하면 되고, 포스터 위치와 무관하다.
+  // 처음엔 "화면 너비 639px 이하 = 좁은 화면"이라는 고정 기준값으로 나눴는데,
+  // 그건 "폰이냐 아니냐"만 구분할 뿐 실제로 포스터 오른쪽에 패널(300px)이 들어갈
+  // 자리가 있는지는 안 본 것이다 — 태블릿(세로 모드)처럼 폰보다는 넓지만
+  // 포스터+300px+여백을 다 담기엔 부족한 화면에서 여전히 잘렸다. 높이 버그 때
+  // 배운 것과 같은 교훈: 기기 종류를 짐작하지 말고 실제로 남은 공간을 재야
+  // 한다. 그래서 폭도 높이와 똑같이 "포스터+제목/장르 묶음의 실제 화면 좌표"
+  // 기준으로 재서, 오른쪽에 패널이 들어갈 만큼 공간이 남는지 직접 계산한다 —
+  // 부족하면(태블릿이든 폰이든 상관없이) 포스터 위치와 무관한 하단 바텀시트로
+  // 자동 전환한다.
   const peekAnchorRef = useRef<HTMLDivElement>(null)
+  const [useBottomSheet, setUseBottomSheet] = useState(false)
   const [panelMaxHeightPx, setPanelMaxHeightPx] = useState<number | null>(null)
   useEffect(() => {
     if (!peeked) return
-
-    if (isNarrowViewport) {
-      const measure = () => setPanelMaxHeightPx(Math.round(window.innerHeight * 0.55))
-      measure()
-      window.addEventListener('resize', measure)
-      return () => window.removeEventListener('resize', measure)
-    }
-
+    const gap = 16
     const bottomMargin = 24
+    const panelWidth = 300 // MoviePeekPanel의 w-[min(80vw,300px)]와 맞춰둔 값
+
     const measure = () => {
       const rect = peekAnchorRef.current?.getBoundingClientRect()
       if (!rect) return
-      setPanelMaxHeightPx(Math.max(120, window.innerHeight - rect.top - bottomMargin))
+      const vw = window.innerWidth
+      const vh = window.innerHeight
+      const spaceRight = vw - rect.right - gap
+      const fitsBeside = spaceRight >= Math.min(panelWidth, vw * 0.8)
+      setUseBottomSheet(!fitsBeside)
+      setPanelMaxHeightPx(
+        fitsBeside ? Math.max(120, vh - rect.top - bottomMargin) : Math.round(vh * 0.55),
+      )
     }
 
     measure()
@@ -184,7 +175,7 @@ export function MovieBody({
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', measure)
     }
-  }, [peeked, isNarrowViewport])
+  }, [peeked])
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (!draggable || e.pointerType !== 'mouse' || e.button !== 0) return
@@ -445,7 +436,7 @@ export function MovieBody({
               자체가 화면 중심에서 위로 밀려나 버렸다(포스터가 화면 밖으로
               나가버리는 버그). absolute로 빼면 이 패널은 부모의 크기 계산에서
               완전히 제외되어, 포스터는 항상 카메라가 조준한 자리에 그대로 있다. */}
-          {peeked && !isNarrowViewport && (
+          {peeked && !useBottomSheet && (
             <motion.div
               className="pointer-events-auto absolute"
               style={{ left: '100%', top: 0, marginLeft: 16, scale: inverseZoom, transformOrigin: 'top left' }}
@@ -464,37 +455,50 @@ export function MovieBody({
             </motion.div>
           )}
 
-          {/* 좁은(모바일) 화면에서는 포스터 옆/아래 어디에 붙여도 포스터가
-              어디쯤 있느냐(줌 배율, 드리프트, 카메라 스프링 진행 상태)에 따라
-              계속 화면 밖으로 잘렸다 — "포스터 기준으로 남은 공간"이라는
-              전제 자체가 좁은 화면에서는 불안정했다. 그래서 포스터 위치와
-              완전히 무관하게, 화면 자체 하단에 고정된 바텀시트로 띄운다.
-              world-space 레이어(줌/팬이 걸린 조상) 밖인 document.body로
-              포탈해야 한다 — 안에 그대로 두면 position:fixed가 뷰포트가 아니라
-              그 transform 조상을 기준으로 계산돼서 확대/이동할 때 같이
-              움직여버린다(MoviePeekPanel이 예전에 화면 중앙 팝업이던 시절과
-              같은 이유). 화면 자체를 기준으로 하니 포스터가 어디 있든, 얼마나
-              확대돼 있든 상관없이 반드시 화면 안에 들어온다 — 그래서 역스케일도
-              필요 없다(애초에 줌이 안 걸린 레이어에 있으니까). */}
-          {peeked &&
-            isNarrowViewport &&
-            typeof document !== 'undefined' &&
+          {/* 포스터 오른쪽에 패널(300px)이 들어갈 자리가 안 나오면(폰이든
+              세로 모드 태블릿이든) 포스터 위치와 완전히 무관하게, 화면 자체
+              하단에 고정된 바텀시트로 띄운다. world-space 레이어(줌/팬이 걸린
+              조상) 밖인 document.body로 포탈해야 한다 — 안에 그대로 두면
+              position:fixed가 뷰포트가 아니라 그 transform 조상을 기준으로
+              계산돼서 확대/이동할 때 같이 움직여버린다(MoviePeekPanel이 예전에
+              화면 중앙 팝업이던 시절과 같은 이유). 화면 자체를 기준으로 하니
+              포스터가 어디 있든, 얼마나 확대돼 있든 상관없이 반드시 화면 안에
+              들어온다 — 그래서 역스케일도 필요 없다(애초에 줌이 안 걸린
+              레이어에 있으니까).
+              애니메이션 없이 그냥 툭 나타나면, 방금 누른 포스터와 화면 하단에
+              뜨는 이 패널 사이에 아무 연결이 안 느껴져서 "왜 갑자기 여기에"
+              싶은 느낌을 준다 — 아래에서 밀고 올라오는 움직임 자체가 "방금 한
+              행동 때문에 이게 나타났다"는 인과관계를 채워준다. AnimatePresence는
+              항상 포탈해둬야 조건이 꺼질 때도 exit 애니메이션이 재생된다(조건부로
+              포탈 자체를 안 하면 그냥 즉시 사라진다). */}
+          {typeof document !== 'undefined' &&
             createPortal(
-              <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[150] flex justify-center px-4 pb-4">
-                <div className="pointer-events-auto w-full max-w-[360px]">
-                  <MoviePeekPanel
-                    movie={movie}
-                    center={center}
-                    editable={!!editable}
-                    onGuestMutate={onGuestMutate}
-                    existingByTmdbId={existingByTmdbId}
-                    initialCardUrl={initialCardUrl}
-                    maxHeightPx={panelMaxHeightPx}
-                    onClose={() => onPeek?.(null)}
-                    onRecenter={onSelect ? () => onSelect(movie.id) : undefined}
-                  />
-                </div>
-              </div>,
+              <AnimatePresence>
+                {peeked && useBottomSheet && (
+                  <motion.div
+                    key="bottom-sheet"
+                    initial={{ y: '100%', opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: '100%', opacity: 0 }}
+                    transition={{ duration: 0.4, ease: EASE_SLOW }}
+                    className="pointer-events-none fixed inset-x-0 bottom-0 z-[150] flex justify-center px-4 pb-4"
+                  >
+                    <div className="pointer-events-auto w-full max-w-[360px]">
+                      <MoviePeekPanel
+                        movie={movie}
+                        center={center}
+                        editable={!!editable}
+                        onGuestMutate={onGuestMutate}
+                        existingByTmdbId={existingByTmdbId}
+                        initialCardUrl={initialCardUrl}
+                        maxHeightPx={panelMaxHeightPx}
+                        onClose={() => onPeek?.(null)}
+                        onRecenter={onSelect ? () => onSelect(movie.id) : undefined}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>,
               document.body,
             )}
         </div>
