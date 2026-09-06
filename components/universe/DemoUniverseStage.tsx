@@ -5,6 +5,7 @@ import { MovieUniverse } from './MovieUniverse'
 import { UniverseHistoryRail } from './UniverseHistoryRail'
 import { DemoAddStar } from './DemoAddStar'
 import { GuidePanel } from '@/components/guide/GuidePanel'
+import { MovieSearch } from '@/components/archive/MovieSearch'
 import { UniverseInsightPanel } from '@/components/archive/UniverseInsightPanel'
 import { summarizeUniverse, rewatchedMovies, genreIndex } from '@/lib/universeInsights'
 import { computeHistoryRange } from '@/lib/loggedMovies'
@@ -32,10 +33,19 @@ export function DemoUniverseStage() {
   const genres = useMemo(() => genreIndex(movies), [movies])
   const rewatched = useMemo(() => rewatchedMovies(movies), [movies])
   const historyRange = useMemo(() => computeHistoryRange(movies), [movies])
+  const searchIndex = useMemo(() => movies.map((m) => ({ id: m.id, title: m.title, director: m.director })), [movies])
 
   const handleGuestMutate = useCallback((movieId: string, mutate: (movie: Movie) => Movie) => {
     setMovies((prev) => prev.map((m) => (m.id === movieId ? mutate(m) : m)))
   }, [])
+
+  // ArchiveShell과 같은 이유로 useCallback으로 고정한다 — MovieSearch의 이펙트가
+  // 이 함수를 의존성으로 물고 있어서, 매 렌더 새 함수를 넘기면 무한 렌더 루프에
+  // 빠진다(ArchiveShell에서 실제로 겪은 버그, 2026-09-06).
+  const handleHighlightChange = useCallback(
+    (ids: string[] | null) => setHighlightedIds(ids ? new Set(ids) : null),
+    [],
+  )
 
   return (
     <>
@@ -70,14 +80,17 @@ export function DemoUniverseStage() {
         </p>
       </div>
 
-      <GuidePanel variant="demo" triggerClassName={`absolute right-6 top-6 z-10 ${navLinkClass}`} />
+      <div className="absolute right-4 top-4 z-10 flex items-center gap-2 sm:right-6 sm:top-6 sm:gap-3">
+        <MovieSearch searchIndex={searchIndex} onHighlightChange={handleHighlightChange} />
+        <GuidePanel variant="demo" triggerClassName={navLinkClass} />
+      </div>
 
       <UniverseInsightPanel
         insights={insights}
         genres={genres}
         rewatched={rewatched}
         onFocusMovie={setFocusMovieId}
-        onHighlightChange={(ids) => setHighlightedIds(ids ? new Set(ids) : null)}
+        onHighlightChange={handleHighlightChange}
         triggerClassName={`absolute bottom-6 left-4 z-10 sm:left-6 ${navLinkClass}`}
         panelClassName="absolute bottom-14 left-4 z-10 sm:left-6"
         historyEligible={historyRange !== null}

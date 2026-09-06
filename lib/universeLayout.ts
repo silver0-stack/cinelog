@@ -7,7 +7,7 @@ import type { Movie } from '@/data/movies'
 // (130px)을 지키며 4~5편도 못 담아서 완화 패스가 원래 반지름 의미를 크게
 // 뭉갤 수밖에 없었다. 전체적으로 더 넉넉하게 넓힌다.
 export const MIN_RADIUS = 110
-export const MAX_RADIUS = 480
+export const MAX_RADIUS = 620
 
 // 카메라 줌 배율의 하한/상한. MovieBody가 줌 구간별로 메타 정보/포스터를
 // 단계적으로 감추는 애니메이션(별로 수렴)의 기준점을 잡는 데도 이 값이 필요하다.

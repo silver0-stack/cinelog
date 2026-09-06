@@ -16,8 +16,8 @@ type Props = {
   userEmail: string | null
 }
 
-const headingClass = 'text-xs font-light tracking-[0.3em] text-white/70 sm:text-sm'
-const bodyClass = 'text-xs font-light leading-loose tracking-[0.15em] text-white/40'
+const headingClass = 'text-sm font-light tracking-[0.3em] text-white/70 sm:text-base'
+const bodyClass = 'text-[13px] font-light leading-loose tracking-[0.15em] text-white/40 sm:text-sm'
 
 // 스크롤해서 내려가며 읽는 하나의 랜딩 페이지다. 예전엔 "좌석을 찾아서 눌러야만
 // 입장할 수 있는" 영화관 장면이 첫 화면이었는데, 좌석을 못 찾으면 끝까지 입장도
@@ -70,10 +70,10 @@ export function Entrance({ onEnter, userEmail }: Props) {
           <h1 className="text-center text-sm font-light tracking-[0.55em] text-white/70 sm:text-base">
             CINELOG
           </h1>
-          <p className="max-w-xs text-center text-[10px] font-light leading-relaxed tracking-[0.3em] text-white/25">
+          <p className="max-w-xs text-center text-xs font-light leading-relaxed tracking-[0.3em] text-white/25">
             영화와 영화 사이, 당신만의 우주
           </p>
-          <p className="max-w-xs text-center text-[11px] font-light leading-loose tracking-[0.15em] text-white/40">
+          <p className="max-w-xs text-center text-[13px] font-light leading-loose tracking-[0.15em] text-white/40 sm:text-sm">
             영화 한 편이 하나의 우주가 된다.
             <br />
             감독과 장르와 정서로 이어진 영화들이,
@@ -82,19 +82,34 @@ export function Entrance({ onEnter, userEmail }: Props) {
           </p>
         </div>
 
-        <div className="flex items-center gap-10">
+        {/* 데모 진입을 첫 화면에서 바로 보이게 한다 — 예전엔 여기 없이 "이용 방법"
+            (아래 섹션으로 스크롤)만 있어서, 로그인/데모 중 뭘 골라야 할지도 모른 채
+            둘 다 같은 무게로 보이는 링크였다. 처음 온 사람은 "내 우주 만들기"가
+            메인 액션처럼 읽혀서 그걸 누르고, 그 아래 데모 우주가 있다는 건 끝까지
+            모르고 지나갔다. 로그인을 강제하지 않는다는 방향에 맞춰 데모를
+            시각적으로 더 우선하는 쪽으로 둔다. */}
+        <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-12">
+          <button
+            type="button"
+            onClick={onEnter}
+            className={
+              userEmail
+                ? 'text-xs font-light tracking-[0.4em] text-white/45 outline-none transition-colors duration-700 hover:text-white/75 focus-visible:text-white/75'
+                : 'text-sm font-light tracking-[0.4em] text-white/70 outline-none transition-colors duration-700 hover:text-white/95 focus-visible:text-white/95'
+            }
+          >
+            데모 우주 둘러보기
+          </button>
           <Link
             href={primaryCtaHref}
-            className="text-xs font-light tracking-[0.5em] text-white/60 outline-none transition-colors duration-700 hover:text-white/90 focus-visible:text-white/90"
+            className={
+              userEmail
+                ? 'text-sm font-light tracking-[0.4em] text-white/70 outline-none transition-colors duration-700 hover:text-white/95 focus-visible:text-white/95'
+                : 'text-xs font-light tracking-[0.4em] text-white/45 outline-none transition-colors duration-700 hover:text-white/75 focus-visible:text-white/75'
+            }
           >
             {primaryCtaLabel}
           </Link>
-          <a
-            href="#how"
-            className="text-xs font-light tracking-[0.4em] text-white/55 outline-none transition-colors duration-700 hover:text-white/85 focus-visible:text-white/85"
-          >
-            이용 방법
-          </a>
         </div>
 
         <p className="animate-pulse-slow absolute bottom-10 left-1/2 -translate-x-1/2 text-[9px] font-light tracking-[0.4em] text-white/20">
@@ -152,7 +167,7 @@ export function Entrance({ onEnter, userEmail }: Props) {
               boxShadow: '0 0 40px 10px rgba(255,214,150,0.18)',
             }}
           />
-          <span className="text-[10px] font-light tracking-[0.4em] text-white/50 transition-colors duration-700 group-hover:text-white/80">
+          <span className="text-xs font-light tracking-[0.4em] text-white/50 transition-colors duration-700 group-hover:text-white/80">
             눌러서 들어가기
           </span>
         </button>
@@ -168,7 +183,7 @@ export function Entrance({ onEnter, userEmail }: Props) {
             { q: '내 정보가 다른 사람에게 보여?', a: '아니. 네가 직접 공유 링크를 켜지 않는 한 아무도 못 봐.' },
           ].map((item) => (
             <div key={item.q} className="flex flex-col items-center gap-2">
-              <p className="text-[11px] tracking-[0.1em] text-white/60">{item.q}</p>
+              <p className="text-sm tracking-[0.1em] text-white/60">{item.q}</p>
               <p className={bodyClass}>{item.a}</p>
             </div>
           ))}

@@ -58,40 +58,66 @@ const MAX_RELATED_HIGHLIGHT = 8
 // 피드백). 그래서 각 별을 미는 힘에서 반지름 방향 성분은 버리고 접선(각도)
 // 방향 성분만 적용한다 — 매 반복 뒤 원래 반지름으로 다시 정규화해서, 반지름은
 // 절대 안 바뀌고 각도만 미세하게 밀려나며 겹침을 푼다.
-const MIN_SEPARATION = 100
-const RELAX_ITERATIONS = 8
+const RELAX_ITERATIONS = 60
+// (2026-09-07) 고정된 100px 간격은 tier별 실제 크기(near 64×96 포스터+제목/연도
+// 텍스트까지 합치면 세로로 100px을 이미 넘는다)를 반영하지 못해서, near 포스터
+// 여럿이 모이면 정확히 겹쳐 보였다. tier별 "반경"(포스터+라벨을 감싸는 대략의
+// 반지름)을 따로 두고, 두 별 사이 필요한 간격을 두 tier 반경의 합으로 계산한다.
+const TIER_FOOTPRINT: Record<Tier, number> = { near: 78, mid: 60, far: 48 }
+const SEPARATION_GAP = 50
 
-function pushTangential(point: { x: number; y: number }, pushX: number, pushY: number): void {
+// (2026-09-07) 서로 다른 섹터(장르)의 별이 우연히 비슷한 반지름·인접한 각도에
+// 배정되면, 접선 방향으로만 밀고 매번 원래 반지름으로 재정규화하는 방식은 "거의
+// 같은 원 위에 겹쳐서 시작한" 경우를 잘 못 푼다 — 재정규화가 계속 제자리 근처로
+// 끌어당겨서 아주 많은 반복이 필요하다(실사용 데이터에서 60번을 돌려도 남는
+// 경우가 있었다). 안쪽으로는 절대 밀리지 않되(관계가 강한 별이 더 멀어 보이면
+// 안 되므로), 바깥쪽으로는 필요한 만큼 반지름이 늘어나는 것을 제한적으로
+// 허용한다 — "가까울수록 강한 관계"라는 순서는 지키면서, 진짜 막힌 경우에만
+// 빠져나갈 통로를 준다.
+const OUTWARD_RADIAL_WEIGHT = 0.4
+
+function pushApart(point: { x: number; y: number }, pushX: number, pushY: number): void {
   const r = Math.hypot(point.x, point.y) || 0.01
   const radialX = point.x / r
   const radialY = point.y / r
   const radialComponent = pushX * radialX + pushY * radialY
-  const nextX = point.x + (pushX - radialComponent * radialX)
-  const nextY = point.y + (pushY - radialComponent * radialY)
+  const outwardRadial = Math.max(radialComponent, 0) * OUTWARD_RADIAL_WEIGHT
+  const tangentialX = pushX - radialComponent * radialX
+  const tangentialY = pushY - radialComponent * radialY
+  const nextX = point.x + tangentialX
+  const nextY = point.y + tangentialY
   const nextR = Math.hypot(nextX, nextY) || 0.01
-  // 접선 방향으로만 옮긴 뒤 원래 반지름 r로 재정규화한다 — 부동소수 오차가
-  // 누적돼도 반지름이 절대 흔들리지 않도록 매번 못박는다.
-  point.x = (nextX / nextR) * r
-  point.y = (nextY / nextR) * r
+  // 접선 이동은 기존처럼 반지름을 지킨 채(r로 재정규화) 반영하고, 바깥쪽
+  // 성분만 그 위에 별도로 더한다 — 안쪽으로 줄어들 일은 없다.
+  point.x = (nextX / nextR) * r + outwardRadial * radialX
+  point.y = (nextY / nextR) * r + outwardRadial * radialY
 }
 
-// (2026-09-06) 드래그로 직접 배치한(locked) 별은 완화 대상에서 제외한다 —
-// 유저가 정한 자리는 절대 자동으로 안 밀려야 한다. 다만 다른(자동 배치) 별이
-// 그 별과 겹칠 땐 여전히 밀려나야 하므로, locked 여부는 "밀 수 있는지"만
-// 가른다 — 장애물로는 계속 참여한다.
-function relaxPositions(points: { x: number; y: number; locked?: boolean }[]): void {
+// (2026-09-06) 드래그로 직접 배치한 별은 겹침 완화 대상이 아니다 — 유저가 정한
+// 자리는 절대 자동으로 안 밀려야 한다.
+// (2026-09-07) 이 함수는 이제 수동 배치를 아예 모른다 — 예전엔 여기서 locked
+// 여부를 직접 확인해 밀 수 있는지/장애물로 참여하는지를 갈랐는데, 어느 쪽이든
+// "N개 중 하나가 계산에서 빠진다"는 사실 자체가 나머지의 상호 반발 결과를
+// 바꿔서, 별 하나를 수동으로 옮기기만 해도 전혀 안 건드린 다른 별들까지
+// 위치가 달라지는 도미노로 이어졌다(라이브 드래그 중이든, 드롭 직후든). 이제
+// 이 함수는 항상 "movies 전체가 다 자동 배치라면"이라는 가정으로 딱 한 번
+// 계산되고(MovieUniverse의 autoBodies), 수동 배치는 그 바깥에서 결과값을
+// 덮어쓰는 것으로만 반영된다 — 그래서 이 함수의 결과는 어떤 별이 수동 배치로
+// 바뀌든 항상 동일하다.
+function relaxPositions(points: { x: number; y: number; footprint: number }[]): void {
   for (let iter = 0; iter < RELAX_ITERATIONS; iter++) {
     for (let i = 0; i < points.length; i++) {
       for (let j = i + 1; j < points.length; j++) {
+        const minDist = points[i].footprint + points[j].footprint + SEPARATION_GAP
         const dx = points[j].x - points[i].x
         const dy = points[j].y - points[i].y
         const dist = Math.hypot(dx, dy) || 0.01
-        if (dist >= MIN_SEPARATION) continue
-        const push = (MIN_SEPARATION - dist) / 2
+        if (dist >= minDist) continue
+        const push = (minDist - dist) / 2
         const ux = dx / dist
         const uy = dy / dist
-        if (!points[i].locked) pushTangential(points[i], -ux * push, -uy * push)
-        if (!points[j].locked) pushTangential(points[j], ux * push, uy * push)
+        pushApart(points[i], -ux * push, -uy * push)
+        pushApart(points[j], ux * push, uy * push)
       }
     }
   }
@@ -305,18 +331,32 @@ export function MovieUniverse({
   // 정한다(중심 없음, 2026-09-06) — 각도는 angleByMovieId(장르 섹터)로,
   // 반지름은 relatedMovies의 1위 값으로. 관계가 하나도 없으면(공통 장르조차
   // 없음) 반지름이 최대가 되어 바깥으로 밀려난다.
-  const bodies = useMemo(() => {
+  //
+  // (2026-09-07) 자동 배치 계산(autoBodies)은 positionOverrides에 절대 의존하지
+  // 않는다 — 드래그로 어떤 별을 수동 배치(locked)로 옮기면, 그 별은 "겹침 완화에
+  // 참여하는 N개" 중 하나가 사라지는 셈이라 나머지 별들의 상호 반발 결과 자체가
+  // (그 별의 존재 여부와 무관하게) 달라졌다 — 관계 강도(반지름)나 장르 섹터
+  // (각도)는 안 바뀌는데도, 겹침 완화 단계만 다른 결과를 냈다. 즉 "고정된 별은
+  // 밀지도 밀리지도 않는다"로 완전히 배제해도, 배제 자체가 나머지의 물리
+  // 시뮬레이션을 바꿔버려 "하나 옮기면 다른 것도 움직인다"는 도미노로 보였다.
+  // 이제 자동 배치는 항상 "모든 영화가 다 자동 배치라면"이라는 가정으로 24편
+  // 전체를 대상으로 딱 한 번 계산하고, 수동 배치 좌표는 그 결과 위에 나중에
+  // 덮어씌우기만 한다 — 그래서 어떤 별을 수동으로 옮기든 안 옮기든 나머지
+  // 별들의 자동 배치 결과는 항상 동일하다(수학적으로 positionOverrides를
+  // 아예 모른다).
+  const autoBodies = useMemo(() => {
     const computed = movies.map((movie) => {
       const related = relatedMovies(movie, movies)
       const gravity = related[0]?.gravity ?? 0
       const closestMovie = related[0]?.movie
-      // (2026-09-06) 드래그로 직접 배치한 좌표가 있으면(미리보기 override 우선,
-      // 없으면 저장된 movie.posX/posY) 그 자리를 그대로 쓰고 다시는 자동 배치나
-      // 겹침 완화 대상이 되지 않는다 — 관계 강도로는 잡을 수 없는 개인적인
-      // 연결을 유저가 직접 표현한 결과이기 때문이다.
-      const manualPos = positionOverrides.get(movie.id) ?? (movie.posX != null && movie.posY != null ? { x: movie.posX, y: movie.posY } : undefined)
       const angle = angleByMovieId.get(movie.id) ?? 0
-      const radius = MIN_RADIUS + (1 - gravity) * (MAX_RADIUS - MIN_RADIUS)
+      // (2026-09-07) gravity가 1에 가까운(아주 강하게 이어진) 영화가 여럿이면
+      // 선형 매핑에서는 다들 MIN_RADIUS 바로 근처로 뭉쳐서 같은 반지름대에
+      // 몰린다 — "의도적으로 장르/테마가 겹치게" 큐레이션한 데모 24편에서
+      // 특히 심했다. 지수를 0.5로 낮춰 gravity가 1에 가까울수록(차이가
+      // 작아도) 반지름 차이를 더 크게 벌린다 — 순서(가까울수록 강한 관계)는
+      // 그대로 유지하면서 촘촘한 상위권만 더 펼친다.
+      const radius = MIN_RADIUS + Math.pow(1 - gravity, 0.5) * (MAX_RADIUS - MIN_RADIUS)
       // "우주 성장 히스토리" 스크럽 — 레이아웃(각도/반지름)은 절대 다시 계산하지
       // 않는다, 지금의 최종 배치 위에서 이 시점에 아직 기록 전인 영화만 dimmed로
       // 표시한다. 지금 열람 중인 별도 예외로 둔다 — 안 그러면 레일을 드래그하다가
@@ -331,16 +371,29 @@ export function MovieUniverse({
         closestMovie,
         relatedCount: related.length,
         tier: tierFor(gravity),
-        x: manualPos ? manualPos.x : Math.cos(angle) * radius,
-        y: manualPos ? manualPos.y : Math.sin(angle) * radius,
-        locked: !!manualPos,
+        x: Math.cos(angle) * radius,
+        y: Math.sin(angle) * radius,
         dimmed,
         dimmedByHighlight,
+        footprint: TIER_FOOTPRINT[tierFor(gravity)],
       }
     })
     relaxPositions(computed)
     return computed
-  }, [movies, angleByMovieId, historyDate, peekedId, activeHighlightIds, positionOverrides])
+  }, [movies, angleByMovieId, historyDate, peekedId, activeHighlightIds])
+
+  // 드래그로 직접 배치한 좌표가 있으면(미리보기 override 우선, 없으면 저장된
+  // movie.posX/posY) 위 자동 배치 결과를 무시하고 그 자리를 그대로 쓴다 — 관계
+  // 강도로는 잡을 수 없는 개인적인 연결을 유저가 직접 표현한 결과이기 때문이다.
+  // 이 단계는 O(n)이라 드래그하는 매 프레임(positionOverrides 변경) 다시 돌아도
+  // 가볍다 — 무거운 겹침 완화(autoBodies)를 매 프레임 다시 돌릴 필요가 없다.
+  const bodies = useMemo(() => {
+    return autoBodies.map((body) => {
+      const manualPos = positionOverrides.get(body.movie.id) ?? (body.movie.posX != null && body.movie.posY != null ? { x: body.movie.posX, y: body.movie.posY } : undefined)
+      if (!manualPos) return body
+      return { ...body, x: manualPos.x, y: manualPos.y, locked: true }
+    })
+  }, [autoBodies, positionOverrides])
 
   // 검색/재관람 목록에서 고른 영화는 focusMovieId로 넘어오는데, 부모(ArchiveShell
   // 등)가 이 값을 다시 null로 되돌리지 않는다 — 그래서 이 값 자체는 열람을 닫아도
@@ -665,8 +718,14 @@ export function MovieUniverse({
             onPeek={handlePeek}
             onGuestMutate={onGuestMutate}
             existingByTmdbId={existingByTmdbId}
-            onDragPosition={editable ? handleDragPosition : undefined}
-            onCommitPosition={editable ? handleCommitPosition : undefined}
+            /* (2026-09-07) 드래그 배치는 로그인 여부와 무관하게 항상 켠다 — 데모
+               우주에서도 "나만의 배치"를 체험해볼 수 있어야 한다는 피드백. 실제
+               DB 저장(handleCommitPosition)은 그 안에서 editable을 다시 확인해
+               로그인한 본인 우주에서만 일어난다 — 데모는 positionOverrides라는
+               로컬 state에만 남아 새로고침하면 원래 자동 배치로 돌아간다(평점/
+               메모의 게스트 체험과 같은 패턴). */
+            onDragPosition={handleDragPosition}
+            onCommitPosition={handleCommitPosition}
           />
         ))}
       </motion.div>

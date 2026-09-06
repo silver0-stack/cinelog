@@ -507,7 +507,18 @@ export function MovieBody({
           </motion.span>
         </motion.button>
 
-        <div className="mt-2 text-center">
+        {/* (2026-09-07) data-star/onPointerDown이 포스터 버튼에만 있어서, 제목
+            텍스트를 잡고 끌면 "별 위에서 시작한 제스처"로 안 잡혀 배경 팬(전체
+            우주 이동)으로 새 버렸다 — 카메라가 통째로 움직이니 다른 별들도 같이
+            딸려 움직이는 것처럼 보여서 "드래그하면 다른 영화도 도미노처럼
+            움직인다"는 오해를 낳았다(실제로는 위치가 재계산된 게 아니라 화면
+            전체가 이동한 것). 포스터와 시각적으로 한 덩어리로 보이는 텍스트도
+            같은 드래그 시작점으로 잡는다. */}
+        <div
+          className={`mt-2 text-center ${draggable ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : ''}`}
+          data-star=""
+          onPointerDown={draggable ? handlePointerDown : undefined}
+        >
           {/* 제목은 열람 여부/줌과 무관하게 항상 보인다 — 더 이상 별도의
               "앞면 카드"가 없으니 여기가 유일한 표시 자리다. 감독/연도만 극단적으로
               줌아웃하면 먼저 옅어진다(META_FADE_ZOOM) — 별을 알아보는 데 꼭

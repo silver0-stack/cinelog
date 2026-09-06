@@ -14,11 +14,19 @@ export function LoginForm({ authError = false }: { authError?: boolean }) {
 
   if (state && 'sent' in state) {
     return (
-      <p className="max-w-xs text-center text-xs font-light leading-relaxed tracking-widest text-white/50">
-        이메일을 확인해줘.
-        <br />
-        도착한 링크를 누르면 로그인이 완료돼.
-      </p>
+      <div className="flex max-w-xs flex-col items-center gap-4 text-center">
+        <p className="text-xs font-light leading-relaxed tracking-widest text-white/50">
+          이메일을 확인해줘.
+          <br />
+          도착한 링크를 누르면 로그인이 완료돼.
+        </p>
+        <p className="text-[11px] font-light leading-relaxed tracking-wide text-white/25">
+          안 보이면 스팸함도 확인해줘.
+          <br />
+          카카오톡·인스타그램 같은 앱 안에서 열고 있었다면, 링크는 거기 말고
+          지금 이 화면을 보고 있던 브라우저에서 열어줘.
+        </p>
+      </div>
     )
   }
 
