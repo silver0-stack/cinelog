@@ -68,18 +68,6 @@ export function DemoUniverseStage() {
         />
       )}
 
-      {/* "이게 뭐야, 언니가 본거야?" 하는 혼란을 정직한 라벨 한 줄로 없앤다 —
-          별도 시스템처럼 안 느껴지게, 큐레이션이라고 밝힌다. 예전엔 여기에
-          제작자 본인의 실제 아카이브로 가는 링크를 같이 붙여뒀는데, 바이럴
-          트래픽 앞에 실제 평점/메모(꽤 개인적인 감상)를 상시 노출하는 셈이라
-          빼기로 했다 — 공유 링크는 "링크를 받은 사람만 본다"가 원칙인데 데모에
-          박아두면 사실상 전체 공개가 된다. */}
-      <div className="absolute left-6 top-6 z-10 flex flex-col items-start gap-1.5">
-        <p className="pointer-events-none text-[10px] font-light tracking-[0.25em] text-white/25">
-          데모 우주 · 내가 고른 24편
-        </p>
-      </div>
-
       <div className="absolute right-4 top-4 z-10 flex items-center gap-2 sm:right-6 sm:top-6 sm:gap-3">
         <MovieSearch searchIndex={searchIndex} onHighlightChange={handleHighlightChange} />
         <GuidePanel variant="demo" triggerClassName={navLinkClass} />
