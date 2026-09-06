@@ -5,24 +5,24 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useMotionValueEvent, useTransform, type MotionValue } from 'framer-motion'
 import type { Movie } from '@/data/movies'
 import { DURATION, EASE_SLOW } from '@/lib/motion'
-import { MIN_RADIUS, MAX_RADIUS, clampRadius, gravityForRadius } from '@/lib/universeLayout'
+import { MAX_RADIUS } from '@/lib/universeLayout'
 import { MoviePeekPanel } from './MoviePeekPanel'
 
-export type Tier = 'core' | 'near' | 'mid' | 'far'
+export type Tier = 'near' | 'mid' | 'far'
 
 type Props = {
   movie: Movie
-  /** 현재 중심 영화. peek 패널에서 이 영화와 movie 사이의 editorial 큐레이터 노트를
-   * 찾는 데 쓴다(자기 자신이면 표시하지 않는다). */
-  center: Movie
+  /** 이 영화와 가장 강하게 연결된 다른 영화(있으면) — peek 패널에서 그 사이의
+   * editorial 큐레이터 노트를 찾는 데 쓴다. 관계가 하나도 없으면 undefined. */
+  closestMovie?: Movie
+  /** 이 영화와 관계 있다고 판단된 다른 영화 수 — peek 패널의 "관련 영화 N편" 표시에 쓴다. */
+  relatedCount?: number
   x: number
   y: number
   tier: Tier
-  /** 이 영화와 현재 중심 사이의 중력(0~1). core에는 의미가 없다. */
+  /** 이 영화가 우주 전체에서 가장 강하게 이어진 상대와의 중력(0~1) — 반지름을
+   * 정하는 값이다("중심 영화"는 없다, 2026-09-06). */
   gravity: number
-  /** editorial connection을 전혀 반영하지 않은 순수 자동 계산 중력 — 드래그로
-   * "밀어서" 되돌아갈 수 있는 가장 먼 한계를 정한다. core에는 의미가 없다. */
-  naturalGravity: number
   driftSeed: number
   /** 현재 우주의 확대 배율(1 = 기본). 멀리 있는 영화일수록 더 확대해야 정보가 드러난다. */
   zoomScale: MotionValue<number>
@@ -42,34 +42,34 @@ type Props = {
    * 드러내는 부작용이 있었다 — 그걸 막는 데 쓴다. */
   anyPeeked: boolean
   /** "우주 성장 히스토리" 스크럽 중 — 지금 보고 있는 시점에 아직 이 영화를 기록하기
-   * 전이면 true. core에는 절대 적용하지 않는다(호출부에서 보장). 이 영화의 정체
-   * (포스터/제목)를 통째로 가리고, 클릭도 열람도 안 되는 "아직 태어나지 않은 별"로
-   * 보여준다 — 정체를 안 가리면 리플레이의 재미(하나씩 켜지는 걸 발견하는 것)가 없다. */
+   * 전이면 true. 이 영화의 정체(포스터/제목)를 통째로 가리고, 클릭도 열람도 안
+   * 되는 "아직 태어나지 않은 별"로 보여준다 — 정체를 안 가리면 리플레이의 재미
+   * (하나씩 켜지는 걸 발견하는 것)가 없다. */
   dimmed?: boolean
-  /** "탐색" 패널에서 인사이트 항목(같은 감독/장르/시대/평점)을 눌렀을 때, 그
-   * 목록에 없는 위성만 켜진다. dimmed와 달리 정체는 그대로 다 보이고 밝기만
-   * 낮아진다 — 이미 다 아는 영화라 굳이 숨길 이유가 없고, 클릭/드래그도 계속
-   * 된다. 위치 재계산은 절대 하지 않는다(중심과의 관계로만 자리가 정해진다는
-   * 규칙을 그대로 지킨다). */
+  /** "탐색" 패널의 인사이트/장르 필터, 또는 다른 별을 열람 중일 때 그 별의
+   * "관련 영화" 하이라이트에서 벗어난 별에 켜진다. dimmed와 달리 정체는 그대로
+   * 다 보이고 밝기만 낮아진다 — 이미 다 아는 영화라 굳이 숨길 이유가 없고,
+   * 클릭도 계속 된다. 위치 재계산은 절대 하지 않는다. */
   dimmedByHighlight?: boolean
   /** true면 peek 패널에서 "다시 본 감상 남기기"/"정보 수정"이 가능해진다(로그인한 본인 아카이브에서만). */
   editable?: boolean
   /** 이미 만들어진 영화 카드 공유 URL(서버에서 미리 조회). ShareCardButton의 initialUrl로 전달된다. */
   initialCardUrl?: string | null
-  /** 위성(비-core) 영화에만 전달된다 — peek 패널의 "이 영화를 중심으로"에서만 호출된다. */
-  onSelect?: (movieId: string) => void
-  /** 클릭으로 열람을 열고 닫는다 — null이면 닫기. 우주 재배치(onSelect)와는 완전히 별개다. */
+  /** 클릭으로 열람을 열고 닫는다 — null이면 닫기. */
   onPeek?: (movieId: string | null) => void
-  /** 드래그 중 실시간으로 호출된다(P2-6). 위성에만, editable한 우주에서만 전달된다. */
-  onDragStrength?: (movieId: string, strength: number) => void
-  /** 드래그를 놓으면 한 번 호출된다 — 이때 실제로 저장한다. */
-  onCommitStrength?: (movieId: string, strength: number) => void
   /** 있으면 peek 패널의 평점/메모가 Supabase 대신 이 함수로 로컬 상태에만
    * 반영된다(데모 우주의 게스트 체험용) — editable과 별개다. */
   onGuestMutate?: (movieId: string, mutate: (movie: Movie) => Movie) => void
   /** tmdbId → 이미 기록한 그 영화의 logged_movie id. "정보 수정"에서 중복 저장을
    * 저장 버튼 누르기 전에 미리 막는 데 쓴다. */
   existingByTmdbId?: Record<number, string>
+  /** (2026-09-06) 드래그 중 실시간으로 호출된다 — editable한 우주에서만 전달된다.
+   * 객관적 메타데이터(감독/장르)로는 못 잡는 개인적인 연결을 유저가 직접 배치로
+   * 표현할 수 있게 한다. 마우스로만 동작한다(터치는 팬/핀치와 제스처가 겹친다). */
+  onDragPosition?: (movieId: string, x: number, y: number) => void
+  /** 드래그를 놓으면 한 번 호출된다 — 이때 실제로 저장한다(그 뒤로 이 영화는
+   * 다시는 자동 배치로 안 돌아간다). */
+  onCommitPosition?: (movieId: string, x: number, y: number) => void
 }
 
 // far는 "관계가 약하다"는 신호이지 "안 보여도 된다"는 뜻이 아니다 — 특히 기록이
@@ -79,12 +79,11 @@ type Props = {
 // 별(추상적인 점) 대신 포스터 자체가 그 영화를 나타낸다 — tier별 크기 차이로
 // 관계의 위계를 그대로 표현한다(2:3 포스터 비율 유지).
 const TIER_POSTER_SIZE: Record<Tier, { w: number; h: number }> = {
-  core: { w: 84, h: 126 },
   near: { w: 64, h: 96 },
   mid: { w: 50, h: 75 },
   far: { w: 40, h: 60 },
 }
-const TIER_OPACITY: Record<Tier, number> = { core: 1, near: 0.9, mid: 0.65, far: 0.5 }
+const TIER_OPACITY: Record<Tier, number> = { near: 0.9, mid: 0.65, far: 0.5 }
 
 // 전체 우주를 멀리서 훑어볼 때(기본 줌 1)는 별이 여러 개 동시에 보여서, 평점·
 // 메모까지 다 뜨면 복잡해진다는 피드백 — 그렇다고 아예 숨기면 "눌러보고 싶게
@@ -125,12 +124,12 @@ function ratingTintRgb(rating: number | undefined): string {
 
 export function MovieBody({
   movie,
-  center,
+  closestMovie,
+  relatedCount,
   x,
   y,
   tier,
   gravity,
-  naturalGravity,
   driftSeed,
   zoomScale,
   panX,
@@ -143,27 +142,113 @@ export function MovieBody({
   dimmedByHighlight,
   editable,
   initialCardUrl,
-  onSelect,
   onPeek,
-  onDragStrength,
-  onCommitStrength,
   onGuestMutate,
   existingByTmdbId,
+  onDragPosition,
+  onCommitPosition,
 }: Props) {
   const posterSize = TIER_POSTER_SIZE[tier]
-  const isCore = tier === 'core'
-  // core(중심 별)도 클릭하면 peek이 열린다 — "이 영화를 중심으로"만 core에게는
-  // 의미가 없을 뿐(자기 자신을 다시 중심으로 만들 수는 없다), "다시 봤어"/
-  // "정보 수정"은 core에서도 그대로 필요하다.
   // dimmed(아직 기록 전인 시점으로 스크럽한 별)는 클릭도 드래그도 안 된다 —
   // 아직 우주에 존재하지 않는 것처럼 다뤄야 리플레이가 "발견"으로 느껴진다.
   const clickable = !!onPeek && !dimmed
-  const draggable = !isCore && !!onDragStrength && !dimmed
+  const draggable = !!onDragPosition && !dimmed
+
+  // 자유 2D 드래그로 우주 안 자리를 직접 정한다(2026-09-06) — 각도까지 마음대로
+  // 옮길 수 있다는 점에서 예전 P2-6(반지름만 조절하던 드래그)과 다르다. 놓는
+  // 순간의 좌표를 ref에도 들고 있어야 한다 — onDragPosition으로 매 프레임
+  // 부모 state를 갱신해도, pointerup 핸들러 시점에 이 컴포넌트의 x/y prop이
+  // 그 최신값으로 리렌더를 이미 마쳤다고 보장할 수 없어서(React 배치/타이밍),
+  // 마지막으로 계산한 좌표를 직접 커밋에 써야 안전하다.
+  const [isDragging, setIsDragging] = useState(false)
+  const dragRef = useRef<
+    | { mode: 'idle' }
+    | { mode: 'pending'; startX: number; startY: number }
+    | { mode: 'drag'; startWorldX: number; startWorldY: number; startX: number; startY: number }
+  >({ mode: 'idle' })
+  const suppressClickRef = useRef(false)
+  const lastDragPositionRef = useRef({ x, y })
+
+  // (2026-09-06) 처음엔 onPointerMove/onPointerUp을 별 버튼 자신에게 걸고
+  // setPointerCapture로 커서가 버튼 밖으로 나가도 계속 받게 했는데, "마우스로도
+  // 대부분 안 된다"는 실사용 피드백으로 드러난 문제였다 — 별의 실제 클릭 영역이
+  // 포스터 크기(작으면 40×60px)뿐이라, 조금만 빠르게 끌어도 커서가 그 영역을
+  // 벗어나고, setPointerCapture가 모든 브라우저/상황에서 완벽히 되돌려주지
+  // 못하면 그 순간 이후 pointermove가 뚝 끊겨 드래그가 조용히 멈췄다. 배경
+  // 팬(MovieUniverse)이 이미 쓰고 있는 방식과 똑같이, pointerdown이 일어난
+  // 순간부터는 move/up 리스너를 window에 직접 붙인다 — 커서가 어디로 가든
+  // (심지어 창 밖으로 나갔다 들어와도) 계속 받을 수 있다.
+  const handlePointerDown = (e: React.PointerEvent) => {
+    // (2026-09-06) 원래 마우스로만 제한했었다 — "터치는 팬/핀치 제스처와 겹친다"는
+    // 이유였는데, 그건 빈 배경에서의 얘기다(MovieUniverse의 배경 팬/핀치 리스너는
+    // isOnStar로 별 위에서 시작한 터치를 이미 걸러낸다). 그런데 이 제한이 실제로는
+    // 윈도우 정밀 터치패드의 클릭+드래그까지 막아버렸다 — 일부 드라이버/브라우저
+    // 조합에서 터치패드 클릭이 pointerType 'mouse'가 아니라 'touch'로 잡힌다.
+    // button만 확인하면 충분하다(터치는 항상 button 0).
+    if (!draggable || e.button !== 0) return
+
+    const startX = e.clientX
+    const startY = e.clientY
+    dragRef.current = { mode: 'pending', startX, startY }
+
+    // pointermove와 pointerup 양쪽에서 똑같이 쓴다 — 예전엔 pointerup에서
+    // 자신의 좌표를 다시 계산하지 않고 마지막 pointermove가 남긴 값을 그대로
+    // 커밋했는데, 브라우저가 마우스를 뗀 그 순간의 최종 이동분을 move가 아니라
+    // up 이벤트에 실어 보내는 경우(빠르게 휙 끌고 놓을 때 흔하다) 그 마지막
+    // 한 걸음이 통째로 누락돼 "커서 바로 아래"가 아니라 그 전 위치에 뚝
+    // 떨어졌다 — 이게 "마우스로 하면 대부분 안 된다"의 실제 원인이었다.
+    const applyMove = (clientX: number, clientY: number) => {
+      let state = dragRef.current
+      if (state.mode === 'idle') return false
+
+      if (state.mode === 'pending') {
+        // 손 떨림 정도의 아주 작은 움직임까지 드래그로 잡아버리면 "클릭했는데
+        // 반응이 없다"로 느껴진다 — 열람(클릭)이 실수로 드래그에 먹히지 않도록 여유를 준다.
+        if (Math.hypot(clientX - state.startX, clientY - state.startY) < 10) return false
+        // 임계값을 넘긴 바로 이 이동에서 여기서 return해버리면, 한 번에 큰 폭으로
+        // 이동하는 입력에서는 이동량이 통째로 버려져 별이 실제로는 전혀 안
+        // 움직이는 것처럼 보인다 — 트랜지션만 하고 아래로 흘려보내 이번
+        // 이동분도 그대로 반영한다. 기준점은 여전히 pointerdown 시점
+        // (state.startX/Y)이어야 델타가 맞는다(이 이동 지점을 기준으로 삼으면 안 된다).
+        state = { mode: 'drag', startWorldX: x, startWorldY: y, startX: state.startX, startY: state.startY }
+        dragRef.current = state
+        suppressClickRef.current = true
+        setIsDragging(true)
+      }
+
+      const zoom = zoomScale.get() || 1
+      const nextX = state.startWorldX + (clientX - state.startX) / zoom
+      const nextY = state.startWorldY + (clientY - state.startY) / zoom
+      lastDragPositionRef.current = { x: nextX, y: nextY }
+      onDragPosition?.(movie.id, nextX, nextY)
+      return true
+    }
+
+    const handleWindowPointerMove = (ev: PointerEvent) => {
+      applyMove(ev.clientX, ev.clientY)
+    }
+
+    const endDrag = (ev: PointerEvent) => {
+      applyMove(ev.clientX, ev.clientY)
+      if (dragRef.current.mode === 'drag') {
+        onCommitPosition?.(movie.id, lastDragPositionRef.current.x, lastDragPositionRef.current.y)
+      }
+      dragRef.current = { mode: 'idle' }
+      setIsDragging(false)
+      window.removeEventListener('pointermove', handleWindowPointerMove)
+      window.removeEventListener('pointerup', endDrag)
+      window.removeEventListener('pointercancel', endDrag)
+    }
+
+    window.addEventListener('pointermove', handleWindowPointerMove)
+    window.addEventListener('pointerup', endDrag)
+    window.addEventListener('pointercancel', endDrag)
+  }
 
   // 화면 밖으로 한참 벗어난 별은 이미지 2장(포스터+블러 글로우)과 무한 반복
   // 흔들림 애니메이션을 그릴 이유가 없다 — 기록이 수백 편으로 늘어도 실제로
-  // 보이는 별만 이 비용을 쓰게 한다. core/peeked는 카메라가 항상 그 별을
-  // 화면 안으로 데려오므로 계산할 필요 없이 항상 제외한다. 여유(padding)를
+  // 보이는 별만 이 비용을 쓰게 한다. peeked는 카메라가 항상 그 별을 화면
+  // 안으로 데려오므로 계산할 필요 없이 항상 제외한다. 여유(padding)를
   // 넉넉히 둬서 화면 가장자리에서 갑자기 팝인/팝아웃하는 게 보이지 않게 한다.
   const OFFSCREEN_PADDING = 300
   const offscreenDistance = useTransform([panX, panY, zoomScale], (latest) => {
@@ -177,19 +262,7 @@ export function MovieBody({
     const next = d > 0
     setIsOffscreen((prev) => (prev === next ? prev : next))
   })
-  const culled = isOffscreen && !isCore && !peeked
-
-  // editorial connection 드래그(P2-6): 반지름(거리)만 조절한다 — 각도는 건드리지
-  // 않는다. 마우스로만 동작한다(터치는 팬/핀치와 제스처가 겹치므로 건드리지 않는다).
-  // 드래그 중에는 위치 레이어의 느린 transition을 꺼서 손가락/커서를 그대로 따라오게 한다.
-  const [isDragging, setIsDragging] = useState(false)
-  const dragRef = useRef<
-    | { mode: 'idle' }
-    | { mode: 'pending'; startX: number; startY: number }
-    | { mode: 'drag'; angle: number; startRadius: number; startX: number; startY: number }
-  >({ mode: 'idle' })
-  const suppressClickRef = useRef(false)
-  const lastStrengthRef = useRef(0)
+  const culled = isOffscreen && !peeked
 
   // 포스터 경로는 있는데 실제 로드가 실패하면 브라우저 기본 깨진 이미지 아이콘
   // 대신 그냥 안 보이게 한다.
@@ -200,8 +273,6 @@ export function MovieBody({
   // 어려워진다.
   const inverseZoom = useTransform(zoomScale, (z) => 1 / (z || 1))
 
-  // core는 항상 "지금 보고 있는 중심"이라 별로 접히지 않는다 — core에도 같은
-  // 훅을 호출은 해두되(훅 규칙), 실제 값은 스타일 적용 시점에 고정값으로 바꿔치기한다.
   const metaOpacity = useTransform(zoomScale, META_FADE_ZOOM, [0, 1], { clamp: true })
   const starProgress = useTransform(zoomScale, STAR_FORM_ZOOM, [1, 0], { clamp: true })
   const posterOpacity = useTransform(starProgress, (p) => TIER_OPACITY[tier] * (1 - p))
@@ -264,60 +335,6 @@ export function MovieBody({
     }
   }, [peeked])
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (!draggable || e.pointerType !== 'mouse' || e.button !== 0) return
-    e.currentTarget.setPointerCapture(e.pointerId)
-    dragRef.current = { mode: 'pending', startX: e.clientX, startY: e.clientY }
-  }
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    const state = dragRef.current
-    if (state.mode === 'idle') return
-
-    if (state.mode === 'pending') {
-      // 손 떨림 정도의 아주 작은 움직임까지 드래그로 잡아버리면 "클릭했는데
-      // 반응이 없다"로 느껴진다 — 열람(클릭)이 실수로 관계 조정(드래그)에
-      // 먹히지 않도록 여유를 조금 더 준다.
-      if (Math.hypot(e.clientX - state.startX, e.clientY - state.startY) < 10) return
-      dragRef.current = {
-        mode: 'drag',
-        angle: Math.atan2(y, x),
-        startRadius: Math.hypot(x, y),
-        startX: e.clientX,
-        startY: e.clientY,
-      }
-      suppressClickRef.current = true
-      setIsDragging(true)
-      return
-    }
-
-    const zoom = zoomScale.get() || 1
-    const dx = (e.clientX - state.startX) / zoom
-    const dy = (e.clientY - state.startY) / zoom
-    // 커서가 중심 쪽으로 움직인 만큼(inward)을 반지름에서 뺀다.
-    const inward = -(dx * Math.cos(state.angle) + dy * Math.sin(state.angle))
-    const naturalRadius = MIN_RADIUS + (1 - naturalGravity) * (MAX_RADIUS - MIN_RADIUS)
-    const nextRadius = clampRadius(state.startRadius - inward, MIN_RADIUS, naturalRadius)
-
-    const targetGravity = gravityForRadius(nextRadius)
-    const strength = Math.min(1, Math.max(0, targetGravity - naturalGravity))
-    lastStrengthRef.current = strength
-    onDragStrength?.(movie.id, strength)
-  }
-
-  const handlePointerUp = () => {
-    if (dragRef.current.mode === 'drag') {
-      onCommitStrength?.(movie.id, lastStrengthRef.current)
-    }
-    dragRef.current = { mode: 'idle' }
-    setIsDragging(false)
-  }
-
-  // 클릭은 언제나 "열람"이다 — 우주를 재배치하지 않는다. 우주 재배치(onSelect)는
-  // peek 패널 안의 "이 영화를 중심으로" 버튼에서만 일어난다. 열람 하나 하려고
-  // 우주 전체가 재배치되는 게 이상하다는 지적이 있었다(리뷰 하나 읽자고 클릭했는데
-  // 관계도가 통째로 바뀌는 문제) — 그래서 둘을 완전히 분리했다.
-  //
   // 이미 열람(포커스) 중인 별을 다시 클릭하면 닫힌다 — 탭하면 카메라가 확대해서
   // 다가가고, 다시 탭하면 원래 보던 곳으로 돌아오는 대칭적인 토글. 여백 클릭/
   // Escape/화면 고정 "나가기" 버튼도 같은 동작(onPeek(null))으로 이어진다 —
@@ -336,13 +353,10 @@ export function MovieBody({
   const driftY = 2 + (1 - gravity) * 9 + ((driftSeed * 7) % 3)
   const duration = 9 + (1 - gravity) * 14 + (driftSeed % 6)
 
-  // 기본 줌에서는 core처럼 항상 제목/메타/포스터를 다 보여준다 — 다만 이제
-  // 살짝만 줌아웃해도(META_FADE_ZOOM/STAR_FORM_ZOOM 참고) 감독/연도 → 포스터
-  // 순으로 다시 접힌다. CLAUDE.md 섹션 12/13/P2-5의 "멀리서는 점, 가까워지면
-  // 드러난다" 원칙을 완전히 없앴던 걸, 줌아웃했을 때만 되살린 절충안.
-  // 장르는 뺐다 — 평점/메모는 감정을 건드려서 클릭을 유도하는 훅인데, 장르는
-  // 그냥 분류 정보라 훅으로서 힘이 없고 좁은 미리보기에 잡음만 늘렸다. 클릭
-  // (peek)하면 앞면에서 여전히 보이니 정보 자체가 사라지는 건 아니다.
+  // 장르는 평소엔 안 보여준다 — 화면에 별이 여러 개일 때 잡음만 는다. 평점/
+  // 메모는 감정을 건드려서 클릭을 유도하는 훅인데, 장르는 그냥 분류 정보라
+  // 훅으로서 힘이 없고 좁은 미리보기에 잡음만 늘렸다. 클릭(peek)하면 앞면에서
+  // 여전히 보이니 정보 자체가 사라지는 건 아니다.
   const hasDetail = Boolean(movie.rating || movie.note)
   // 다시 본 영화는 줌아웃 상태(열람 전)에서도 알 수 있어야 한다는 피드백 —
   // "이 별을 열어봐야만 알 수 있는 정보"이던 걸 미리보기로 끌어올렸다.
@@ -351,10 +365,10 @@ export function MovieBody({
   const tierShadow = tier === 'near' ? '0 0 12px 3px rgba(230,234,244,0.12)' : null
   const starShadow = tierShadow ?? 'none'
 
-  // 다른 별을 열람 중일 때는 이 별(core 포함, 열람 중인 별 본인만 제외)을 크게
-  // 죽여서 화면에서 물러나게 한다 — 배치상 우연히 열람 패널 옆에 겹친 포스터가
-  // 그대로 밝게 남아 있으면 시선이 갈라져 패널이 사나워 보인다는 피드백. 클릭은
-  // 막지 않는다(dim된 별을 눌러서 그쪽으로 열람을 옮기는 건 여전히 가능해야 한다).
+  // 다른 별을 열람 중일 때는 이 별(열람 중인 별 본인만 제외)을 크게 죽여서
+  // 화면에서 물러나게 한다 — 배치상 우연히 열람 패널 옆에 겹친 포스터가 그대로
+  // 밝게 남아 있으면 시선이 갈라져 패널이 사나워 보인다는 피드백. 클릭은 막지
+  // 않는다(dim된 별을 눌러서 그쪽으로 열람을 옮기는 건 여전히 가능해야 한다).
   const focusDimmed = anyPeeked && !peeked
   // 두 종류의 "밝기 낮추기"가 동시에 적용될 수 있어서(열람 포커스 vs 탐색
   // 하이라이트) 곱해서 하나의 값으로 합친다 — 극단적인 경우(둘 다 해당) 아주
@@ -385,11 +399,11 @@ export function MovieBody({
   const proximityZIndex = Math.round(MAX_RADIUS - radius)
 
   return (
-    // 위치 레이어: 중심이 바뀌면 모든 영화가 새 좌표로 부드럽게 이동한다(순간이동 없음).
-    // peek 패널 내부의 z-10은 "같은 별 안에서만" 유효하다 — 다른 별이 DOM 순서상
-    // 나중에 그려지면 그 별의 (안 보이는) 클릭 영역이 이 패널 위를 덮어버려서
-    // 커서가 안 바뀌고 클릭도 안 먹는 문제가 생긴다. peek 중인 별 전체를 다른
-    // 모든 별보다 위로 올려서 이 문제를 원천적으로 막는다.
+    // 위치 레이어: 배치가 바뀌면(기록 추가/삭제) 모든 영화가 새 좌표로 부드럽게
+    // 이동한다(순간이동 없음). peek 패널 내부의 z-10은 "같은 별 안에서만" 유효하다 —
+    // 다른 별이 DOM 순서상 나중에 그려지면 그 별의 (안 보이는) 클릭 영역이 이
+    // 패널 위를 덮어버려서 커서가 안 바뀌고 클릭도 안 먹는 문제가 생긴다. peek
+    // 중인 별 전체를 다른 모든 별보다 위로 올려서 이 문제를 원천적으로 막는다.
     <motion.div
       className="absolute left-1/2 top-1/2"
       style={{ zIndex: peeked ? 1000 : proximityZIndex }}
@@ -408,14 +422,10 @@ export function MovieBody({
         ref={peekAnchorRef}
         className="group relative flex flex-col items-center transition-opacity duration-500 ease-out"
         style={{ opacity: wrapperOpacity }}
-        initial={isCore ? undefined : { x: -driftX, y: -driftY }}
-        animate={isCore || peeked || culled || dimmed ? undefined : { x: [-driftX, driftX, -driftX], y: [-driftY, driftY, -driftY] }}
-        transition={isCore ? undefined : { duration, repeat: Infinity, ease: 'easeInOut' }}
+        initial={{ x: -driftX, y: -driftY }}
+        animate={peeked || culled || dimmed ? undefined : { x: [-driftX, driftX, -driftX], y: [-driftY, driftY, -driftY] }}
+        transition={{ duration, repeat: Infinity, ease: 'easeInOut' }}
       >
-        {/* core와 위성이 항상 같은 종류의 요소(button)를 쓴다 — 그래야 중심이
-            바뀔 때 이 요소가 통째로 사라졌다 나타나지 않고, 크기/광채가 그대로
-            이어지며 부드럽게 변한다. core도 이제 클릭 가능하다 — peek(열람)은
-            중심으로 만들기와 별개라 core에도 그대로 필요하다. */}
         {/* 포스터 자체가 별이다 — 예전엔 추상적인 점 하나가 별이고 그 밑에 따로
             작은 포스터 미리보기가 또 있었는데, 포스터가 늘 보이는 지금은 그게
             같은 정보를 두 번 보여주는 중복이었다. 탭 영역(-m-3 p-3)은 실제
@@ -430,34 +440,17 @@ export function MovieBody({
           disabled={!clickable}
           onClick={clickable ? handleClick : undefined}
           onPointerDown={draggable ? handlePointerDown : undefined}
-          onPointerMove={draggable ? handlePointerMove : undefined}
-          onPointerUp={draggable ? handlePointerUp : undefined}
-          onPointerCancel={draggable ? handlePointerUp : undefined}
           aria-label={clickable ? `${movie.title} ${peeked ? '닫기' : '열람하기'}` : movie.title}
           className={`relative -m-3 flex select-none items-center justify-center border-0 bg-transparent p-3 ${
-            clickable
-              ? 'cursor-pointer focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-4 focus-visible:outline-white/40'
-              : 'cursor-default'
-          }`}
+            draggable ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : clickable ? 'cursor-pointer' : 'cursor-default'
+          } ${clickable ? 'focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-4 focus-visible:outline-white/40' : ''}`}
         >
           <motion.span
             className="relative block overflow-visible rounded-sm"
             animate={{ width: posterSize.w, height: posterSize.h }}
             transition={{ duration: DURATION.approach, ease: EASE_SLOW }}
-            style={{ boxShadow: starShadow, scale: isCore ? 1 : starScale, borderRadius: isCore ? undefined : starRadius }}
+            style={{ boxShadow: starShadow, scale: starScale, borderRadius: starRadius }}
           >
-            {/* core 전용 따뜻한 후광 — 포스터 색과 무관하게 항상 은은히 깔려서
-                "이게 지금 중심"이라는 신호를 준다(더 크고, 안 흔들리는 것과 더해서). */}
-            {isCore && (
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute -inset-8 -z-20 rounded-full"
-                style={{
-                  background: 'radial-gradient(circle, rgba(255,214,150,0.28), transparent 70%)',
-                  filter: 'blur(18px)',
-                }}
-              />
-            )}
             {movie.posterPath && !posterFailed && !culled && !dimmed ? (
               <>
                 {/* 앰비언트 글로우 — 포스터를 크게 확대해 흐리게 깐 사본. 대표색을
@@ -469,17 +462,26 @@ export function MovieBody({
                   src={`https://image.tmdb.org/t/p/w154${movie.posterPath}`}
                   alt=""
                   aria-hidden="true"
+                  draggable={false}
                   className="pointer-events-none absolute -z-10 rounded-sm object-cover blur-xl"
-                  style={{ inset: isCore ? -glowSpread : starGlowInset, opacity: isCore ? glowOpacity : starGlowOpacity }}
+                  style={{ inset: starGlowInset, opacity: starGlowOpacity }}
                 />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
+                {/* draggable={false} — 안 붙이면 <img>의 브라우저 기본 드래그(OS
+                    레벨 "이미지 끌어서 옮기기")가 우리 포인터 드래그보다 먼저
+                    끼어든다. 그 순간부터 pointermove가 멈추고 커서가 어디로
+                    가든 우리 코드는 못 받다가, 드롭 시점의 엉뚱한 좌표만 잡혀서
+                    "포스터로 드래그하면 이상한 자리로 간다"로 보였다 — 제목
+                    텍스트(일반 div라 브라우저 기본 드래그 대상이 아님)로 하면
+                    멀쩡했던 이유이기도 하다. */}
                 <motion.img
                   src={`https://image.tmdb.org/t/p/w154${movie.posterPath}`}
                   alt=""
                   loading="lazy"
+                  draggable={false}
                   onError={() => setPosterFailed(true)}
                   className="relative h-full w-full rounded-sm object-cover"
-                  style={{ opacity: isCore ? TIER_OPACITY[tier] : posterOpacity }}
+                  style={{ opacity: posterOpacity }}
                 />
               </>
             ) : dimmed ? (
@@ -497,9 +499,7 @@ export function MovieBody({
               <span
                 className="block h-full w-full rounded-sm"
                 style={{
-                  background: isCore
-                    ? 'radial-gradient(circle, rgba(255,226,190,0.9), rgba(255,226,190,0.15) 70%)'
-                    : `radial-gradient(circle, rgba(${satelliteTint},0.95), rgba(${satelliteTint},0.1) 70%)`,
+                  background: `radial-gradient(circle, rgba(${satelliteTint},0.95), rgba(${satelliteTint},0.1) 70%)`,
                   opacity: TIER_OPACITY[tier],
                 }}
               />
@@ -521,7 +521,7 @@ export function MovieBody({
               </div>
               <motion.div
                 className="mt-0.5 max-w-28 truncate text-[9px] tracking-[0.15em] text-white/35"
-                style={{ opacity: isCore ? 1 : metaOpacity }}
+                style={{ opacity: metaOpacity }}
               >
                 {movie.year} · {movie.director}
               </motion.div>
@@ -594,14 +594,14 @@ export function MovieBody({
             >
               <MoviePeekPanel
                 movie={movie}
-                center={center}
+                closestMovie={closestMovie}
+                relatedCount={relatedCount}
                 editable={!!editable}
                 onGuestMutate={onGuestMutate}
                 existingByTmdbId={existingByTmdbId}
                 initialCardUrl={initialCardUrl}
                 maxHeightPx={panelMaxHeightPx}
                 onClose={() => onPeek?.(null)}
-                onRecenter={onSelect ? () => onSelect(movie.id) : undefined}
               />
             </motion.div>
           )}
@@ -637,14 +637,14 @@ export function MovieBody({
                     <div className="pointer-events-auto w-full max-w-[360px]">
                       <MoviePeekPanel
                         movie={movie}
-                        center={center}
+                        closestMovie={closestMovie}
+                relatedCount={relatedCount}
                         editable={!!editable}
                         onGuestMutate={onGuestMutate}
                         existingByTmdbId={existingByTmdbId}
                         initialCardUrl={initialCardUrl}
                         maxHeightPx={panelMaxHeightPx}
                         onClose={() => onPeek?.(null)}
-                        onRecenter={onSelect ? () => onSelect(movie.id) : undefined}
                       />
                     </div>
                   </motion.div>

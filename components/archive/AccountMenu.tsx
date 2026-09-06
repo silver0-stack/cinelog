@@ -50,7 +50,7 @@ export function AccountMenu({ email, links = [], menuActions = [] }: Props) {
           filter: 'drop-shadow(0 0 3px rgba(0,0,0,0.9))',
         }}
       >
-        <span className="flex h-6 w-6 items-center justify-center rounded-full border border-white/20 text-[10px] font-light text-white/50 transition-colors duration-500 group-hover:border-white/40 group-hover:text-white/80">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full border border-white/35 text-[10px] font-light text-white/70 transition-colors duration-500 group-hover:border-white/60 group-hover:text-white/95">
           {initial}
         </span>
       </button>

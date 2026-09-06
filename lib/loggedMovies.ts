@@ -11,6 +11,10 @@ export type LoggedMovieRow = {
   themes: string[]
   moods: string[]
   poster_path: string | null
+  /** 유저가 드래그로 직접 배치한 좌표 — 둘 다 null이면 아직 한 번도 안 옮긴
+   * 영화라는 뜻이고, MovieUniverse가 자동 배치로 기본 위치를 계산한다. */
+  pos_x: number | null
+  pos_y: number | null
 }
 
 export type ViewingRow = {
@@ -55,6 +59,8 @@ export function combineLoggedMovie(row: LoggedMovieRow, viewings: ViewingRow[]):
     posterPath: row.poster_path ?? undefined,
     note: latest?.note ?? undefined,
     viewings: movieViewings,
+    posX: row.pos_x ?? undefined,
+    posY: row.pos_y ?? undefined,
   }
 }
 
@@ -235,5 +241,13 @@ export async function updateLoggedMovie(id: string, input: MovieMetadataUpdate) 
 
   const { error } = await supabase.from('logged_movies').update(payload).eq('id', id)
 
+  if (error) throw error
+}
+
+/** 별을 드래그해서 우주 안 자리를 직접 정했을 때 그 좌표를 저장한다 — 저장되고
+ * 나면 이 영화는 다시는 자동 배치로 안 돌아가고, 이 좌표를 그대로 쓴다. */
+export async function updateMoviePosition(id: string, x: number, y: number) {
+  const supabase = createClient()
+  const { error } = await supabase.from('logged_movies').update({ pos_x: x, pos_y: y }).eq('id', id)
   if (error) throw error
 }

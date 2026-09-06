@@ -8,12 +8,11 @@ import { FadeIn } from '@/components/archive/FadeIn'
 import { GuidePanel } from '@/components/guide/GuidePanel'
 import { UniverseInsightPanel } from '@/components/archive/UniverseInsightPanel'
 import { computeHistoryRange } from '@/lib/loggedMovies'
-import { secondaryNavLinkClass as loginLinkClass } from '@/lib/uiStyles'
+import { genreIndex } from '@/lib/universeInsights'
+import { navLinkClass, secondaryNavLinkClass as loginLinkClass } from '@/lib/uiStyles'
+import type { GroupMode } from '@/lib/universeLayout'
 import type { Movie } from '@/data/movies'
 import type { RewatchedMovie, UniverseInsight } from '@/lib/universeInsights'
-
-const bottomLeftTriggerClass =
-  'text-xs font-light tracking-[0.2em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80 sm:tracking-[0.4em]'
 
 // 탐색/히스토리는 원래 로그인한 본인 우주(계정 드롭다운 안)에만 있었다 — 남의
 // 공유 우주를 구경하러 온 사람도 "이 사람이 뭘 좋아하는지"(탐색)나 "이 우주가
@@ -34,19 +33,21 @@ export function SharedUniverseShell({
   const [focusMovieId, setFocusMovieId] = useState<string | null>(null)
   const [historyDate, setHistoryDate] = useState<string | null>(null)
   const [highlightedIds, setHighlightedIds] = useState<Set<string> | null>(null)
+  const [groupMode, setGroupMode] = useState<GroupMode>('genre')
 
   const historyRange = useMemo(() => computeHistoryRange(movies), [movies])
+  const genres = useMemo(() => genreIndex(movies), [movies])
 
   return (
     <main className="relative h-dvh w-screen overflow-hidden bg-black">
       <FadeIn>
         <MovieUniverse
           movies={movies}
-          defaultCenterId={movies[0].id}
           showIdleHint
           focusMovieId={focusMovieId}
           historyDate={historyDate}
           highlightedIds={highlightedIds}
+          groupMode={groupMode}
         />
       </FadeIn>
 
@@ -60,17 +61,17 @@ export function SharedUniverseShell({
         />
       )}
 
-      <GuidePanel
-        variant="shared"
-        triggerClassName="absolute right-6 top-6 z-10 text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
-      />
+      <GuidePanel variant="shared" triggerClassName={`absolute right-6 top-6 z-10 ${navLinkClass}`} />
 
       <UniverseInsightPanel
         insights={insights}
+        genres={genres}
+        groupMode={groupMode}
+        onGroupModeChange={setGroupMode}
         rewatched={rewatched}
         onFocusMovie={setFocusMovieId}
         onHighlightChange={(ids) => setHighlightedIds(ids ? new Set(ids) : null)}
-        triggerClassName={`absolute bottom-6 left-4 z-10 sm:left-6 ${bottomLeftTriggerClass}`}
+        triggerClassName={`absolute bottom-6 left-4 z-10 sm:left-6 ${navLinkClass}`}
         panelClassName="absolute bottom-14 left-4 z-10 sm:left-6"
         historyEligible={historyRange !== null}
         onOpenHistory={() => historyRange && setHistoryDate(historyRange.min)}

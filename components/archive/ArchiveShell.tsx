@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -15,21 +15,15 @@ import { LogMovieForm } from '@/components/archive/LogMovieForm'
 import { GuidePanel } from '@/components/guide/GuidePanel'
 import { EASE_SLOW } from '@/lib/motion'
 import { computeHistoryRange } from '@/lib/loggedMovies'
+import { navLinkClass } from '@/lib/uiStyles'
+import { genreIndex } from '@/lib/universeInsights'
+import type { GroupMode } from '@/lib/universeLayout'
 import type { Movie } from '@/data/movies'
 import type { RewatchedMovie, UniverseInsight } from '@/lib/universeInsights'
 
-const navLinkClass =
-  'text-xs font-light tracking-[0.2em] sm:tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80'
-
 // 데모/공유 우주와 같은 자리, 같은 스타일 — "탐색"(+히스토리)이 로그인 여부와
 // 상관없이 항상 화면 하단 왼쪽에 있다는 걸 일관되게 유지한다.
-const bottomLeftTriggerClass =
-  'absolute bottom-6 left-4 z-20 text-xs font-light tracking-[0.2em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80 sm:left-6 sm:tracking-[0.4em]'
-
-// <button>은 부모의 text-shadow를 자동으로 물려받지 않는(폼 컨트롤이라 그런)
-// 브라우저 기본 동작이 있어서, 화면 위쪽의 밝은 포스터 위에서도 글자가
-// 읽히려면 버튼 자신에 직접 걸어야 한다(MovieUniverse의 idle 힌트와 같은 값).
-const navTextShadow = { textShadow: '0 0 10px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.9)' }
+const bottomLeftTriggerClass = `absolute bottom-6 left-4 z-20 sm:left-6 ${navLinkClass}`
 
 type Props = {
   movies: Movie[]
@@ -90,19 +84,42 @@ export function ArchiveShell({
 
   const [historyDate, setHistoryDate] = useState<string | null>(null)
   const [highlightedIds, setHighlightedIds] = useState<Set<string> | null>(null)
+  // 검색과 탐색 인사이트가 같은 하이라이트 메커니즘을 공유한다 — 위치는 그대로
+  // 두고 해당 안 하는 별만 어둡게 하는 방식(재배치 없음). 검색창에서 타이핑하는
+  // 즉시 우주 안에서 바로 켜지는 별을 보여주고, 인사이트 항목을 누르면 같은
+  // 방식으로 그 영화들만 밝힌다 — 하나의 state로 충분하다.
+  // useCallback으로 참조를 고정해야 한다 — MovieSearch의 이펙트가 이 함수를
+  // 의존성으로 물고 있는데, 매 렌더 새 함수를 넘기면 그 이펙트가 매번 다시
+  // 실행되고, 실행될 때마다 setHighlightedIds가 다시 렌더를 유발해 무한
+  // 루프("Maximum update depth exceeded")에 빠진다 — 실제로 겪은 버그다.
+  const handleHighlightChange = useCallback(
+    (ids: string[] | null) => setHighlightedIds(ids ? new Set(ids) : null),
+    [],
+  )
+
+  const genres = useMemo(() => genreIndex(movies), [movies])
+  // 이웃한 두 별이 실제로 관련 있다는 보장이 없다는 피드백으로 추가 — 배치
+  // 기준(장르/감독/시대)을 사용자가 고를 수 있게 한다. 기본은 장르.
+  const [groupMode, setGroupMode] = useState<GroupMode>('genre')
+
+  // (2026-09-06) 가이드를 상단 상시 버튼에서 계정 메뉴 안으로 옮겼다 — todomate
+  // 앱의 "프로필 → 설정 → 문의하기(FAQ)" 구조를 참고한 것: 자주 안 쓰는 도움말을
+  // 매번 화면에 띄워두는 대신, 계정처럼 "필요할 때 열어보는" 자리로 옮겼다.
+  // 데모/공유 우주(로그인 계정 메뉴 자체가 없음)는 그대로 상시 버튼으로 남긴다.
+  const [guideOpen, setGuideOpen] = useState(false)
 
   return (
     <main className="relative h-dvh w-screen overflow-hidden bg-black">
       <FadeIn>
         <MovieUniverse
           movies={movies}
-          defaultCenterId={movies[0].id}
           editable
           movieCardUrls={movieCardUrls}
           focusMovieId={focusMovieId}
           existingByTmdbId={existingByTmdbId}
           historyDate={historyDate}
           highlightedIds={highlightedIds}
+          groupMode={groupMode}
         />
       </FadeIn>
       {historyRange && historyDate !== null && (
@@ -116,12 +133,11 @@ export function ArchiveShell({
       )}
       {/* 상단 우측 상시 버튼들(검색/+기록/계정 등)이 화면 위쪽을 지나가는 밝은
           포스터·글로우와 겹치면 거의 안 보인다는 피드백 — 그라데이션만으로는
-          버튼 글자 자체가 원래 옅어서(text-white/40) 부족했다. 대신 이
-          우주에서 이미 검증된 방식을 그대로 가져왔다: 화면 하단 idle 힌트
-          문구(MovieUniverse.tsx)가 쓰는 것과 똑같은 진한 텍스트 그림자.
-          <button>은 부모의 text-shadow를 자동으로 안 물려받는(폼 컨트롤이라
-          그런) 브라우저 기본 동작이 있어서, 버튼들은 각자 자기 컴포넌트
-          안에서 직접 건다(navTextShadow).
+          버튼 글자 자체가 원래 옅어서(당시 text-white/40) 부족했다. 화면 하단
+          idle 힌트 문구(MovieUniverse.tsx)가 쓰는 것과 똑같은 진한 텍스트
+          그림자를 navLinkClass(lib/uiStyles.ts)에 함께 넣어 해결했다 — 이후
+          실사용자 테스트(가족)에서 버튼 존재 자체를 못 알아챘다는 피드백으로
+          그 navLinkClass의 명도 자체도 한 번 더 올렸다(white/65로).
           이 띠는 클릭도 막아야 한다 — 처음엔 pointer-events-none으로 순전히
           장식이었는데, 모바일에서 버튼 사이 여백(예: "검색"과 "+ 기록" 사이
           gap)을 눌렀을 때 그 아래 별이 클릭돼서 엉뚱한 영화로 줌인되는
@@ -134,14 +150,14 @@ export function ArchiveShell({
         aria-hidden="true"
         className="pointer-events-auto absolute inset-x-0 top-0 z-30 h-28 bg-gradient-to-b from-black/70 via-black/25 to-transparent"
       />
-      <div className="absolute right-4 top-4 z-40 flex items-center gap-3 sm:right-6 sm:top-6 sm:gap-8">
+      <div className="absolute right-4 top-4 z-40 flex items-center gap-2 sm:right-6 sm:top-6 sm:gap-3">
         <ShareButton initialUrl={initialShareUrl} />
-        <MovieSearch searchIndex={searchIndex} onSelect={setFocusMovieId} />
-        <GuidePanel variant="archive" triggerClassName={navLinkClass} />
-        <button type="button" onClick={() => setAddOpen(true)} className={navLinkClass} style={navTextShadow}>
+        <MovieSearch searchIndex={searchIndex} onHighlightChange={handleHighlightChange} />
+        <button type="button" onClick={() => setAddOpen(true)} className={navLinkClass}>
           + 기록
         </button>
-        <AccountMenu email={email} />
+        <AccountMenu email={email} menuActions={[{ label: '가이드', onClick: () => setGuideOpen(true) }]} />
+        <GuidePanel variant="archive" open={guideOpen} onOpenChange={setGuideOpen} />
       </div>
 
       {/* 가이드/탐색/히스토리 전부 예전엔 계정 드롭다운 안에 있었다 — 데모/공유
@@ -151,9 +167,12 @@ export function ArchiveShell({
           자리(가이드는 위 오른쪽 버튼 줄, 탐색+히스토리는 아래 왼쪽)로 옮긴다. */}
       <UniverseInsightPanel
         insights={insights}
+        genres={genres}
+        groupMode={groupMode}
+        onGroupModeChange={setGroupMode}
         rewatched={rewatched}
         onFocusMovie={setFocusMovieId}
-        onHighlightChange={(ids) => setHighlightedIds(ids ? new Set(ids) : null)}
+        onHighlightChange={handleHighlightChange}
         triggerClassName={bottomLeftTriggerClass}
         panelClassName="absolute bottom-14 left-4 z-20 sm:left-6"
         historyEligible={historyRange !== null}

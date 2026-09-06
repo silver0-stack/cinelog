@@ -33,7 +33,7 @@ export default async function ArchivePage({
 
   const { data } = await supabase
     .from('logged_movies')
-    .select('id, tmdb_id, title, year, director, genres, themes, moods, poster_path')
+    .select('id, tmdb_id, title, year, director, genres, themes, moods, poster_path, pos_x, pos_y')
     .eq('user_id', user.id)
 
   const rows = (data ?? []) as LoggedMovieRow[]

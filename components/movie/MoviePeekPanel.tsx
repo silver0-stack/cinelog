@@ -14,9 +14,8 @@ import { ViewingHistoryTimeline } from './ViewingHistoryTimeline'
 import type { Movie, MovieViewing } from '@/data/movies'
 
 // 처음 이 컨트롤을 마주쳤을 때 딱 한 번, 뭘 하는 건지 아주 작게 알려준다 —
-// 두 번째부터는 다시 안 뜬다(로컬스토리지로 기억). "중심 옮기기"/"다시 보기"가
-// 뭘 위한 기능인지 몰라서 안 눌러봤다는 피드백이 있었다.
-const RECENTER_HINT_KEY = 'cinelog:hint-seen:recenter'
+// 두 번째부터는 다시 안 뜬다(로컬스토리지로 기억). "다시 보기"가 뭘 위한
+// 기능인지 몰라서 안 눌러봤다는 피드백이 있었다.
 const REWATCH_HINT_KEY = 'cinelog:hint-seen:rewatch'
 
 const actionClass = 'text-[9px] tracking-[0.25em] text-white/40 outline-none transition-colors duration-500 hover:text-white/70'
@@ -25,8 +24,12 @@ const fieldClass =
 
 type Props = {
   movie: Movie
-  /** 현재 중심 영화. movie와의 editorial 큐레이터 노트를 찾는 데 쓴다. */
-  center: Movie
+  /** 이 영화와 가장 강하게 연결된 다른 영화(있으면) — 그 둘 사이의 editorial
+   * 큐레이터 노트를 찾는 데 쓴다. 관계가 하나도 없으면 undefined. */
+  closestMovie?: Movie
+  /** 이 영화와 관계 있다고 판단된(RELATED_THRESHOLD 이상) 다른 영화 수 —
+   * "관련 영화 N편" 표시에 쓴다. */
+  relatedCount?: number
   editable: boolean
   /** 있으면 평점/메모(감상)가 Supabase 대신 이 함수로 로컬 상태에만 반영된다
    * (데모 우주의 게스트 체험용) — editable과 별개다. "정보 수정"/카드 공유는
@@ -43,31 +46,27 @@ type Props = {
    * 항상 값이 온다). */
   maxHeightPx?: number | null
   onClose: () => void
-  /** core가 아닌 위성에만 있다 — core 자체를 다시 중심으로 만들 수는 없다. */
-  onRecenter?: () => void
 }
 
 // 별을 클릭해서 "열람"하면 그 별 옆에 이 패널이 인라인으로 나타난다(카메라가
 // 그 별로 확대해서 다가간 뒤). 포스터/제목/장르 같은 객관적 정보는 이미 별
 // 자신이 항상 보여주므로(MovieBody), 여기서는 "내 감상"에 해당하는 것만
-// 다룬다 — 평점/메모/다시보기 이력, 큐레이터 노트, 그리고 이 영화를 우주의
-// 중심으로 만드는 액션.
+// 다룬다 — 평점/메모/다시보기 이력, 큐레이터 노트.
 //
-// "중심으로 만들기"(탐색, 우주 전체 재배치)는 열람과 완전히 분리된 액션이다 —
-// 리뷰 하나 읽으려고 우주가 통째로 재배치될 필요는 없다. 같은 이유로 감상은
-// 덮어쓰지 않는다: rating/note는 movie.viewings의 최신 항목일 뿐이고, "다시
-// 봤어"는 그 위에 새 항목을 쌓는다 — 다시 봤을 때 감상이 달라져도 이전 감상이
-// 사라지지 않는다.
+// (2026-09-06) "이 영화를 중심으로"(우주 전체 재배치) 액션을 없앴다 — 사용자가
+// 직접 써보면서 그 조작을 자연스럽게 찾은 적이 없다는 피드백. 이제 열람(클릭)
+// 자체가 MovieUniverse에서 "관련 영화 강조"를 함께 켜므로, 재배치 없이도
+// 관계를 보여주는 목적은 그대로 달성된다.
 export function MoviePeekPanel({
   movie,
-  center,
+  closestMovie,
+  relatedCount,
   editable,
   onGuestMutate,
   existingByTmdbId,
   initialCardUrl,
   maxHeightPx,
   onClose,
-  onRecenter,
 }: Props) {
   const router = useRouter()
   // 감상(평점/메모) 관련 UI는 editable(실제 계정)이거나 onGuestMutate(데모 게스트
@@ -78,19 +77,14 @@ export function MoviePeekPanel({
   const [editError, setEditError] = useState<string | null>(null)
   const [duplicateTargetId, setDuplicateTargetId] = useState<string | null>(null)
   const [editingViewingId, setEditingViewingId] = useState<string | null>(null)
-  const [showRecenterHint, setShowRecenterHint] = useState(false)
   const [showRewatchHint, setShowRewatchHint] = useState(false)
 
   useEffect(() => {
     try {
-      if (onRecenter && !localStorage.getItem(RECENTER_HINT_KEY)) {
+      if (guestEnabled && !localStorage.getItem(REWATCH_HINT_KEY)) {
         // 로컬스토리지(외부 시스템) 값을 마운트 시점에 한 번만 React 상태로
         // 반영한다 — HomeRitual의 세션스토리지 체크와 같은 패턴.
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setShowRecenterHint(true)
-        localStorage.setItem(RECENTER_HINT_KEY, '1')
-      }
-      if (guestEnabled && !localStorage.getItem(REWATCH_HINT_KEY)) {
         setShowRewatchHint(true)
         localStorage.setItem(REWATCH_HINT_KEY, '1')
       }
@@ -100,7 +94,7 @@ export function MoviePeekPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const reason = movie.id !== center.id ? editorialReason(center, movie) : undefined
+  const reason = closestMovie ? editorialReason(closestMovie, movie) : undefined
 
   const [rating, setRating] = useState<number | null>(null)
   const [note, setNote] = useState('')
@@ -333,17 +327,11 @@ export function MoviePeekPanel({
             </div>
           )}
 
-          {/* "이 영화를 중심으로"는 내 감상이 아니라 우주를 탐색하는 액션이다 —
-              감상을 안 남긴 영화라도 바로 다른 세계로 넘어갈 수 있다. */}
-          {onRecenter && (
-            <button type="button" onClick={onRecenter} className={actionClass}>
-              이 영화를 중심으로
-            </button>
-          )}
-          {showRecenterHint && (
-            <p className="max-w-[220px] text-center text-[8px] leading-relaxed tracking-wide text-white/25">
-              중심을 옮기면 우주 전체가 이 영화와의 관계로 다시 배치돼
-            </p>
+          {/* 예전엔 여기가 "이 영화를 중심으로"(우주 재배치) 버튼이었다 — 대신
+              지금 우주 안에서 몇 편이나 이 영화와 관계 깊게 빛나고 있는지를
+              그냥 알려준다. 재배치 없이 관계를 보여준다는 목적은 그대로다. */}
+          {!!relatedCount && (
+            <p className="text-[9px] tracking-[0.2em] text-white/30">관련 영화 {relatedCount}편</p>
           )}
 
           <div className="themed-scroll flex max-h-[38vh] w-full flex-col items-center gap-3 overflow-y-auto">

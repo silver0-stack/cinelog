@@ -15,7 +15,7 @@ type QA = { q: string; a: string }
 const UNIVERSE_QA: QA[] = [
   {
     q: '영화들이 왜 이 자리에 있어?',
-    a: '중심 영화와 가까울수록 그 영화와의 관계가 깊어. 같은 감독, 겹치는 장르·테마, 또는 직접 연결해둔 사이일수록 중심에 가까워져. 서로 이웃한 포스터끼리 꼭 관계가 있는 건 아니고, 각자 중심과의 관계로만 자리가 정해져.',
+    a: '기본적으로는 우주 전체에서 자기와 가장 강하게 이어진 한 편과의 관계로 자리가 정해져(같은 감독, 겹치는 장르·테마일수록 안쪽으로). "탐색" 패널에서 장르·감독·시대 중 어떤 기준으로 묶을지도 고를 수 있어. 별을 직접 드래그해서 옮기면 그때부터는 그 자리가 그대로 저장되고, 다시는 자동으로 안 움직여 — 데이터로는 안 잡히는 나만의 연결을 표현하는 거야.',
   },
   {
     q: '제목 밑에 보이는 평점/메모는 뭐야?',
@@ -23,7 +23,7 @@ const UNIVERSE_QA: QA[] = [
   },
   {
     q: '눌러보면?',
-    a: '카메라가 그 포스터로 확대해서 다가가고, 옆(좁은 화면에서는 아래)에 평점·메모·감상 이력이 펼쳐져. "이 영화를 중심으로"를 누르면 그 영화 기준으로 우주 전체가 다시 배치돼. 포스터를 다시 누르거나 빈 공간을 누르면 원래 보던 자리로 돌아가.',
+    a: '카메라가 그 포스터로 확대해서 다가가고, 옆(좁은 화면에서는 아래)에 평점·메모·감상 이력이 펼쳐져. 동시에 그 영화와 관계 깊은 별들만 밝아지고 나머지는 어두워져 — 재배치 없이 관계를 보여주는 거야. 포스터를 다시 누르거나 빈 공간을 누르면 원래대로 돌아가.',
   },
   {
     q: '확대·축소는 어떻게 해?',
@@ -41,7 +41,7 @@ const ARCHIVE_QA: QA[] = [
   { q: '우주 공유랑 영화 카드 공유는 뭐가 달라?', a: '우주 공유는 내 아카이브 전체를 보여주는 링크고, 영화 카드 공유는 그 영화 한 편만 보여주는 링크야.' },
   {
     q: '히스토리는 뭐야?',
-    a: '내 우주가 시간이 지나며 어떻게 자라났는지 다시 보는 기능이야. 계정 메뉴에서 히스토리를 누르면 화면 아래 타임라인이 뜨고, 드래그하면 그 시점까지 기록한 영화만 빛나 보여.',
+    a: '내 우주가 시간이 지나며 어떻게 자라났는지 다시 보는 기능이야. "탐색" 패널 안의 히스토리 보기를 누르면 화면 아래 타임라인이 뜨고, 드래그하면 그 시점까지 기록한 영화만 빛나 보여.',
   },
 ]
 
@@ -73,12 +73,17 @@ const EXTRA_QA: Record<Props['variant'], QA[]> = {
 // 질문이 6개나 되고 문장도 길어서, 화면 구석 작은 박스에 넣고 내부 스크롤로
 // 읽게 하면(특히 모바일에서) 답답하다 — 영화 카드 peek이 겪었던 것과 같은
 // 문제라 같은 해법을 쓴다: 화면 중앙에 크게 띄우고, 배경을 누르면 닫힌다.
+//
+// (2026-09-06) 답까지 전부 펼쳐서 보여주던 걸 아코디언(누른 질문만 펼쳐짐)으로
+// 바꿨다 — todomate의 "자주 묻는 질문" 화면을 참고했다: 질문 목록만 먼저 훑고,
+// 궁금한 것만 펼쳐보는 쪽이 6개 답을 한 번에 다 읽는 것보다 덜 부담스럽다.
 export function GuidePanel({ variant, triggerClassName, open: openProp, onOpenChange }: Props) {
   const controlled = openProp !== undefined
   const [internalOpen, setInternalOpen] = useState(false)
   const open = controlled ? openProp : internalOpen
   const setOpen = (v: boolean) => (controlled ? onOpenChange?.(v) : setInternalOpen(v))
   const items = [...UNIVERSE_QA, ...EXTRA_QA[variant]]
+  const [openQ, setOpenQ] = useState<string | null>(null)
 
   return (
     <>
@@ -110,13 +115,35 @@ export function GuidePanel({ variant, triggerClassName, open: openProp, onOpenCh
                   onClick={(e) => e.stopPropagation()}
                   className="themed-scroll max-h-[85vh] w-[min(90vw,420px)] overflow-y-auto rounded-lg border border-white/10 bg-black px-5 py-5"
                 >
-                  <ul className="flex flex-col gap-5">
-                    {items.map((item) => (
-                      <li key={item.q}>
-                        <p className="text-xs tracking-[0.15em] text-white/60">{item.q}</p>
-                        <p className="mt-2 text-xs leading-relaxed tracking-wide text-white/35">{item.a}</p>
-                      </li>
-                    ))}
+                  <ul className="flex flex-col gap-1">
+                    {items.map((item) => {
+                      const expanded = openQ === item.q
+                      return (
+                        <li key={item.q} className="border-b border-white/5 last:border-none">
+                          <button
+                            type="button"
+                            onClick={() => setOpenQ(expanded ? null : item.q)}
+                            className="flex w-full items-center justify-between gap-3 py-3 text-left text-xs tracking-[0.15em] text-white/60 outline-none transition-colors duration-300 hover:text-white/90"
+                          >
+                            {item.q}
+                            <span className="shrink-0 text-white/30">{expanded ? '−' : '+'}</span>
+                          </button>
+                          <AnimatePresence initial={false}>
+                            {expanded && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.3, ease: EASE_SLOW }}
+                                className="overflow-hidden"
+                              >
+                                <p className="pb-3 text-xs leading-relaxed tracking-wide text-white/35">{item.a}</p>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </li>
+                      )
+                    })}
                   </ul>
                   <button type="button" onClick={() => setOpen(false)} className={`mt-6 ${secondaryNavLinkClass}`}>
                     닫기

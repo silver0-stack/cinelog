@@ -3,13 +3,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { EASE_SLOW } from '@/lib/motion'
-import { secondaryNavLinkClass } from '@/lib/uiStyles'
+import { navLinkClass, secondaryNavLinkClass } from '@/lib/uiStyles'
 import { useClickOutside } from '@/lib/useClickOutside'
 import { OrbitIcon } from '@/components/icons/OrbitIcon'
+import type { GroupMode } from '@/lib/universeLayout'
 import type { RewatchedMovie, UniverseInsight } from '@/lib/universeInsights'
 
-const defaultTriggerClass =
-  'absolute bottom-6 left-4 z-10 text-xs font-light tracking-[0.2em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80 sm:left-6 sm:tracking-[0.4em]'
+const GROUP_MODE_LABELS: Record<GroupMode, string> = { genre: '장르', director: '감독', era: '시대' }
+
+const defaultTriggerClass = `absolute bottom-6 left-4 z-10 sm:left-6 ${navLinkClass}`
 const defaultPanelClass = 'absolute bottom-14 left-4 z-10 sm:left-6'
 
 // "탐색"이라는 이름만 보고는 이 패널이 뭘 보여주는지 감이 안 올 수 있어서,
@@ -18,6 +20,17 @@ const INSIGHT_HINT_KEY = 'cinelog:hint-seen:insight'
 
 type Props = {
   insights: UniverseInsight[]
+  /** 이 우주에 실제로 존재하는 장르만(1편도 없는 칩은 아예 안 보여준다) — 누르면
+   * 그 장르의 영화만 밝힌다. Figma 목업의 "하단 장르 바로 눌러 필터링" 아이디어를
+   * 새 바를 추가하는 대신 이미 있는 탐색 패널 안에 얹었다 — 화면 하단에 트리거를
+   * 또 늘리면 방금 정리한 모바일 버튼 과밀 문제가 재발하기 때문. */
+  genres?: { genre: string; movieIds: string[] }[]
+  /** 우주 전체를 어떤 기준(장르/감독/시대)으로 묶어서 배치할지 — 생략하면 '장르'.
+   * 이웃한 두 별이 실제로 관련 있다는 보장이 없다는 피드백으로 추가했다: 이걸
+   * 고르면 그 기준을 공유하는 영화들이 화면에서도 실제로 뭉쳐 보인다
+   * (lib/universeLayout.ts의 clusterAngles). */
+  groupMode?: GroupMode
+  onGroupModeChange?: (mode: GroupMode) => void
   /** 개수 많은 순으로 정렬된, 2번 이상 감상을 남긴 영화들 — 시간이 지나면 어떤
    * 영화에 감상 타래가 몇 개 쌓였는지 스스로도 기억 안 난다는 피드백으로 추가. */
   rewatched?: RewatchedMovie[]
@@ -53,6 +66,9 @@ type Props = {
 // 있어도 괜찮다고 판단했다.
 export function UniverseInsightPanel({
   insights,
+  genres = [],
+  groupMode = 'genre',
+  onGroupModeChange,
   rewatched = [],
   onFocusMovie,
   onHighlightChange,
@@ -70,14 +86,17 @@ export function UniverseInsightPanel({
   const panelRef = useRef<HTMLDivElement>(null)
   useClickOutside(panelRef, open, () => setOpen(false))
 
-  const [activeLabel, setActiveLabel] = useState<string | null>(null)
-  function toggleHighlight(insight: UniverseInsight) {
-    if (activeLabel === insight.label) {
-      setActiveLabel(null)
+  // 인사이트 항목과 장르 칩이 같은 하이라이트 토글을 공유한다 — 키만 서로 안
+  // 겹치게 구분한다(인사이트 라벨은 "가장 짙은 중력" 같은 고정 문구라 장르명과
+  // 겹칠 일은 없지만, 접두사로 명시해서 확실히 한다).
+  const [activeKey, setActiveKey] = useState<string | null>(null)
+  function toggleActive(key: string, movieIds: string[]) {
+    if (activeKey === key) {
+      setActiveKey(null)
       onHighlightChange?.(null)
     } else {
-      setActiveLabel(insight.label)
-      onHighlightChange?.(insight.movieIds)
+      setActiveKey(key)
+      onHighlightChange?.(movieIds)
     }
   }
   // 패널을 닫으면(배경 클릭/닫기 버튼/재관람 목록 클릭 등 경로 무관하게) 하이라이트도
@@ -85,7 +104,7 @@ export function UniverseInsightPanel({
   // 이렇게 됐지" 하는 상태가 된다. 다시 켜려면 패널을 열어서 또 눌러야 한다.
   useEffect(() => {
     if (open) return
-    setActiveLabel(null)
+    setActiveKey(null)
     onHighlightChange?.(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
@@ -104,7 +123,7 @@ export function UniverseInsightPanel({
     }
   }, [open])
 
-  if (insights.length === 0 && rewatched.length === 0 && !historyEligible) return null
+  if (insights.length === 0 && genres.length === 0 && rewatched.length === 0 && !historyEligible) return null
 
   return (
     <>
@@ -133,6 +152,32 @@ export function UniverseInsightPanel({
             style={{ width: 'min(72vw, 240px)' }}
             className={`flex flex-col gap-3 border border-white/10 bg-black px-3 py-3 ${panelClassName ?? defaultPanelClass}`}
           >
+            {/* 이웃한 두 별이 실제로 관련 있다는 보장이 없다는 피드백(예: 무관한
+                두 영화가 우연히 붙어 보임) — 배치 기준 자체를 사용자가 고를 수
+                있게 한다. 고른 기준을 공유하는 영화들은 항상 같은 방향(섹터)에
+                모인다(clusterAngles). 반지름(관계 강도)은 그대로다. */}
+            {onGroupModeChange && (
+              <div className="flex flex-col gap-1.5 border-b border-white/10 pb-3">
+                <p className="text-[9px] tracking-[0.15em] text-white/25">우주를 묶는 기준</p>
+                <div className="flex gap-1.5">
+                  {(Object.keys(GROUP_MODE_LABELS) as GroupMode[]).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => onGroupModeChange(mode)}
+                      className={`border px-2 py-0.5 text-[10px] font-light tracking-wide outline-none transition-colors duration-300 ${
+                        groupMode === mode
+                          ? 'border-white/50 text-white/90'
+                          : 'border-white/15 text-white/40 hover:border-white/30 hover:text-white/70'
+                      }`}
+                    >
+                      {GROUP_MODE_LABELS[mode]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {showHint && (
               <p className="text-[9px] leading-relaxed tracking-wide text-white/30">
                 재관람한 영화와 감독·장르 경향을 여기서 볼 수 있어
@@ -167,14 +212,38 @@ export function UniverseInsightPanel({
               <button
                 key={insight.label}
                 type="button"
-                onClick={() => toggleHighlight(insight)}
+                onClick={() => toggleActive(insight.label, insight.movieIds)}
                 className={`text-left text-[10px] font-light leading-relaxed tracking-[0.15em] outline-none transition-colors duration-300 sm:text-[11px] sm:tracking-[0.25em] ${
-                  activeLabel === insight.label ? 'text-white/80' : 'text-white/35 hover:text-white/60'
+                  activeKey === insight.label ? 'text-white/80' : 'text-white/35 hover:text-white/60'
                 }`}
               >
                 {insight.label} · {insight.value} ({insight.detail})
               </button>
             ))}
+
+            {/* 장르 칩 — 이 우주에 실제로 있는 장르만 보여준다. 같은 하이라이트
+                토글이라 인사이트 항목과 동작이 똑같다: 누르면 그 장르만 밝고
+                나머지는 어두워지고, 다시 누르면 꺼진다. */}
+            {genres.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 border-t border-white/10 pt-3">
+                {genres.map(({ genre, movieIds }) => {
+                  const key = `genre:${genre}`
+                  const active = activeKey === key
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => toggleActive(key, movieIds)}
+                      className={`border px-2 py-0.5 text-[10px] font-light tracking-wide outline-none transition-colors duration-300 ${
+                        active ? 'border-white/50 text-white/90' : 'border-white/15 text-white/40 hover:border-white/30 hover:text-white/70'
+                      }`}
+                    >
+                      {genre}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
 
             {historyEligible && onOpenHistory && (
               <button

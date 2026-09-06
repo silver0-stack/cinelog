@@ -1,4 +1,5 @@
 import type { Movie } from '@/data/movies'
+import { GENRE_CHIPS } from '@/data/genreChips'
 
 export type UniverseInsight = {
   label: string
@@ -77,6 +78,21 @@ export function summarizeUniverse(movies: Movie[]): UniverseInsight[] {
   }
 
   return insights
+}
+
+// 탐색 패널의 장르 필터 칩 — 이 우주에 실제로 1편이라도 있는 장르만 돌려준다
+// (빈 칩을 보여줘봐야 눌러도 아무것도 안 밝아지니 의미가 없다). 순서는
+// GENRE_CHIPS 고정 목록을 따라서, 우주마다 칩이 들쭉날쭉 재배열되지 않게 한다.
+export function genreIndex(movies: Movie[]): { genre: string; movieIds: string[] }[] {
+  const map = new Map<string, string[]>()
+  for (const movie of movies) {
+    for (const genre of movie.genres) {
+      const list = map.get(genre) ?? []
+      list.push(movie.id)
+      map.set(genre, list)
+    }
+  }
+  return GENRE_CHIPS.filter((genre) => map.has(genre)).map((genre) => ({ genre, movieIds: map.get(genre)! }))
 }
 
 export type RewatchedMovie = { id: string; title: string; count: number }

@@ -50,3 +50,23 @@ export function calculateMovieGravity(a: Movie, b: Movie): number {
 
   return Math.min(1, score)
 }
+
+// 관계가 약한(공통 장르 1개보다도 못한) 상대는 "관련 있다"고 부르기엔 노이즈에
+// 가깝다 — 우주 전체가 서로 옅게라도 다 이어져 있다고 하면 "관련 영화"라는
+// 말 자체가 무의미해진다.
+const RELATED_THRESHOLD = 0.1
+
+/**
+ * 이 영화와 다른 모든 영화의 관계를 강한 순으로 정렬해서 돌려준다(2026-09-06,
+ * "중심 영화" 개념을 없애면서 추가). 특정 한 편을 중심으로 삼는 대신, 각
+ * 영화가 "우주 전체에서 가장 강하게 이어진 상대가 누구인가"로 자기 자리를
+ * 정하게 하려고 만들었다 — MovieUniverse의 반지름 계산과 "관련 영화" 하이라이트
+ * 둘 다 이 함수 하나로 처리한다.
+ */
+export function relatedMovies(movie: Movie, all: Movie[]): { movie: Movie; gravity: number }[] {
+  return all
+    .filter((m) => m.id !== movie.id)
+    .map((m) => ({ movie: m, gravity: calculateMovieGravity(movie, m) }))
+    .filter((r) => r.gravity >= RELATED_THRESHOLD)
+    .sort((a, b) => b.gravity - a.gravity)
+}

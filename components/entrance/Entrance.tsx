@@ -91,7 +91,7 @@ export function Entrance({ onEnter, userEmail }: Props) {
           </Link>
           <a
             href="#how"
-            className="text-xs font-light tracking-[0.4em] text-white/30 outline-none transition-colors duration-700 hover:text-white/70 focus-visible:text-white/70"
+            className="text-xs font-light tracking-[0.4em] text-white/55 outline-none transition-colors duration-700 hover:text-white/85 focus-visible:text-white/85"
           >
             이용 방법
           </a>
@@ -152,7 +152,7 @@ export function Entrance({ onEnter, userEmail }: Props) {
               boxShadow: '0 0 40px 10px rgba(255,214,150,0.18)',
             }}
           />
-          <span className="text-[10px] font-light tracking-[0.4em] text-white/30 transition-colors duration-700 group-hover:text-white/70">
+          <span className="text-[10px] font-light tracking-[0.4em] text-white/50 transition-colors duration-700 group-hover:text-white/80">
             눌러서 들어가기
           </span>
         </button>
