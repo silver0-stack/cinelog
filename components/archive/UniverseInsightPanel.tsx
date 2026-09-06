@@ -6,10 +6,7 @@ import { EASE_SLOW } from '@/lib/motion'
 import { navLinkClass, secondaryNavLinkClass } from '@/lib/uiStyles'
 import { useClickOutside } from '@/lib/useClickOutside'
 import { OrbitIcon } from '@/components/icons/OrbitIcon'
-import type { GroupMode } from '@/lib/universeLayout'
 import type { RewatchedMovie, UniverseInsight } from '@/lib/universeInsights'
-
-const GROUP_MODE_LABELS: Record<GroupMode, string> = { genre: '장르', director: '감독', era: '시대' }
 
 const defaultTriggerClass = `absolute bottom-6 left-4 z-10 sm:left-6 ${navLinkClass}`
 const defaultPanelClass = 'absolute bottom-14 left-4 z-10 sm:left-6'
@@ -25,12 +22,6 @@ type Props = {
    * 새 바를 추가하는 대신 이미 있는 탐색 패널 안에 얹었다 — 화면 하단에 트리거를
    * 또 늘리면 방금 정리한 모바일 버튼 과밀 문제가 재발하기 때문. */
   genres?: { genre: string; movieIds: string[] }[]
-  /** 우주 전체를 어떤 기준(장르/감독/시대)으로 묶어서 배치할지 — 생략하면 '장르'.
-   * 이웃한 두 별이 실제로 관련 있다는 보장이 없다는 피드백으로 추가했다: 이걸
-   * 고르면 그 기준을 공유하는 영화들이 화면에서도 실제로 뭉쳐 보인다
-   * (lib/universeLayout.ts의 clusterAngles). */
-  groupMode?: GroupMode
-  onGroupModeChange?: (mode: GroupMode) => void
   /** 개수 많은 순으로 정렬된, 2번 이상 감상을 남긴 영화들 — 시간이 지나면 어떤
    * 영화에 감상 타래가 몇 개 쌓였는지 스스로도 기억 안 난다는 피드백으로 추가. */
   rewatched?: RewatchedMovie[]
@@ -67,8 +58,6 @@ type Props = {
 export function UniverseInsightPanel({
   insights,
   genres = [],
-  groupMode = 'genre',
-  onGroupModeChange,
   rewatched = [],
   onFocusMovie,
   onHighlightChange,
@@ -152,32 +141,6 @@ export function UniverseInsightPanel({
             style={{ width: 'min(72vw, 240px)' }}
             className={`flex flex-col gap-3 border border-white/10 bg-black px-3 py-3 ${panelClassName ?? defaultPanelClass}`}
           >
-            {/* 이웃한 두 별이 실제로 관련 있다는 보장이 없다는 피드백(예: 무관한
-                두 영화가 우연히 붙어 보임) — 배치 기준 자체를 사용자가 고를 수
-                있게 한다. 고른 기준을 공유하는 영화들은 항상 같은 방향(섹터)에
-                모인다(clusterAngles). 반지름(관계 강도)은 그대로다. */}
-            {onGroupModeChange && (
-              <div className="flex flex-col gap-1.5 border-b border-white/10 pb-3">
-                <p className="text-[9px] tracking-[0.15em] text-white/25">우주를 묶는 기준</p>
-                <div className="flex gap-1.5">
-                  {(Object.keys(GROUP_MODE_LABELS) as GroupMode[]).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => onGroupModeChange(mode)}
-                      className={`border px-2 py-0.5 text-[10px] font-light tracking-wide outline-none transition-colors duration-300 ${
-                        groupMode === mode
-                          ? 'border-white/50 text-white/90'
-                          : 'border-white/15 text-white/40 hover:border-white/30 hover:text-white/70'
-                      }`}
-                    >
-                      {GROUP_MODE_LABELS[mode]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {showHint && (
               <p className="text-[9px] leading-relaxed tracking-wide text-white/30">
                 재관람한 영화와 감독·장르 경향을 여기서 볼 수 있어

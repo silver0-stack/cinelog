@@ -10,7 +10,6 @@ import { UniverseInsightPanel } from '@/components/archive/UniverseInsightPanel'
 import { computeHistoryRange } from '@/lib/loggedMovies'
 import { genreIndex } from '@/lib/universeInsights'
 import { navLinkClass, secondaryNavLinkClass as loginLinkClass } from '@/lib/uiStyles'
-import type { GroupMode } from '@/lib/universeLayout'
 import type { Movie } from '@/data/movies'
 import type { RewatchedMovie, UniverseInsight } from '@/lib/universeInsights'
 
@@ -33,7 +32,6 @@ export function SharedUniverseShell({
   const [focusMovieId, setFocusMovieId] = useState<string | null>(null)
   const [historyDate, setHistoryDate] = useState<string | null>(null)
   const [highlightedIds, setHighlightedIds] = useState<Set<string> | null>(null)
-  const [groupMode, setGroupMode] = useState<GroupMode>('genre')
 
   const historyRange = useMemo(() => computeHistoryRange(movies), [movies])
   const genres = useMemo(() => genreIndex(movies), [movies])
@@ -47,7 +45,6 @@ export function SharedUniverseShell({
           focusMovieId={focusMovieId}
           historyDate={historyDate}
           highlightedIds={highlightedIds}
-          groupMode={groupMode}
         />
       </FadeIn>
 
@@ -66,8 +63,6 @@ export function SharedUniverseShell({
       <UniverseInsightPanel
         insights={insights}
         genres={genres}
-        groupMode={groupMode}
-        onGroupModeChange={setGroupMode}
         rewatched={rewatched}
         onFocusMovie={setFocusMovieId}
         onHighlightChange={(ids) => setHighlightedIds(ids ? new Set(ids) : null)}

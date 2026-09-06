@@ -17,7 +17,6 @@ import { EASE_SLOW } from '@/lib/motion'
 import { computeHistoryRange } from '@/lib/loggedMovies'
 import { navLinkClass } from '@/lib/uiStyles'
 import { genreIndex } from '@/lib/universeInsights'
-import type { GroupMode } from '@/lib/universeLayout'
 import type { Movie } from '@/data/movies'
 import type { RewatchedMovie, UniverseInsight } from '@/lib/universeInsights'
 
@@ -98,9 +97,6 @@ export function ArchiveShell({
   )
 
   const genres = useMemo(() => genreIndex(movies), [movies])
-  // 이웃한 두 별이 실제로 관련 있다는 보장이 없다는 피드백으로 추가 — 배치
-  // 기준(장르/감독/시대)을 사용자가 고를 수 있게 한다. 기본은 장르.
-  const [groupMode, setGroupMode] = useState<GroupMode>('genre')
 
   // (2026-09-06) 가이드를 상단 상시 버튼에서 계정 메뉴 안으로 옮겼다 — todomate
   // 앱의 "프로필 → 설정 → 문의하기(FAQ)" 구조를 참고한 것: 자주 안 쓰는 도움말을
@@ -119,7 +115,6 @@ export function ArchiveShell({
           existingByTmdbId={existingByTmdbId}
           historyDate={historyDate}
           highlightedIds={highlightedIds}
-          groupMode={groupMode}
         />
       </FadeIn>
       {historyRange && historyDate !== null && (
@@ -168,8 +163,6 @@ export function ArchiveShell({
       <UniverseInsightPanel
         insights={insights}
         genres={genres}
-        groupMode={groupMode}
-        onGroupModeChange={setGroupMode}
         rewatched={rewatched}
         onFocusMovie={setFocusMovieId}
         onHighlightChange={handleHighlightChange}

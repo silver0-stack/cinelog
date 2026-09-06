@@ -91,12 +91,16 @@ export function UniverseHistoryRail({ minDate, maxDate, value, onChange, onExit 
             style={{ left: `${ratio * 100}%` }}
           />
         </div>
+        {/* (2026-09-06) "지금으로"라는 문구가 뭘 하는 버튼인지 바로 안 읽힌다는
+            피드백 — 과거를 보다가 "현재 우주로 돌아간다"는 뜻을 명시한다. 명도도
+            /25(거의 안 보임)에서 다른 상시 버튼들과 같은 수준으로 올린다
+            (secondaryNavLinkClass가 이미 겪은 문제와 같다 — lib/uiStyles.ts). */}
         <button
           type="button"
           onClick={onExit}
-          className="shrink-0 text-[9px] tracking-[0.25em] text-white/25 outline-none transition-colors duration-500 hover:text-white/60"
+          className="shrink-0 text-[10px] tracking-[0.2em] text-white/55 outline-none transition-colors duration-500 hover:text-white/85"
         >
-          지금으로
+          현재로 돌아가기
         </button>
       </div>
     </div>

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion, useMotionValue, useMotionValueEvent, useSpring } from 'framer-motion'
 import { movies as staticMovies, type Movie } from '@/data/movies'
 import { relatedMovies } from '@/lib/gravity'
-import { MIN_RADIUS, MAX_RADIUS, MIN_ZOOM, MAX_ZOOM, clusterAngles, type GroupMode } from '@/lib/universeLayout'
+import { MIN_RADIUS, MAX_RADIUS, MIN_ZOOM, MAX_ZOOM, clusterAngles } from '@/lib/universeLayout'
 import { firstWatchedAt, updateMoviePosition } from '@/lib/loggedMovies'
 import { EASE_SLOW } from '@/lib/motion'
 import { useIdleHint } from '@/lib/useIdleHint'
@@ -23,9 +23,12 @@ const IDLE_HINT_CYCLE = 4200
 // 안 해도 자동으로 성단을 이룬다.
 // 그런데 각도가 골든 앵글(영화 id 순번)로 완전히 무작위라, 반지름만으로는
 // "이웃한 두 별이 실제로 관련 있다"가 보장되지 않는다는 피드백이 이어졌다
-// (예: 무관한 두 영화가 우연히 붙어 보임). 각도 배정을 사용자가 고른 기준
-// (장르/감독/시대)으로 묶는 클러스터 섹터 방식으로 바꿨다(lib/universeLayout.ts의
-// clusterAngles) — 두 번째 힌트를 그에 맞게 고쳤다.
+// (예: 무관한 두 영화가 우연히 붙어 보임). 각도 배정을 장르로 묶는 클러스터
+// 섹터 방식으로 바꿨다(lib/universeLayout.ts의 clusterAngles) — 두 번째
+// 힌트를 그에 맞게 고쳤다. (묶는 기준을 장르/감독/시대 중 고르게 했던 UI는
+// 이후 뺐다 — 드래그로 직접 배치하는 기능이 생기면서 자동 배치는 "직접
+// 정하기 전 기본값"일 뿐이라, 그 기본값의 기준까지 고민하게 만들 필요가
+// 없다는 판단.)
 const IDLE_HINTS = ['확대해서 둘러봐', '같은 기준으로 묶인 영화일수록 한 방향에 모여', '포스터를 눌러 자세히 봐'] as const
 // 이 배열을 이펙트 의존성으로 그대로 쓰면 매 렌더 새 참조가 생겨 리스너가 계속
 // 재등록된다 — 모듈 스코프 상수로 고정해서 참조가 항상 같게 유지한다.
@@ -140,10 +143,6 @@ type Props = {
    * null/undefined면 평소처럼 전부 정상 밝기. 열람 중인 별이 있으면 그 별의
    * "관련 영화" 하이라이트가 이 값보다 우선한다(아래 activeHighlightIds 참고). */
   highlightedIds?: Set<string> | null
-  /** 우주를 어떤 기준으로 묶어서 배치할지(장르/감독/시대) — 생략하면 '장르'.
-   * 반지름(관계 강도)은 그대로 두고 각도만 이 기준의 섹터로 나눈다(lib/universeLayout.ts의
-   * clusterAngles) — 같은 기준을 공유하는 영화들이 항상 같은 방향에 모이게 하기 위함. */
-  groupMode?: GroupMode
 }
 
 export function MovieUniverse({
@@ -156,7 +155,6 @@ export function MovieUniverse({
   existingByTmdbId,
   historyDate,
   highlightedIds,
-  groupMode = 'genre',
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   // 화면 밖으로 한참 벗어난 별의 렌더링 비용(이미지 2장+blur+무한 흔들림)을
@@ -202,12 +200,16 @@ export function MovieUniverse({
     [editable],
   )
 
-  // 각 영화의 각도를 groupMode(장르/감독/시대) 섹터로 배정한다 — movies 배열이
-  // 들어온 순서(combineLoggedMovies가 "최근 감상순"으로 정렬)와 무관하게
-  // movie.id 기준으로만 정렬해서 배정하므로, 감상 날짜만 고쳐도(router.refresh로
+  // 각 영화의 각도를 장르 섹터로 배정한다(직접 드래그로 옮기기 전까지의
+  // 기본값일 뿐 — 한 번이라도 옮기면 그 뒤로는 이 계산 자체가 안 쓰인다).
+  // 장르/감독/시대 중 고를 수 있게 했던 UI는 뺐다 — 어차피 기본값일 뿐이고,
+  // 직접 배치가 있으니 "무엇을 기준으로 자동 배치할지" 자체를 고민하게
+  // 만들 필요가 없다는 판단(2026-09-06). movies 배열이 들어온 순서
+  // (combineLoggedMovies가 "최근 감상순"으로 정렬)와 무관하게 movie.id
+  // 기준으로만 정렬해서 배정하므로, 감상 날짜만 고쳐도(router.refresh로
   // 서버에서 다시 정렬된 목록을 받으면) 각도가 우르르 바뀌는 일이 없다(실제로
-  // 겪은 버그) — 영화가 추가/삭제되거나 클러스터 키(장르 등)가 바뀔 때만 바뀐다.
-  const angleByMovieId = useMemo(() => clusterAngles(movies, groupMode), [movies, groupMode])
+  // 겪은 버그) — 영화가 추가/삭제되거나 장르가 바뀔 때만 바뀐다.
+  const angleByMovieId = useMemo(() => clusterAngles(movies), [movies])
 
   const rawZoom = useMotionValue(1)
   const rawPanX = useMotionValue(0)
@@ -300,7 +302,7 @@ export function MovieUniverse({
   }, [peekedId, movies, highlightedIds])
 
   // 각 영화는 "우주 전체에서 가장 강하게 이어진 한 편과의 관계"로 자기 반지름을
-  // 정한다(중심 없음, 2026-09-06) — 각도는 angleByMovieId(groupMode 섹터)로,
+  // 정한다(중심 없음, 2026-09-06) — 각도는 angleByMovieId(장르 섹터)로,
   // 반지름은 relatedMovies의 1위 값으로. 관계가 하나도 없으면(공통 장르조차
   // 없음) 반지름이 최대가 되어 바깥으로 밀려난다.
   const bodies = useMemo(() => {

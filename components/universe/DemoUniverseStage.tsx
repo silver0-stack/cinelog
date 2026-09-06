@@ -10,7 +10,6 @@ import { summarizeUniverse, rewatchedMovies, genreIndex } from '@/lib/universeIn
 import { computeHistoryRange } from '@/lib/loggedMovies'
 import { movies as staticMovies, type Movie } from '@/data/movies'
 import { navLinkClass } from '@/lib/uiStyles'
-import type { GroupMode } from '@/lib/universeLayout'
 
 // 비로그인 데모 우주. 실험 삼아 추가한 별(DemoAddStar)도, 24편에 남기는 평점/메모
 // (onGuestMutate)도 이 컴포넌트가 언마운트되면(새로고침 등) 함께 사라진다 —
@@ -28,7 +27,6 @@ export function DemoUniverseStage() {
   const [focusMovieId, setFocusMovieId] = useState<string | null>(null)
   const [historyDate, setHistoryDate] = useState<string | null>(null)
   const [highlightedIds, setHighlightedIds] = useState<Set<string> | null>(null)
-  const [groupMode, setGroupMode] = useState<GroupMode>('genre')
 
   const insights = useMemo(() => summarizeUniverse(movies), [movies])
   const genres = useMemo(() => genreIndex(movies), [movies])
@@ -48,7 +46,6 @@ export function DemoUniverseStage() {
         onGuestMutate={handleGuestMutate}
         historyDate={historyDate}
         highlightedIds={highlightedIds}
-        groupMode={groupMode}
       />
 
       {historyRange && historyDate !== null && (
@@ -78,8 +75,6 @@ export function DemoUniverseStage() {
       <UniverseInsightPanel
         insights={insights}
         genres={genres}
-        groupMode={groupMode}
-        onGroupModeChange={setGroupMode}
         rewatched={rewatched}
         onFocusMovie={setFocusMovieId}
         onHighlightChange={(ids) => setHighlightedIds(ids ? new Set(ids) : null)}
