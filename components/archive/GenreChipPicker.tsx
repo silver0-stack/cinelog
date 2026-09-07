@@ -1,9 +1,12 @@
 'use client'
 
 import { GENRE_CHIPS } from '@/data/genreChips'
+import { useLocale } from '@/components/i18n/LocaleProvider'
 
 const MAX_SELECTED = 3
 
+// GENRE_CHIPS(한국어)는 저장값이자 gravity 계산의 비교값이라 그대로 둔다 —
+// 화면에 보여줄 라벨만 t('genre.<chip>')로 번역해서 표시-전용 레이어를 씌운다.
 export function GenreChipPicker({
   selected,
   onChange,
@@ -11,6 +14,7 @@ export function GenreChipPicker({
   selected: string[]
   onChange: (next: string[]) => void
 }) {
+  const { t } = useLocale()
   function toggle(chip: string) {
     if (selected.includes(chip)) {
       onChange(selected.filter((c) => c !== chip))
@@ -35,7 +39,7 @@ export function GenreChipPicker({
                 : 'border-white/10 text-white/35 hover:border-white/25 hover:text-white/60'
             }`}
           >
-            {chip}
+            {t(`genre.${chip}`)}
           </button>
         )
       })}

@@ -7,6 +7,8 @@ import { UniverseHistoryRail } from './UniverseHistoryRail'
 import { FadeIn } from '@/components/archive/FadeIn'
 import { GuidePanel } from '@/components/guide/GuidePanel'
 import { UniverseInsightPanel } from '@/components/archive/UniverseInsightPanel'
+import { LocaleToggle } from '@/components/i18n/LocaleToggle'
+import { useLocale } from '@/components/i18n/LocaleProvider'
 import { computeHistoryRange } from '@/lib/loggedMovies'
 import { genreIndex } from '@/lib/universeInsights'
 import { navLinkClass, secondaryNavLinkClass as loginLinkClass } from '@/lib/uiStyles'
@@ -32,6 +34,7 @@ export function SharedUniverseShell({
   rewatched: RewatchedMovie[]
   texts: UniverseText[]
 }) {
+  const { t } = useLocale()
   const [focusMovieId, setFocusMovieId] = useState<string | null>(null)
   const [historyDate, setHistoryDate] = useState<string | null>(null)
   const [highlightedIds, setHighlightedIds] = useState<Set<string> | null>(null)
@@ -62,7 +65,10 @@ export function SharedUniverseShell({
         />
       )}
 
-      <GuidePanel variant="shared" triggerClassName={`absolute right-6 top-6 z-10 ${navLinkClass}`} />
+      <div className="absolute right-4 top-4 z-10 flex items-center gap-2 sm:right-6 sm:top-6 sm:gap-3">
+        <LocaleToggle className={navLinkClass} />
+        <GuidePanel variant="shared" triggerClassName={navLinkClass} />
+      </div>
 
       <UniverseInsightPanel
         insights={insights}
@@ -77,7 +83,7 @@ export function SharedUniverseShell({
       />
 
       <Link href="/login" className={`absolute bottom-6 right-6 z-10 ${loginLinkClass}`}>
-        나도 기록하기
+        {t('nav.iAlsoWantToLog')}
       </Link>
     </main>
   )

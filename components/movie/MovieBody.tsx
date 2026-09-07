@@ -7,6 +7,7 @@ import type { Movie } from '@/data/movies'
 import { DURATION, EASE_SLOW } from '@/lib/motion'
 import { MAX_RADIUS } from '@/lib/universeLayout'
 import { MoviePeekPanel } from './MoviePeekPanel'
+import { useLocale } from '@/components/i18n/LocaleProvider'
 
 export type Tier = 'near' | 'mid' | 'far'
 
@@ -145,6 +146,7 @@ export function MovieBody({
   onDragPosition,
   onCommitPosition,
 }: Props) {
+  const { t } = useLocale()
   const posterSize = TIER_POSTER_SIZE[tier]
   // dimmed(아직 기록 전인 시점으로 스크럽한 별)는 클릭도 드래그도 안 된다 —
   // 아직 우주에 존재하지 않는 것처럼 다뤄야 리플레이가 "발견"으로 느껴진다.
@@ -226,7 +228,14 @@ export function MovieBody({
     }
 
     const endDrag = (ev: PointerEvent) => {
-      applyMove(ev.clientX, ev.clientY)
+      // pointercancel(드래그 도중 브라우저/OS가 강제로 끊는 것 — 터치패드 삐끗함,
+      // 다른 제스처와 충돌 등)은 좌표가 신뢰할 수 없다(브라우저가 0,0을 보내는
+      // 경우가 실제로 있다) — 그걸 그대로 델타 계산에 쓰면 별이 화면 좌상단
+      // 구석으로 순간이동한다(실제로 겪은 버그). pointerup일 때만 좌표를 반영하고,
+      // cancel이면 마지막으로 확인된 좋은 좌표(lastDragPositionRef)를 그대로 커밋한다.
+      if (ev.type !== 'pointercancel') {
+        applyMove(ev.clientX, ev.clientY)
+      }
       if (dragRef.current.mode === 'drag') {
         onCommitPosition?.(movie.id, lastDragPositionRef.current.x, lastDragPositionRef.current.y)
       }
@@ -437,7 +446,7 @@ export function MovieBody({
           disabled={!clickable}
           onClick={clickable ? handleClick : undefined}
           onPointerDown={draggable ? handlePointerDown : undefined}
-          aria-label={clickable ? `${movie.title} ${peeked ? '닫기' : '열람하기'}` : movie.title}
+          aria-label={clickable ? t(peeked ? 'aria.closeMovie' : 'aria.openMovie', { title: movie.title }) : movie.title}
           className={`relative -m-3 flex select-none items-center justify-center border-0 bg-transparent p-3 ${
             draggable ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : clickable ? 'cursor-pointer' : 'cursor-default'
           } ${clickable ? 'focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-4 focus-visible:outline-white/40' : ''}`}

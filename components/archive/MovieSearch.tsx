@@ -6,6 +6,7 @@ import { EASE_SLOW } from '@/lib/motion'
 import { useClickOutside } from '@/lib/useClickOutside'
 import { SearchIcon } from '@/components/icons/SearchIcon'
 import { navLinkClass } from '@/lib/uiStyles'
+import { useLocale } from '@/components/i18n/LocaleProvider'
 
 type SearchEntry = { id: string; title: string; director: string }
 
@@ -29,6 +30,7 @@ export function MovieSearch({
   searchIndex: SearchEntry[]
   onHighlightChange: (ids: string[] | null) => void
 }) {
+  const { t } = useLocale()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const panelRef = useRef<HTMLDivElement>(null)
@@ -63,7 +65,7 @@ export function MovieSearch({
     <div ref={panelRef} className="relative">
       <button type="button" onClick={() => setOpen((v) => !v)} className={`flex items-center gap-1 ${navLinkClass}`}>
         <SearchIcon />
-        검색
+        {t('nav.search')}
       </button>
       <AnimatePresence>
         {open && (
@@ -80,12 +82,12 @@ export function MovieSearch({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="영화 검색"
+              placeholder={t('search.placeholder')}
               className="w-full border-b border-white/15 bg-transparent px-1 py-1.5 text-[11px] font-light tracking-wide text-white/80 outline-none transition-colors duration-500 placeholder:text-white/25 focus:border-white/40"
             />
             {query.trim() && (
               <p className="text-[10px] font-light tracking-wide text-white/25">
-                {results.length > 0 ? '우주에서 빛나는 별을 눌러봐' : '일치하는 영화가 없어'}
+                {results.length > 0 ? t('search.hint') : t('search.noMatch')}
               </p>
             )}
           </motion.div>

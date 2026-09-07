@@ -7,6 +7,7 @@ import { navLinkClass, secondaryNavLinkClass } from '@/lib/uiStyles'
 import { useClickOutside } from '@/lib/useClickOutside'
 import { OrbitIcon } from '@/components/icons/OrbitIcon'
 import type { RewatchedMovie, UniverseInsight } from '@/lib/universeInsights'
+import { useLocale } from '@/components/i18n/LocaleProvider'
 
 const defaultTriggerClass = `absolute bottom-6 left-4 z-10 sm:left-6 ${navLinkClass}`
 const defaultPanelClass = 'absolute bottom-14 left-4 z-10 sm:left-6'
@@ -68,6 +69,7 @@ export function UniverseInsightPanel({
   historyEligible = false,
   onOpenHistory,
 }: Props) {
+  const { t } = useLocale()
   const controlled = openProp !== undefined
   const [internalOpen, setInternalOpen] = useState(false)
   const open = controlled ? openProp : internalOpen
@@ -123,7 +125,7 @@ export function UniverseInsightPanel({
           className={`flex items-center gap-1 ${triggerClassName ?? defaultTriggerClass}`}
         >
           <OrbitIcon />
-          탐색
+          {t('nav.explore')}
         </button>
       )}
       <AnimatePresence>
@@ -142,9 +144,7 @@ export function UniverseInsightPanel({
             className={`flex flex-col gap-3 border border-white/10 bg-black px-3 py-3 ${panelClassName ?? defaultPanelClass}`}
           >
             {showHint && (
-              <p className="text-[9px] leading-relaxed tracking-wide text-white/30">
-                재관람한 영화와 감독·장르 경향을 여기서 볼 수 있어
-              </p>
+              <p className="text-[9px] leading-relaxed tracking-wide text-white/30">{t('insight.hint')}</p>
             )}
 
             {rewatched.length > 0 && (
@@ -162,7 +162,7 @@ export function UniverseInsightPanel({
                     <span className="truncate">{m.title}</span>
                     {/* "×2"는 문맥 없이 보면 뭔지 알기 힘들다는 피드백 —
                         "N회"는 그 자체로 "N번 봤다"는 뜻이 바로 읽힌다. */}
-                    <span className="shrink-0 text-white/25">{m.count}회</span>
+                    <span className="shrink-0 text-white/25">{t('insight.rewatchCount', { count: m.count })}</span>
                   </button>
                 ))}
               </div>
@@ -180,7 +180,7 @@ export function UniverseInsightPanel({
                   activeKey === insight.label ? 'text-white/80' : 'text-white/35 hover:text-white/60'
                 }`}
               >
-                {insight.label} · {insight.value} ({insight.detail})
+                {t('insight.summary', { label: insight.label, value: insight.value, detail: insight.detail })}
               </button>
             ))}
 
@@ -201,7 +201,7 @@ export function UniverseInsightPanel({
                         active ? 'border-white/50 text-white/90' : 'border-white/15 text-white/40 hover:border-white/30 hover:text-white/70'
                       }`}
                     >
-                      {genre}
+                      {t(`genre.${genre}`)}
                     </button>
                   )
                 })}
@@ -215,9 +215,9 @@ export function UniverseInsightPanel({
                   onOpenHistory()
                   setOpen(false)
                 }}
-                className="border-t border-white/10 pt-3 text-left text-[10px] font-light tracking-[0.15em] text-white/35 outline-none transition-colors duration-300 hover:text-white/60 sm:text-[11px] sm:tracking-[0.25em]"
+                className="border-t border-white/10 pt-3 text-left text-[10px] font-light tracking-[var(--tk-15)] text-white/35 outline-none transition-colors duration-300 hover:text-white/60 sm:text-[11px] sm:tracking-[var(--tk-25)]"
               >
-                히스토리 보기
+                {t('nav.viewHistory')}
               </button>
             )}
 
@@ -226,7 +226,7 @@ export function UniverseInsightPanel({
                 아예 없었다 — 배경 클릭으로도 닫히지만, 닫는 방법 자체를
                 명시적으로 보여주는 버튼도 둔다(가이드 패널과 같은 패턴). */}
             <button type="button" onClick={() => setOpen(false)} className={secondaryNavLinkClass}>
-              닫기
+              {t('nav.close')}
             </button>
           </motion.div>
         )}

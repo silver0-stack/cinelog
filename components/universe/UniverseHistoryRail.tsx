@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { useLocale } from '@/components/i18n/LocaleProvider'
 
 type Props = {
   /** 이 우주에서 가장 이른 기록의 날짜(YYYY-MM-DD). */
@@ -37,6 +38,7 @@ function ratioOf(minDate: string, maxDate: string, value: string): number {
 // 마우스/터치를 같은 코드로 처리한다. 트랙 아무 곳이나 눌러도 그 지점으로 바로
 // 이동하고, 누른 채로 끌면 계속 따라온다.
 export function UniverseHistoryRail({ minDate, maxDate, value, onChange, onExit }: Props) {
+  const { t } = useLocale()
   const trackRef = useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = useState(false)
   const ratio = ratioOf(minDate, maxDate, value)
@@ -70,11 +72,11 @@ export function UniverseHistoryRail({ minDate, maxDate, value, onChange, onExit 
           대신 채운다(빈 자리 재활용이라 화면이 더 복잡해지지 않는다). 드래그를
           시작하는 순간 실제 날짜로 자연스럽게 바뀐다. */}
       <span
-        className={`max-w-[260px] text-center text-[9px] leading-relaxed tracking-[0.15em] transition-opacity duration-300 ${
-          dragging ? 'text-white/50 tracking-[0.25em]' : 'text-white/30'
+        className={`max-w-[260px] text-center text-[9px] leading-relaxed tracking-[var(--tk-15)] transition-opacity duration-300 ${
+          dragging ? 'text-white/50 tracking-[var(--tk-25)]' : 'text-white/30'
         }`}
       >
-        {dragging ? value : '드래그해서 영화가 기록된 순서대로 우주가 자라나는 걸 봐'}
+        {dragging ? value : t('history.dragHint')}
       </span>
       <div className="flex w-full max-w-sm items-center gap-4">
         <div
@@ -98,9 +100,9 @@ export function UniverseHistoryRail({ minDate, maxDate, value, onChange, onExit 
         <button
           type="button"
           onClick={onExit}
-          className="shrink-0 text-[10px] tracking-[0.2em] text-white/55 outline-none transition-colors duration-500 hover:text-white/85"
+          className="shrink-0 text-[10px] tracking-[var(--tk-20)] text-white/55 outline-none transition-colors duration-500 hover:text-white/85"
         >
-          현재로 돌아가기
+          {t('history.backToNow')}
         </button>
       </div>
     </div>

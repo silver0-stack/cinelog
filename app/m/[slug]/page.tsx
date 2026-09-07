@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { getCachedCardMovie } from './_data'
 import { MovieShareCard } from '@/components/movie/MovieShareCard'
 import { secondaryNavLinkClass as loginLinkClass } from '@/lib/uiStyles'
+import { getLocale } from '@/lib/i18n/getLocale'
+import { t } from '@/lib/i18n/dictionary'
 
 function ratingLine(rating: number | undefined): string {
   if (rating == null) return ''
@@ -31,11 +33,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function MovieCardPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const movie = await getCachedCardMovie(slug)
+  const locale = await getLocale()
 
   if (!movie) {
     return (
       <main className="flex h-dvh w-screen flex-col items-center justify-center gap-6 bg-black">
-        <p className="text-xs font-light tracking-widest text-white/40">링크를 찾을 수 없어.</p>
+        <p className="text-xs font-light tracking-widest text-white/40">{t(locale, 'notFound.link')}</p>
         <Link href="/" className={loginLinkClass}>
           CINELOG
         </Link>
@@ -58,12 +61,12 @@ export default async function MovieCardPage({ params }: { params: Promise<{ slug
       <div className="mb-6 flex flex-col items-center gap-1.5 sm:fixed sm:left-6 sm:top-6 sm:z-10 sm:mb-0 sm:items-start">
         <Link
           href="/"
-          className="text-[9px] font-light tracking-[0.5em] text-white/20 outline-none transition-colors duration-700 hover:text-white/50"
+          className="text-[9px] font-light tracking-[var(--tk-50)] text-white/20 outline-none transition-colors duration-700 hover:text-white/50"
         >
           CINELOG
         </Link>
         <Link href="/login" className={loginLinkClass}>
-          나도 기록하기
+          {t(locale, 'nav.iAlsoWantToLog')}
         </Link>
       </div>
 

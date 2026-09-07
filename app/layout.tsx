@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { getLocale } from "@/lib/i18n/getLocale";
+import { LocaleProvider } from "@/components/i18n/LocaleProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -23,25 +25,33 @@ const siteUrl = "https://cinelog.dev";
 // 절제된 톤을 그대로 유지하고, 검색엔진에만 보이는 이 메타데이터에서만 키워드를 더한다.
 const description =
   "감독, 장르, 시대에 따라 영화들이 관계를 맺으며 우주를 이루는 영화 아카이빙 서비스. 본 영화를 기록하면 나만의 영화 우주가 자라나.";
+const descriptionEn =
+  "A movie-archiving experience where films form relationships by director, genre, and era, and grow into a universe. Log what you've watched and your own universe begins to grow.";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: "CINELOG(시네로그) · 영화와 영화 사이, 당신만의 우주",
-  description,
-  openGraph: {
-    title: "CINELOG(시네로그)",
-    description,
-    url: siteUrl,
-    siteName: "CINELOG",
-    type: "website",
-    locale: "ko_KR",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "CINELOG(시네로그)",
-    description,
-  },
-};
+// 검색엔진 대상 메타데이터는 방문자가 고른 언어에 따라 갈아끼운다 — 화면에 보이는
+// 카피(Entrance.tsx)와 달리 여긴 크롤러/공유 미리보기용이라 언어를 맞추는 게 자연스럽다.
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const isEn = locale === "en";
+  return {
+    metadataBase: new URL(siteUrl),
+    title: isEn ? "CINELOG · A Universe Between Movies" : "CINELOG(시네로그) · 영화와 영화 사이, 당신만의 우주",
+    description: isEn ? descriptionEn : description,
+    openGraph: {
+      title: isEn ? "CINELOG" : "CINELOG(시네로그)",
+      description: isEn ? descriptionEn : description,
+      url: siteUrl,
+      siteName: "CINELOG",
+      type: "website",
+      locale: isEn ? "en_US" : "ko_KR",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: isEn ? "CINELOG" : "CINELOG(시네로그)",
+      description: isEn ? descriptionEn : description,
+    },
+  };
+}
 
 // 구글이 "시네로그"라는 한글 표기와 CINELOG를 같은 것으로 알아보게 하는 데
 // title/description보다 더 직접적인 신호 — alternateName이 정확히 이 용도다.
@@ -55,14 +65,15 @@ const jsonLd = {
   inLanguage: "ko-KR",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const locale = await getLocale();
   return (
     <html
-      lang="ko"
+      lang={locale}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-black">
-        {children}
+        <LocaleProvider initialLocale={locale}>{children}</LocaleProvider>
         {/* 바이럴이 실제로 왔는지 감으로만 판단하지 않으려고 추가 — 쿠키 없이
             방문자 수/유입 경로만 집계하는 방식이라 별도 동의 배너가 필요 없다.
             Vercel 대시보드에서 프로젝트의 Web Analytics를 켜야 실제로 수집된다

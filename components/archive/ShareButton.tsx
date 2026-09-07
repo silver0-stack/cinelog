@@ -5,6 +5,7 @@ import { getOrCreateShareSlug } from '@/lib/shareLinks'
 import { CopyIcon } from '@/components/icons/CopyIcon'
 import { CheckIcon } from '@/components/icons/CheckIcon'
 import { navLinkClass } from '@/lib/uiStyles'
+import { useLocale } from '@/components/i18n/LocaleProvider'
 
 // 링크를 복사했다는 건("복사됨") 알지만, 그걸로 뭘 할 수 있는지(공유해서
 // 남에게 보여줄 수 있다는 것)까지는 처음엔 안 와닿을 수 있다는 피드백 —
@@ -13,6 +14,7 @@ import { navLinkClass } from '@/lib/uiStyles'
 const SHARE_HINT_KEY = 'cinelog:hint-seen:share-link'
 
 export function ShareButton({ initialUrl = null }: { initialUrl?: string | null }) {
+  const { t } = useLocale()
   const [url, setUrl] = useState<string | null>(initialUrl)
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -61,17 +63,17 @@ export function ShareButton({ initialUrl = null }: { initialUrl?: string | null 
           type="button"
           onClick={handleClick}
           className={`flex items-center gap-1 ${navLinkClass}`}
-          aria-label={copied ? '복사됨' : '우주 링크 복사'}
+          aria-label={copied ? t('share.copied') : t('share.copyLink')}
         >
           {copied ? <CheckIcon /> : <CopyIcon />}
-          <span className="hidden sm:inline">{copied ? '복사됨' : '우주 링크 복사'}</span>
+          <span className="hidden sm:inline">{copied ? t('share.copied') : t('share.copyLink')}</span>
         </button>
         {showHint && (
           <p
             className="absolute right-0 top-full mt-2 w-max max-w-[220px] text-right text-[9px] leading-relaxed tracking-wide text-white/40"
             style={{ textShadow: '0 0 10px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.9)' }}
           >
-            이 링크를 보내서 네 우주를 보여줘봐
+            {t('share.hint')}
           </p>
         )}
       </div>
@@ -85,7 +87,7 @@ export function ShareButton({ initialUrl = null }: { initialUrl?: string | null 
       disabled={loading}
       className={`flex items-center gap-1 ${navLinkClass} disabled:text-white/20`}
     >
-      {loading ? '만드는 중' : '우주 공유'}
+      {loading ? t('share.creating') : t('share.universe')}
     </button>
   )
 }

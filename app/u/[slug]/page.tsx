@@ -7,6 +7,8 @@ import { attachEditorialConnections, type EditorialConnectionRow } from '@/lib/e
 import { combineUniverseTexts, type UniverseText } from '@/lib/universeTexts'
 import { summarizeUniverse, rewatchedMovies } from '@/lib/universeInsights'
 import { secondaryNavLinkClass as loginLinkClass } from '@/lib/uiStyles'
+import { getLocale } from '@/lib/i18n/getLocale'
+import { t } from '@/lib/i18n/dictionary'
 
 // revalidate route 설정은 fetch() 호출에만 적용된다 — Supabase 클라이언트는
 // fetch를 캐시 옵션 없이 쓰기 때문에 이 값 하나만으로는 아무것도 캐시되지
@@ -53,12 +55,13 @@ const getSharedUniverseData = unstable_cache(
 // 관계를 조정하는 건 여기서는 안 된다 — editable을 아예 안 켠다.
 export default async function SharedUniversePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
+  const locale = await getLocale()
   const result = await getSharedUniverseData(slug)
 
   if (!result) {
     return (
       <main className="flex h-dvh w-screen flex-col items-center justify-center gap-6 bg-black">
-        <p className="text-xs font-light tracking-widest text-white/40">링크를 찾을 수 없어.</p>
+        <p className="text-xs font-light tracking-widest text-white/40">{t(locale, 'notFound.link')}</p>
         <Link href="/" className={loginLinkClass}>
           CINELOG
         </Link>
@@ -69,7 +72,7 @@ export default async function SharedUniversePage({ params }: { params: Promise<{
   if (result.rows.length === 0) {
     return (
       <main className="flex h-dvh w-screen flex-col items-center justify-center gap-6 bg-black">
-        <p className="text-xs font-light tracking-widest text-white/40">아직 기록된 영화가 없어.</p>
+        <p className="text-xs font-light tracking-widest text-white/40">{t(locale, 'notFound.noMoviesYet')}</p>
         <Link href="/" className={loginLinkClass}>
           CINELOG
         </Link>
@@ -81,7 +84,7 @@ export default async function SharedUniversePage({ params }: { params: Promise<{
     combineLoggedMovies(result.rows, result.viewingRows),
     result.connectionRows,
   )
-  const insights = summarizeUniverse(movies)
+  const insights = summarizeUniverse(movies, locale)
   const rewatched = rewatchedMovies(movies)
   const texts: UniverseText[] = combineUniverseTexts(result.textRows)
 

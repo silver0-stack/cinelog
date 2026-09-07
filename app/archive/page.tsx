@@ -8,9 +8,11 @@ import { combineUniverseTexts } from '@/lib/universeTexts'
 import { AccountMenu } from '@/components/archive/AccountMenu'
 import { ArchiveShell } from '@/components/archive/ArchiveShell'
 import { summarizeUniverse, rewatchedMovies } from '@/lib/universeInsights'
+import { getLocale } from '@/lib/i18n/getLocale'
+import { t } from '@/lib/i18n/dictionary'
 
 const navLinkClass =
-  'text-xs font-light tracking-[0.2em] sm:tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80'
+  'text-xs font-light tracking-[var(--tk-20)] sm:tracking-[var(--tk-40)] text-white/40 outline-none transition-colors duration-700 hover:text-white/80'
 
 // 기록을 추가하고 돌아올 때마다 최신 상태를 다시 조회해야 한다 — 캐시된 화면에
 // 방금 추가한 기록이 안 보이면 안 되므로 이 라우트는 절대 캐시하지 않는다.
@@ -23,6 +25,7 @@ export default async function ArchivePage({
   searchParams: Promise<{ focus?: string }>
 }) {
   const { focus } = await searchParams
+  const locale = await getLocale()
   const supabase = await createClient()
   const {
     data: { user },
@@ -43,11 +46,12 @@ export default async function ArchivePage({
     return (
       <main className="flex h-dvh w-screen flex-col items-center justify-center gap-8 bg-black">
         <p className="max-w-xs text-center text-xs font-light leading-relaxed tracking-widest text-white/40">
-          아직 기록한 영화가 없어.
-          <br />첫 영화를 기록하면 우주가 시작돼.
+          {t(locale, 'empty.archive.title')}
+          <br />
+          {t(locale, 'empty.archive.subtitle')}
         </p>
         <Link href="/archive/new" className={navLinkClass}>
-          첫 영화 기록하기
+          {t(locale, 'empty.archive.cta')}
         </Link>
         <div className="absolute right-6 top-6 z-10">
           <AccountMenu email={user.email ?? ''} />
@@ -73,7 +77,7 @@ export default async function ArchivePage({
     combineLoggedMovies(rows, (viewingData ?? []) as ViewingRow[]),
     (connectionData ?? []) as EditorialConnectionRow[],
   )
-  const insights = summarizeUniverse(movies)
+  const insights = summarizeUniverse(movies, locale)
   const rewatched = rewatchedMovies(movies)
   // 검색은 제목/감독만 필요하다 — 메모·테마 같은 무거운 필드까지 클라이언트로
   // 내려보낼 필요 없다.

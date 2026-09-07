@@ -1,11 +1,12 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { AnimatePresence, motion } from 'framer-motion'
 import { SignOutButton } from '@/components/auth/SignOutButton'
 import { EASE_SLOW } from '@/lib/motion'
 import { useClickOutside } from '@/lib/useClickOutside'
+import { useLocale } from '@/components/i18n/LocaleProvider'
 
 type Props = {
   email: string
@@ -17,7 +18,7 @@ type Props = {
    * "패턴" 같은 부가 기능을 여기 몰아둔다. 예전엔 화면 구석에 항상 떠 있는
    * 버튼이었는데, 자주 안 쓰는 기능이 마치 주요 기능처럼 보인다는 피드백으로
    * 여기로 옮겼다. 누르면 그 자체 동작 후 메뉴를 닫는다. */
-  menuActions?: { label: string; onClick: () => void }[]
+  menuActions?: { label: ReactNode; onClick: () => void }[]
 }
 
 // 로그인한 계정이 누구인지 화면 어디에도 안 보이고, 로그아웃도 /login에 따로
@@ -27,6 +28,7 @@ type Props = {
 // 개인정보 편집/공개 프로필 페이지 같은 전통적인 의미고, 이건 그것과 달리
 // 지금 세션이 누구인지 보여주고 로그아웃만 하는 최소한의 계정 표시다.
 export function AccountMenu({ email, links = [], menuActions = [] }: Props) {
+  const { t } = useLocale()
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   useClickOutside(containerRef, open, () => setOpen(false))
@@ -43,7 +45,7 @@ export function AccountMenu({ email, links = [], menuActions = [] }: Props) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="계정"
+        aria-label={t('nav.account')}
         className="group -m-2.5 flex items-center justify-center p-2.5 outline-none"
         style={{
           textShadow: '0 0 10px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.9)',
@@ -73,20 +75,20 @@ export function AccountMenu({ email, links = [], menuActions = [] }: Props) {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-xs font-light tracking-[0.5em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80 focus-visible:text-white/80"
+                className="text-xs font-light tracking-[var(--tk-50)] text-white/40 outline-none transition-colors duration-700 hover:text-white/80 focus-visible:text-white/80"
               >
                 {link.label}
               </Link>
             ))}
-            {menuActions.map((action) => (
+            {menuActions.map((action, i) => (
               <button
-                key={action.label}
+                key={i}
                 type="button"
                 onClick={() => {
                   action.onClick()
                   setOpen(false)
                 }}
-                className="text-xs font-light tracking-[0.5em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80 focus-visible:text-white/80"
+                className="flex items-center gap-1.5 text-xs font-light tracking-[var(--tk-50)] text-white/40 outline-none transition-colors duration-700 hover:text-white/80 focus-visible:text-white/80"
               >
                 {action.label}
               </button>

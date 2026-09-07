@@ -6,6 +6,7 @@ import { searchTmdbMovies, fetchTmdbMovieDetail, type TmdbSearchResult } from '@
 import { createLoggedMovie } from '@/lib/loggedMovies'
 import { GenreChipPicker } from './GenreChipPicker'
 import { RatingPicker } from './RatingPicker'
+import { useLocale } from '@/components/i18n/LocaleProvider'
 
 type Draft = {
   tmdbId: number | null
@@ -51,6 +52,7 @@ type Props = {
 }
 
 export function LogMovieForm({ existingByTmdbId = {}, onFocusMovie, onSaved }: Props) {
+  const { t } = useLocale()
   const [step, setStep] = useState<'search' | 'details' | 'done'>('search')
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<TmdbSearchResult[]>([])
@@ -131,7 +133,7 @@ export function LogMovieForm({ existingByTmdbId = {}, onFocusMovie, onSaved }: P
 
     const year = Number(draft.year)
     if (!draft.title.trim() || !Number.isInteger(year)) {
-      setError('제목과 연도는 채워줘.')
+      setError(t('error.requiredFields'))
       return
     }
 
@@ -152,7 +154,7 @@ export function LogMovieForm({ existingByTmdbId = {}, onFocusMovie, onSaved }: P
       setStep('done')
       onSaved?.()
     } catch {
-      setError('저장하지 못했어. 잠시 후 다시 시도해줘.')
+      setError(t('error.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -161,7 +163,7 @@ export function LogMovieForm({ existingByTmdbId = {}, onFocusMovie, onSaved }: P
   if (step === 'done') {
     return (
       <div className="flex flex-col items-center gap-8">
-        <p className="text-xs font-light tracking-widest text-white/60">{draft.title} 기록했어.</p>
+        <p className="text-xs font-light tracking-widest text-white/60">{t('form.loggedMovie', { title: draft.title })}</p>
         <div className="flex items-center gap-8">
           <button
             type="button"
@@ -171,24 +173,24 @@ export function LogMovieForm({ existingByTmdbId = {}, onFocusMovie, onSaved }: P
               setResults([])
               setStep('search')
             }}
-            className="text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
+            className="text-xs font-light tracking-[var(--tk-40)] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
           >
-            다른 영화 기록하기
+            {t('form.logAnother')}
           </button>
           {onFocusMovie ? (
             <button
               type="button"
               onClick={() => savedId && onFocusMovie(savedId)}
-              className="text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
+              className="text-xs font-light tracking-[var(--tk-40)] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
             >
-              우주에서 보기
+              {t('form.viewInUniverse')}
             </button>
           ) : (
             <Link
               href={savedId ? `/archive?focus=${savedId}` : '/archive'}
-              className="text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
+              className="text-xs font-light tracking-[var(--tk-40)] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
             >
-              우주에서 보기
+              {t('form.viewInUniverse')}
             </Link>
           )}
         </div>
@@ -200,32 +202,32 @@ export function LogMovieForm({ existingByTmdbId = {}, onFocusMovie, onSaved }: P
     return (
       <div className="flex flex-col items-center gap-8">
         <p className="max-w-xs text-center text-xs font-light leading-relaxed tracking-widest text-white/60">
-          {duplicate.title}, 이미 기록했어.
+          {t('form.duplicateMovie', { title: duplicate.title })}
           <br />
-          다시 봤다면 그 포스터를 열어서 새 감상을 남겨봐.
+          {t('form.duplicateHint')}
         </p>
         <div className="flex items-center gap-8">
           <button
             type="button"
             onClick={() => setDuplicate(null)}
-            className="text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
+            className="text-xs font-light tracking-[var(--tk-40)] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
           >
-            다른 영화 검색
+            {t('form.searchAnother')}
           </button>
           {onFocusMovie ? (
             <button
               type="button"
               onClick={() => onFocusMovie(duplicate.id)}
-              className="text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
+              className="text-xs font-light tracking-[var(--tk-40)] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
             >
-              그 포스터로 가기
+              {t('form.goToThatPoster')}
             </button>
           ) : (
             <Link
               href={`/archive?focus=${duplicate.id}`}
-              className="text-xs font-light tracking-[0.4em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
+              className="text-xs font-light tracking-[var(--tk-40)] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
             >
-              그 포스터로 가기
+              {t('form.goToThatPoster')}
             </Link>
           )}
         </div>
@@ -241,7 +243,7 @@ export function LogMovieForm({ existingByTmdbId = {}, onFocusMovie, onSaved }: P
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
           onCompositionEnd={handleCompositionEnd}
-          placeholder="영화 제목"
+          placeholder={t('search.moviePlaceholder')}
           autoFocus
           className={`text-center ${fieldClass}`}
         />
@@ -255,7 +257,7 @@ export function LogMovieForm({ existingByTmdbId = {}, onFocusMovie, onSaved }: P
             pending || searching || loadingDetail ? '' : 'invisible'
           }`}
         >
-          {loadingDetail ? '불러오는 중' : '검색 중'}
+          {loadingDetail ? t('loading.fetching') : t('loading.searching')}
         </p>
 
         {results.length > 0 && (
@@ -279,9 +281,9 @@ export function LogMovieForm({ existingByTmdbId = {}, onFocusMovie, onSaved }: P
         <button
           type="button"
           onClick={startManual}
-          className="text-xs font-light tracking-[0.4em] text-white/30 outline-none transition-colors duration-700 hover:text-white/70"
+          className="text-xs font-light tracking-[var(--tk-40)] text-white/30 outline-none transition-colors duration-700 hover:text-white/70"
         >
-          직접 입력할게
+          {t('form.enterManually')}
         </button>
       </div>
     )
@@ -294,7 +296,7 @@ export function LogMovieForm({ existingByTmdbId = {}, onFocusMovie, onSaved }: P
           type="text"
           value={draft.title}
           onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
-          placeholder="제목"
+          placeholder={t('form.title')}
           required
           className={fieldClass}
         />
@@ -304,7 +306,7 @@ export function LogMovieForm({ existingByTmdbId = {}, onFocusMovie, onSaved }: P
             type="number"
             value={draft.year}
             onChange={(e) => setDraft((d) => ({ ...d, year: e.target.value }))}
-            placeholder="연도"
+            placeholder={t('form.year')}
             required
             className={`w-1/2 ${fieldClass}`}
           />
@@ -312,7 +314,7 @@ export function LogMovieForm({ existingByTmdbId = {}, onFocusMovie, onSaved }: P
             type="text"
             value={draft.director}
             onChange={(e) => setDraft((d) => ({ ...d, director: e.target.value }))}
-            placeholder="감독"
+            placeholder={t('form.director')}
             className={`w-1/2 ${fieldClass}`}
           />
         </div>
@@ -325,7 +327,7 @@ export function LogMovieForm({ existingByTmdbId = {}, onFocusMovie, onSaved }: P
       <textarea
         value={draft.note}
         onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))}
-        placeholder="메모 (선택, 짧게 한 줄이어도 길게 리뷰여도 괜찮아)"
+        placeholder={t('form.notePlaceholder')}
         rows={3}
         className={`max-h-[40vh] resize-y tracking-wide ${fieldClass}`}
       />
@@ -343,16 +345,16 @@ export function LogMovieForm({ existingByTmdbId = {}, onFocusMovie, onSaved }: P
         <button
           type="button"
           onClick={() => setStep('search')}
-          className="text-xs font-light tracking-[0.4em] text-white/30 outline-none transition-colors duration-700 hover:text-white/70"
+          className="text-xs font-light tracking-[var(--tk-40)] text-white/30 outline-none transition-colors duration-700 hover:text-white/70"
         >
-          뒤로
+          {t('form.back')}
         </button>
         <button
           type="submit"
           disabled={saving}
-          className="text-xs font-light tracking-[0.5em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80 disabled:text-white/20"
+          className="text-xs font-light tracking-[var(--tk-50)] text-white/40 outline-none transition-colors duration-700 hover:text-white/80 disabled:text-white/20"
         >
-          {saving ? 'SAVING' : 'SAVE'}
+          {saving ? t('form.saving') : t('form.save')}
         </button>
       </div>
     </form>

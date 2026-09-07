@@ -1,5 +1,7 @@
 import type { Movie } from '@/data/movies'
 import { GENRE_CHIPS } from '@/data/genreChips'
+import { t } from '@/lib/i18n/dictionary'
+import type { Locale } from '@/lib/i18n/locale'
 
 export type UniverseInsight = {
   label: string
@@ -23,7 +25,7 @@ function topEntry<K>(groups: Map<K, string[]>): [K, string[]] | null {
   return best
 }
 
-export function summarizeUniverse(movies: Movie[]): UniverseInsight[] {
+export function summarizeUniverse(movies: Movie[], locale: Locale = 'ko'): UniverseInsight[] {
   if (movies.length < 3) return []
 
   const directors = new Map<string, string[]>()
@@ -56,25 +58,27 @@ export function summarizeUniverse(movies: Movie[]): UniverseInsight[] {
 
   const insights: UniverseInsight[] = []
 
+  const filmCount = (n: number) => t(locale, 'insight.filmCount', { count: n })
+
   const topDirector = topEntry(directors)
   if (topDirector && topDirector[1].length >= 2) {
-    insights.push({ label: '가장 짙은 중력', value: topDirector[0], detail: `${topDirector[1].length}편`, movieIds: topDirector[1] })
+    insights.push({ label: t(locale, 'insight.topDirector'), value: topDirector[0], detail: filmCount(topDirector[1].length), movieIds: topDirector[1] })
   }
 
   const topGenre = topEntry(genres)
   if (topGenre && topGenre[1].length >= 2) {
-    insights.push({ label: '가장 흔한 결', value: topGenre[0], detail: `${topGenre[1].length}편`, movieIds: topGenre[1] })
+    insights.push({ label: t(locale, 'insight.topGenre'), value: t(locale, `genre.${topGenre[0]}`), detail: filmCount(topGenre[1].length), movieIds: topGenre[1] })
   }
 
   const topEra = topEntry(eras)
   if (topEra && topEra[1].length >= 2) {
-    insights.push({ label: '가장 머무른 시대', value: topEra[0], detail: `${topEra[1].length}편`, movieIds: topEra[1] })
+    insights.push({ label: t(locale, 'insight.topEra'), value: topEra[0], detail: filmCount(topEra[1].length), movieIds: topEra[1] })
   }
 
   const topRating = topEntry(ratings)
   if (topRating && topRating[1].length >= 2) {
     const stars = '★'.repeat(topRating[0]) + '☆'.repeat(5 - topRating[0])
-    insights.push({ label: '가장 많이 준 평점', value: stars, detail: `${topRating[1].length}편`, movieIds: topRating[1] })
+    insights.push({ label: t(locale, 'insight.topRating'), value: stars, detail: filmCount(topRating[1].length), movieIds: topRating[1] })
   }
 
   return insights

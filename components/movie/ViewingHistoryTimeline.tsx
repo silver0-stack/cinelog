@@ -2,6 +2,7 @@
 
 import { PencilIcon } from '@/components/icons/PencilIcon'
 import type { MovieViewing } from '@/data/movies'
+import { useLocale } from '@/components/i18n/LocaleProvider'
 
 function ratingLine(rating: number | undefined): string {
   if (rating == null) return ''
@@ -27,6 +28,7 @@ export function ViewingHistoryTimeline({
   onEditLatest: () => void
   onDeleteLatest: () => void
 }) {
+  const { t } = useLocale()
   if (viewings.length === 0) return null
 
   return (
@@ -45,8 +47,8 @@ export function ViewingHistoryTimeline({
                 <button
                   type="button"
                   onClick={onEditLatest}
-                  aria-label="이 감상 고치기"
-                  title="이 감상 고치기"
+                  aria-label={t('peek.editViewing')}
+                  title={t('peek.editViewing')}
                   className="-m-2 flex items-center justify-center p-2 text-white/35 outline-none transition-colors duration-500 hover:text-white/70"
                 >
                   <PencilIcon />
@@ -56,9 +58,9 @@ export function ViewingHistoryTimeline({
                 <button
                   type="button"
                   onClick={onDeleteLatest}
-                  className="text-[10px] tracking-[0.2em] text-white/25 outline-none transition-colors duration-500 hover:text-white/60"
+                  className="text-[10px] tracking-[var(--tk-20)] text-white/25 outline-none transition-colors duration-500 hover:text-white/60"
                 >
-                  삭제
+                  {t('peek.delete')}
                 </button>
               )}
             </div>

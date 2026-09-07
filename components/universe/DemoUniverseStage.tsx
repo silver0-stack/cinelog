@@ -11,6 +11,23 @@ import { summarizeUniverse, rewatchedMovies, genreIndex } from '@/lib/universeIn
 import { computeHistoryRange } from '@/lib/loggedMovies'
 import { movies as staticMovies, type Movie } from '@/data/movies'
 import { navLinkClass } from '@/lib/uiStyles'
+import type { UniverseText } from '@/lib/universeTexts'
+import { useLocale } from '@/components/i18n/LocaleProvider'
+import { LocaleToggle } from '@/components/i18n/LocaleToggle'
+import type { Locale } from '@/lib/i18n/locale'
+
+// "+ 텍스트" 버튼만 있으면 존재 자체를 못 알아챌 거라는 판단으로, 데모 우주에
+// 이미 하나 놓여있는 채로 보여준다 — 원점(반지름 MIN_RADIUS 안쪽, lib/
+// universeLayout.ts) 근처엔 어차피 별이 없어서 비어 있는 자리다. onGuestMutate와
+// 같은 이유로 이것도 새로고침하면 원래대로 돌아간다(수정/삭제는 자유).
+const DEMO_DUMMY_TEXT_CONTENT: Record<Locale, string> = {
+  ko: '**텍스트도 여기 이렇게 놓을 수 있어**\n클릭해서 고쳐써봐',
+  en: '**you can place text here too**\nclick to edit it',
+}
+
+function demoDummyText(locale: Locale): UniverseText {
+  return { id: 'demo-dummy-text', content: DEMO_DUMMY_TEXT_CONTENT[locale], x: -20, y: -10, size: 1 }
+}
 
 // 비로그인 데모 우주. 실험 삼아 추가한 별(DemoAddStar)도, 24편에 남기는 평점/메모
 // (onGuestMutate)도, 자유 텍스트 배치(demoTexts)도 이 컴포넌트가 언마운트되면
@@ -25,6 +42,7 @@ import { navLinkClass } from '@/lib/uiStyles'
 // 버튼 두 개가 나란히 있으면 답답해 보인다는 피드백 때문(UniverseInsightPanel의
 // historyEligible/onOpenHistory 참고).
 export function DemoUniverseStage() {
+  const { locale, t } = useLocale()
   const [movies, setMovies] = useState<Movie[]>(staticMovies)
   const [focusMovieId, setFocusMovieId] = useState<string | null>(null)
   const [historyDate, setHistoryDate] = useState<string | null>(null)
@@ -34,7 +52,7 @@ export function DemoUniverseStage() {
   // 않는다(onGuestMutate 게스트 체험과 같은 이유로 새로고침하면 사라진다).
   const [addTextRequestId, setAddTextRequestId] = useState(0)
 
-  const insights = useMemo(() => summarizeUniverse(movies), [movies])
+  const insights = useMemo(() => summarizeUniverse(movies, locale), [movies, locale])
   const genres = useMemo(() => genreIndex(movies), [movies])
   const rewatched = useMemo(() => rewatchedMovies(movies), [movies])
   const historyRange = useMemo(() => computeHistoryRange(movies), [movies])
@@ -55,6 +73,7 @@ export function DemoUniverseStage() {
   return (
     <>
       <MovieUniverse
+        key={locale}
         movies={movies}
         showIdleHint
         focusMovieId={focusMovieId}
@@ -62,6 +81,7 @@ export function DemoUniverseStage() {
         historyDate={historyDate}
         highlightedIds={highlightedIds}
         demoTexts
+        texts={[demoDummyText(locale)]}
         addTextRequestId={addTextRequestId}
       />
 
@@ -78,8 +98,9 @@ export function DemoUniverseStage() {
       <div className="absolute right-4 top-4 z-10 flex items-center gap-2 sm:right-6 sm:top-6 sm:gap-3">
         <MovieSearch searchIndex={searchIndex} onHighlightChange={handleHighlightChange} />
         <button type="button" onClick={() => setAddTextRequestId((n) => n + 1)} className={navLinkClass}>
-          + 텍스트
+          {t('nav.addText')}
         </button>
+        <LocaleToggle className={navLinkClass} />
         <GuidePanel variant="demo" triggerClassName={navLinkClass} />
       </div>
 

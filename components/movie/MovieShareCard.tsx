@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { Movie } from '@/data/movies'
+import { useLocale } from '@/components/i18n/LocaleProvider'
 
 function ratingDots(rating: number | undefined): string {
   if (rating == null) return ''
@@ -21,6 +22,7 @@ const dashedRow = 'border-b border-dashed border-white/15 px-6 py-3.5'
 // 위에서 아래로 이어지는 한 장의 티켓으로 구성한다 — 색이나 장식 없이
 // 점선 구분선과 발권번호/점수 같은 "표 정보" 문법만으로 티켓다움을 낸다.
 export function MovieShareCard({ movie, slug }: { movie: Movie; slug: string }) {
+  const { t } = useLocale()
   // 포스터 경로는 있는데 실제 로드가 실패하면(포스터가 내려갔거나 네트워크
   // 오류) 브라우저 기본 깨진 이미지 아이콘 대신 그냥 "포스터 없음"으로 대체한다.
   const [posterFailed, setPosterFailed] = useState(false)
@@ -33,7 +35,7 @@ export function MovieShareCard({ movie, slug }: { movie: Movie; slug: string }) 
   return (
     <div className="w-full max-w-sm border border-white/15 bg-black font-mono">
       <div className="flex items-center justify-between border-b border-dashed border-white/20 px-6 py-3">
-        <span className="text-[10px] tracking-[0.5em] text-white/40">영화입장권</span>
+        <span className="text-[10px] tracking-[var(--tk-50)] text-white/40">{t('ticket.title')}</span>
         <span className="text-[10px] tracking-[0.1em] text-white/30">No.{ticketNumber(slug)}</span>
       </div>
 
@@ -57,7 +59,7 @@ export function MovieShareCard({ movie, slug }: { movie: Movie; slug: string }) 
           </div>
         ) : (
           <div className="flex h-52 w-36 items-center justify-center border border-white/10">
-            <span className="text-[10px] tracking-[0.2em] text-white/20">포스터 없음</span>
+            <span className="text-[10px] tracking-[var(--tk-20)] text-white/20">{t('ticket.noPoster')}</span>
           </div>
         )}
       </div>
@@ -68,27 +70,29 @@ export function MovieShareCard({ movie, slug }: { movie: Movie; slug: string }) 
           {movie.year} · {movie.director}
         </p>
         {movie.genres.length > 0 && (
-          <p className="mt-1 text-xs font-light tracking-[0.1em] text-white/30">{movie.genres.join(' · ')}</p>
+          <p className="mt-1 text-xs font-light tracking-[var(--tk-10)] text-white/30">
+            {movie.genres.map((g) => t(`genre.${g}`)).join(' · ')}
+          </p>
         )}
       </div>
 
-      <div className={`flex flex-col gap-2 text-[11px] tracking-[0.08em] ${dashedRow}`}>
+      <div className={`flex flex-col gap-2 text-[11px] tracking-[var(--tk-08)] ${dashedRow}`}>
         {latestWatchedAt && (
           <div className="flex items-baseline justify-between text-white/40">
-            <span>관람일</span>
+            <span>{t('ticket.watchedAt')}</span>
             <span>{latestWatchedAt}</span>
           </div>
         )}
         {movie.rating != null && (
           <div className="flex items-baseline justify-between text-white/40">
-            <span>평점</span>
+            <span>{t('ticket.rating')}</span>
             <span className="text-sm text-white/60">{ratingDots(movie.rating)}</span>
           </div>
         )}
         {rewatchCount > 0 && (
           <div className="flex items-baseline justify-between text-white/40">
-            <span>다시 봄</span>
-            <span>{rewatchCount}회</span>
+            <span>{t('ticket.rewatch')}</span>
+            <span>{t('ticket.rewatchCount', { count: rewatchCount })}</span>
           </div>
         )}
       </div>
@@ -101,7 +105,7 @@ export function MovieShareCard({ movie, slug }: { movie: Movie; slug: string }) 
 
       {viewings.length > 1 && (
         <div className={`themed-scroll flex max-h-40 flex-col gap-2.5 overflow-y-auto ${dashedRow}`}>
-          <span className="text-[10px] tracking-[0.3em] text-white/25">이전 관람 {rewatchCount}회 · 스크롤</span>
+          <span className="text-[10px] tracking-[var(--tk-30)] text-white/25">{t('ticket.rewatchScroll', { count: rewatchCount })}</span>
           {viewings.slice(1).map((v) => (
             <div key={v.id} className="flex flex-col gap-1 border-t border-white/5 pt-2.5 first:border-t-0 first:pt-0">
               <div className="flex items-baseline justify-between text-[11px] tracking-[0.08em] text-white/35">
@@ -119,13 +123,13 @@ export function MovieShareCard({ movie, slug }: { movie: Movie; slug: string }) 
       )}
 
       <div className="flex items-center justify-between px-6 py-3">
-        <span className="text-[9px] tracking-[0.15em] text-white/20">본 티켓은 실사용 불가</span>
+        <span className="text-[9px] tracking-[var(--tk-15)] text-white/20">{t('ticket.notRealTicket')}</span>
         <a
           href={`/m/${slug}/download-image`}
           download={`${movie.title}.png`}
-          className="text-[10px] tracking-[0.35em] text-white/30 outline-none transition-colors duration-500 hover:text-white/60"
+          className="text-[10px] tracking-[var(--tk-35)] text-white/30 outline-none transition-colors duration-500 hover:text-white/60"
         >
-          이미지 저장
+          {t('ticket.saveImage')}
         </a>
       </div>
     </div>

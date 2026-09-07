@@ -5,6 +5,7 @@ import { motion, type MotionValue } from 'framer-motion'
 import { DURATION, EASE_SLOW } from '@/lib/motion'
 import { parseLiteMarkdown } from '@/lib/liteMarkdown'
 import type { UniverseText } from '@/lib/universeTexts'
+import { useLocale } from '@/components/i18n/LocaleProvider'
 
 const BASE_FONT_SIZE = 16
 const MIN_SIZE = 0.6
@@ -51,6 +52,7 @@ export function TextObject({
   onCommitResize,
   onCommitContent,
 }: Props) {
+  const { t } = useLocale()
   const { id, x, y, size } = text
   // 내용이 비어있는 채로 마운트됐다는 건 방금 "+ 텍스트"로 막 만들어졌다는
   // 뜻이다 — 그 경우에만 곧바로 편집 모드로 시작한다(별도 트리거 prop 없이).
@@ -99,7 +101,11 @@ export function TextObject({
 
     const handleWindowPointerMove = (ev: PointerEvent) => applyMove(ev.clientX, ev.clientY)
     const endDrag = (ev: PointerEvent) => {
-      applyMove(ev.clientX, ev.clientY)
+      // pointercancel 좌표는 신뢰할 수 없다(0,0으로 들어와 좌상단으로 순간이동하는
+      // 버그의 원인 — MovieBody.tsx의 같은 패턴 참고) — pointerup일 때만 반영한다.
+      if (ev.type !== 'pointercancel') {
+        applyMove(ev.clientX, ev.clientY)
+      }
       if (dragRef.current.mode === 'drag') {
         onCommitPosition(id, lastDragPositionRef.current.x, lastDragPositionRef.current.y)
       }
@@ -177,7 +183,10 @@ export function TextObject({
 
     const handleMove = (ev: PointerEvent) => applyResize(ev.clientX, ev.clientY)
     const endResize = (ev: PointerEvent) => {
-      applyResize(ev.clientX, ev.clientY)
+      // 같은 이유로 pointercancel 좌표는 무시한다(위 endDrag 참고).
+      if (ev.type !== 'pointercancel') {
+        applyResize(ev.clientX, ev.clientY)
+      }
       resizeStartRef.current = null
       setIsResizing(false)
       onCommitResize(id, lastSizeRef.current)
@@ -224,7 +233,7 @@ export function TextObject({
               onBlur={handleBlur}
               onKeyDown={handleKeyDown}
               onPointerDown={(e) => e.stopPropagation()}
-              placeholder="텍스트 (마크다운 가능: # 제목, **굵게**, *기울임*, - 목록)"
+              placeholder={t('text.placeholder')}
               rows={1}
               className="resize-none overflow-hidden border-b border-white/20 bg-transparent text-white/85 outline-none placeholder:text-white/25"
               style={{ fontSize, width: Math.round(EDITOR_BASE_WIDTH * Math.max(1, size)) }}

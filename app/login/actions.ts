@@ -3,6 +3,8 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { getLocale } from '@/lib/i18n/getLocale'
+import { t } from '@/lib/i18n/dictionary'
 
 type SendMagicLinkResult = { error: string } | { sent: true }
 
@@ -11,9 +13,10 @@ export async function sendMagicLink(
   formData: FormData
 ): Promise<SendMagicLinkResult> {
   const email = String(formData.get('email') ?? '').trim()
+  const locale = await getLocale()
 
   if (!email || !email.includes('@')) {
-    return { error: '올바른 이메일 주소를 입력해줘.' }
+    return { error: t(locale, 'login.invalidEmail') }
   }
 
   const origin = (await headers()).get('origin')
@@ -27,7 +30,7 @@ export async function sendMagicLink(
   })
 
   if (error) {
-    return { error: '링크를 보내지 못했어. 잠시 후 다시 시도해줘.' }
+    return { error: t(locale, 'login.sendFailed') }
   }
 
   return { sent: true }

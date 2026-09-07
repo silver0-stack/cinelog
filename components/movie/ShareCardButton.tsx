@@ -4,8 +4,9 @@ import { useState } from 'react'
 import { getOrCreateMovieCardSlug } from '@/lib/movieShareLinks'
 import { CopyIcon } from '@/components/icons/CopyIcon'
 import { CheckIcon } from '@/components/icons/CheckIcon'
+import { useLocale } from '@/components/i18n/LocaleProvider'
 
-const actionClass = 'flex items-center gap-1 text-[9px] tracking-[0.25em] text-white/40 outline-none transition-colors duration-500 hover:text-white/70'
+const actionClass = 'flex items-center gap-1 text-[9px] tracking-[var(--tk-25)] text-white/40 outline-none transition-colors duration-500 hover:text-white/70'
 
 type Props = {
   loggedMovieId: string
@@ -19,6 +20,7 @@ type Props = {
 
 /** 영화 하나를 카드 링크로 공유한다 — 우주 전체 공유와 독립적인 slug(0004)를 쓴다. */
 export function ShareCardButton({ loggedMovieId, initialUrl = null, variant = 'text' }: Props) {
+  const { t } = useLocale()
   const [url, setUrl] = useState<string | null>(initialUrl)
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -50,8 +52,8 @@ export function ShareCardButton({ loggedMovieId, initialUrl = null, variant = 't
         type="button"
         onClick={handleClick}
         disabled={loading}
-        aria-label={url ? '카드 링크 복사' : '영화 카드 공유'}
-        title={copied ? '복사됨' : url ? '카드 링크 복사' : '영화 카드 공유'}
+        aria-label={url ? t('shareCard.copyLink') : t('shareCard.share')}
+        title={copied ? t('shareCard.copied') : url ? t('shareCard.copyLink') : t('shareCard.share')}
         className="-m-1.5 flex items-center justify-center p-1.5 text-white/50 outline-none transition-colors duration-500 hover:text-white/85 disabled:text-white/20"
       >
         {copied ? <CheckIcon /> : <CopyIcon />}
@@ -63,14 +65,14 @@ export function ShareCardButton({ loggedMovieId, initialUrl = null, variant = 't
     return (
       <button type="button" onClick={handleClick} className={actionClass}>
         {copied ? <CheckIcon /> : <CopyIcon />}
-        {copied ? '복사됨' : '카드 링크 복사'}
+        {copied ? t('shareCard.copied') : t('shareCard.copyLink')}
       </button>
     )
   }
 
   return (
     <button type="button" onClick={handleClick} disabled={loading} className={`${actionClass} disabled:text-white/20`}>
-      {loading ? '만드는 중' : '영화 카드 공유'}
+      {loading ? t('shareCard.creating') : t('shareCard.share')}
     </button>
   )
 }

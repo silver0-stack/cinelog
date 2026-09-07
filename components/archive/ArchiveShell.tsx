@@ -13,6 +13,8 @@ import { UniverseInsightPanel } from '@/components/archive/UniverseInsightPanel'
 import { MovieSearch } from '@/components/archive/MovieSearch'
 import { LogMovieForm } from '@/components/archive/LogMovieForm'
 import { GuidePanel } from '@/components/guide/GuidePanel'
+import { useLocaleMenuAction } from '@/components/i18n/LocaleToggle'
+import { useLocale } from '@/components/i18n/LocaleProvider'
 import { EASE_SLOW } from '@/lib/motion'
 import { computeHistoryRange } from '@/lib/loggedMovies'
 import { navLinkClass } from '@/lib/uiStyles'
@@ -71,6 +73,8 @@ export function ArchiveShell({
   texts,
 }: Props) {
   const router = useRouter()
+  const { t } = useLocale()
+  const localeMenuAction = useLocaleMenuAction()
   const [focusMovieId, setFocusMovieId] = useState(initialFocusId)
   const [addOpen, setAddOpen] = useState(false)
   // "+ 텍스트" 클릭마다 증가 — MovieUniverse가 이 값의 변화를 감지해 새 텍스트를
@@ -157,12 +161,15 @@ export function ArchiveShell({
         <ShareButton initialUrl={initialShareUrl} />
         <MovieSearch searchIndex={searchIndex} onHighlightChange={handleHighlightChange} />
         <button type="button" onClick={() => setAddOpen(true)} className={navLinkClass}>
-          + 기록
+          {t('nav.addLog')}
         </button>
         <button type="button" onClick={() => setAddTextRequestId((n) => n + 1)} className={navLinkClass}>
-          + 텍스트
+          {t('nav.addText')}
         </button>
-        <AccountMenu email={email} menuActions={[{ label: '가이드', onClick: () => setGuideOpen(true) }]} />
+        <AccountMenu
+          email={email}
+          menuActions={[{ label: t('nav.guide'), onClick: () => setGuideOpen(true) }, localeMenuAction]}
+        />
         <GuidePanel variant="archive" open={guideOpen} onOpenChange={setGuideOpen} />
       </div>
 
@@ -203,11 +210,11 @@ export function ArchiveShell({
                   <button
                     type="button"
                     onClick={() => setAddOpen(false)}
-                    className="self-start text-[11px] font-light tracking-[0.35em] text-white/45 outline-none transition-colors duration-500 hover:text-white/85"
+                    className="self-start text-[11px] font-light tracking-[var(--tk-35)] text-white/45 outline-none transition-colors duration-500 hover:text-white/85"
                   >
-                    ← 닫기
+                    {t('nav.closeArrow')}
                   </button>
-                  <h1 className="-mt-10 text-center text-sm font-light tracking-[0.55em] text-white/70">영화 기록하기</h1>
+                  <h1 className="-mt-10 text-center text-sm font-light tracking-[var(--tk-55)] text-white/70">{t('nav.logMovie')}</h1>
                   <LogMovieForm existingByTmdbId={existingByTmdbId} onFocusMovie={focusAndClose} onSaved={() => router.refresh()} />
                 </div>
               </motion.div>

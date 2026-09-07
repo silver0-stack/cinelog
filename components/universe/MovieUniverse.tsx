@@ -17,6 +17,8 @@ import { EASE_SLOW } from '@/lib/motion'
 import { useIdleHint } from '@/lib/useIdleHint'
 import { MovieBody, type Tier } from '@/components/movie/MovieBody'
 import { TextObject } from '@/components/universe/TextObject'
+import { useLocale } from '@/components/i18n/LocaleProvider'
+import type { Locale } from '@/lib/i18n/locale'
 
 const IDLE_HINT_DELAY = 5000
 const IDLE_HINT_CYCLE = 4200
@@ -37,7 +39,10 @@ const IDLE_HINT_CYCLE = 4200
 // 이후 뺐다 — 드래그로 직접 배치하는 기능이 생기면서 자동 배치는 "직접
 // 정하기 전 기본값"일 뿐이라, 그 기본값의 기준까지 고민하게 만들 필요가
 // 없다는 판단.)
-const IDLE_HINTS = ['확대해서 둘러봐', '같은 기준으로 묶인 영화일수록 한 방향에 모여', '포스터를 눌러 자세히 봐'] as const
+const IDLE_HINTS: Record<Locale, readonly string[]> = {
+  ko: ['확대해서 둘러봐', '같은 기준으로 묶인 영화일수록 한 방향에 모여', '포스터를 눌러 자세히 봐'],
+  en: ['Zoom in and look around', 'Movies grouped the same way drift toward one direction', 'Click a poster for details'],
+}
 // 이 배열을 이펙트 의존성으로 그대로 쓰면 매 렌더 새 참조가 생겨 리스너가 계속
 // 재등록된다 — 모듈 스코프 상수로 고정해서 참조가 항상 같게 유지한다.
 const UNIVERSE_IDLE_EVENTS = ['wheel', 'mousedown', 'touchstart'] as const
@@ -205,6 +210,7 @@ export function MovieUniverse({
   addTextRequestId,
   demoTexts = false,
 }: Props) {
+  const { locale, t } = useLocale()
   const containerRef = useRef<HTMLDivElement>(null)
   // 화면 밖으로 한참 벗어난 별의 렌더링 비용(이미지 2장+blur+무한 흔들림)을
   // MovieBody가 스스로 아끼려면 뷰포트 크기를 알아야 한다 — 기록이 수백 편으로
@@ -792,9 +798,9 @@ export function MovieUniverse({
   const [hintIndex, setHintIndex] = useState(0)
   useEffect(() => {
     if (!showHint) return
-    const timer = window.setInterval(() => setHintIndex((i) => (i + 1) % IDLE_HINTS.length), IDLE_HINT_CYCLE)
+    const timer = window.setInterval(() => setHintIndex((i) => (i + 1) % IDLE_HINTS[locale].length), IDLE_HINT_CYCLE)
     return () => window.clearInterval(timer)
-  }, [showHint])
+  }, [showHint, locale])
 
   return (
     <div
@@ -809,7 +815,15 @@ export function MovieUniverse({
         }}
       />
 
-      <motion.div className="absolute inset-0" style={{ x: panX, y: panY, scale: zoom }}>
+      {/* isolation: isolate로 이 레이어가 항상 자기만의 스택 컨텍스트를 갖게
+          강제한다 — 안에 있는 별들의 zIndex(가까운 관계일수록 최대 수백까지
+          올라간다, proximityZIndex)가 카메라 기본 배율(팬/줌 0 상태)일 때
+          바깥으로 새어나가 상단/하단 상시 버튼(검색/+텍스트/가이드 등)을
+          덮어버리는 버그가 있었다 — framer motion이 x/y/scale이 전부 항등값일
+          때 실제 transform을 안 걸어서(별자리 기능 때 겪었던 것과 같은 원인,
+          CLAUDE.md 2026-09-07) transform 유무에 기대지 않고 명시적으로
+          스택 컨텍스트를 만든다. */}
+      <motion.div className="absolute inset-0" style={{ x: panX, y: panY, scale: zoom, isolation: 'isolate' }}>
         {bodies.map(({ movie, gravity, closestMovie, x, y, tier, dimmed, dimmedByHighlight }) => (
           <MovieBody
             key={movie.id}
@@ -869,18 +883,18 @@ export function MovieUniverse({
         <button
           type="button"
           onClick={() => handlePeek(null)}
-          className="absolute left-4 top-4 z-[60] text-[10px] tracking-[0.3em] text-white/60 outline-none transition-colors duration-500 hover:text-white/90"
+          className="absolute left-4 top-4 z-[60] text-[10px] tracking-[var(--tk-30)] text-white/60 outline-none transition-colors duration-500 hover:text-white/90"
         >
-          ← 나가기
+          {t('nav.exit')}
         </button>
       ) : (
         cameraAway && (
           <button
             type="button"
             onClick={resetCamera}
-            className="absolute left-4 top-4 z-[60] text-[10px] tracking-[0.3em] text-white/60 outline-none transition-colors duration-500 hover:text-white/90"
+            className="absolute left-4 top-4 z-[60] text-[10px] tracking-[var(--tk-30)] text-white/60 outline-none transition-colors duration-500 hover:text-white/90"
           >
-            처음으로
+            {t('nav.recenter')}
           </button>
         )
       )}
@@ -892,7 +906,7 @@ export function MovieUniverse({
           지금은 스크럽 중) 아예 끈다. */}
       {showIdleHint && historyDate == null && (
         <motion.div
-          className="pointer-events-none absolute bottom-12 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-light tracking-[0.3em] text-white/30"
+          className="pointer-events-none absolute bottom-12 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-light tracking-[var(--tk-30)] text-white/30"
           style={{ textShadow: '0 0 10px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.9)' }}
           animate={{ opacity: showHint ? 1 : 0 }}
           transition={{ duration: 1.6, ease: EASE_SLOW }}
@@ -905,7 +919,7 @@ export function MovieUniverse({
               exit={{ opacity: 0 }}
               transition={{ duration: 1, ease: EASE_SLOW }}
             >
-              {IDLE_HINTS[hintIndex]}
+              {IDLE_HINTS[locale][hintIndex]}
             </motion.span>
           </AnimatePresence>
         </motion.div>

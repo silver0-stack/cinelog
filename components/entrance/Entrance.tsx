@@ -6,6 +6,93 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { EASE_SLOW } from '@/lib/motion'
 import { secondaryNavLinkClass } from '@/lib/uiStyles'
 import { AccountMenu } from '@/components/archive/AccountMenu'
+import { useLocale } from '@/components/i18n/LocaleProvider'
+import { LocaleToggle, useLocaleMenuAction } from '@/components/i18n/LocaleToggle'
+import type { Locale } from '@/lib/i18n/locale'
+
+type Step = { n: string; t: string; d: string }
+type FaqItem = { q: string; a: string }
+
+// 이 페이지에서만 쓰는 긴 카피라 중앙 사전(lib/i18n/dictionary.ts) 대신 여기
+// 옆에 둔다 — 짧고 여러 곳에서 재사용되는 문구만 사전으로 뺀다는 원칙(계획 문서 참고).
+const ENTRANCE_COPY: Record<
+  Locale,
+  {
+    tagline: string
+    descriptionLines: string[]
+    howToTitle: string
+    steps: Step[]
+    philosophyLines: string[]
+    tryTitle: string
+    trySubtitle: string
+    enterAriaLabel: string
+    pressToEnterLabel: string
+    faqTitle: string
+    faq: FaqItem[]
+    finalCtaSentence: string
+    browseDemoLabel: string
+  }
+> = {
+  ko: {
+    tagline: '영화와 영화 사이, 당신만의 우주',
+    descriptionLines: ['영화 한 편이 하나의 우주가 된다.', '감독과 장르와 정서로 이어진 영화들이,', '서로를 당기며 우주를 이룬다.'],
+    howToTitle: '어떻게 쓰나요',
+    steps: [
+      { n: '01', t: '기록한다', d: '영화를 보고 평점과 메모를 남겨.' },
+      { n: '02', t: '우주가 된다', d: '감독, 장르, 정서로 이어진 영화들이 서로 가까워져.' },
+      { n: '03', t: '탐색한다', d: '확대하고 중심을 옮기며 관계를 따라가.' },
+      { n: '04', t: '공유한다', d: '우주 전체나 영화 한 편을 링크로 보여줘.' },
+    ],
+    philosophyLines: ['영화를 볼수록 내 우주가 넓어진다.', '나를 채운 영화들이 모여,', '광활하고 끝없는 하나의 세계가 된다.'],
+    tryTitle: '지금 둘러보기',
+    trySubtitle: '24편으로 채운 데모 우주를 로그인 없이 체험할 수 있어.',
+    enterAriaLabel: '데모 우주로 들어가기',
+    pressToEnterLabel: '눌러서 들어가기',
+    faqTitle: '자주 묻는 질문',
+    faq: [
+      { q: '로그인 안 해도 볼 수 있어?', a: '응. 데모 우주는 누구나 로그인 없이 둘러볼 수 있어. 내가 본 영화로 채운 진짜 우주를 가지려면 로그인이 필요해.' },
+      { q: '무료야?', a: '응, 완전히 무료야.' },
+      { q: '내 정보가 다른 사람에게 보여?', a: '아니. 네가 직접 공유 링크를 켜지 않는 한 아무도 못 봐.' },
+    ],
+    finalCtaSentence: '지금 네 우주를 시작해봐.',
+    browseDemoLabel: '데모 우주 둘러보기',
+  },
+  en: {
+    tagline: 'A universe between movies, all your own',
+    descriptionLines: [
+      'Every film becomes a universe.',
+      'Movies linked by director, genre, and mood',
+      'pull toward each other to form one.',
+    ],
+    howToTitle: 'How it works',
+    steps: [
+      { n: '01', t: 'Log', d: 'Rate it and jot a note after you watch.' },
+      { n: '02', t: 'It becomes a universe', d: 'Movies linked by director, genre, and mood drift closer together.' },
+      { n: '03', t: 'Explore', d: 'Zoom in, shift focus, and follow the connections.' },
+      { n: '04', t: 'Share', d: 'Send a link to your whole universe, or just one movie.' },
+    ],
+    philosophyLines: [
+      'The more you watch, the wider your universe grows.',
+      'The films that shaped you gather together',
+      'into one vast, endless world.',
+    ],
+    tryTitle: 'Try it now',
+    trySubtitle: 'Explore a demo universe of 24 films, no login needed.',
+    enterAriaLabel: 'Enter the demo universe',
+    pressToEnterLabel: 'Press to enter',
+    faqTitle: 'Frequently asked',
+    faq: [
+      {
+        q: 'Can I look around without logging in?',
+        a: "Yes. Anyone can browse the demo universe without logging in. To grow a real universe from movies you've actually watched, you'll need to log in.",
+      },
+      { q: 'Is it free?', a: 'Yes, completely free.' },
+      { q: 'Can other people see my data?', a: "No. No one can see it unless you turn on a share link yourself." },
+    ],
+    finalCtaSentence: 'Start your universe now.',
+    browseDemoLabel: 'Browse the demo universe',
+  },
+}
 
 type Props = {
   /** 체험 트리거(하단 별)를 누르면 호출된다 — 좌석 없이 곧장 블랙홀 전환으로 이어진다. */
@@ -16,8 +103,8 @@ type Props = {
   userEmail: string | null
 }
 
-const headingClass = 'text-sm font-light tracking-[0.3em] text-white/70 sm:text-base'
-const bodyClass = 'text-[13px] font-light leading-loose tracking-[0.15em] text-white/40 sm:text-sm'
+const headingClass = 'text-sm font-light tracking-[var(--tk-30)] text-white/70 sm:text-base'
+const bodyClass = 'text-[13px] font-light leading-loose tracking-[var(--tk-15)] text-white/40 sm:text-sm'
 
 // 스크롤해서 내려가며 읽는 하나의 랜딩 페이지다. 예전엔 "좌석을 찾아서 눌러야만
 // 입장할 수 있는" 영화관 장면이 첫 화면이었는데, 좌석을 못 찾으면 끝까지 입장도
@@ -47,20 +134,32 @@ function Section({ id, children, className = '' }: { id?: string; children: Reac
 }
 
 export function Entrance({ onEnter, userEmail }: Props) {
-  const primaryCtaLabel = userEmail ? '내 우주 가기' : '내 우주 만들기'
+  const { locale, t } = useLocale()
+  const localeMenuAction = useLocaleMenuAction()
+  const copy = ENTRANCE_COPY[locale]
+  const primaryCtaLabel = userEmail ? t('nav.goToMyUniverse') : t('nav.createMyUniverse')
   const primaryCtaHref = userEmail ? '/archive' : '/login'
 
   return (
     <div className="flex min-h-full w-full flex-col items-center bg-black">
       {/* 스크롤해도 항상 접근 가능한 진입로 — 로그인 안 했으면 로그인으로, 이미
-          로그인했으면 계정 메뉴(내 우주 가기/로그아웃)로 바뀐다. */}
-      <div className="fixed right-6 top-6 z-10">
+          로그인했으면 계정 메뉴(내 우주 가기/로그아웃)로 바뀐다. 언어 토글은
+          계정 메뉴가 있으면(로그인 상태) 그 안으로 들어가고, 없으면(로그인 전)
+          상시 버튼으로 남는다 — 항상 밖에 떠 있을 필요는 없다는 판단. */}
+      <div className="fixed right-6 top-6 z-10 flex items-center gap-2">
         {userEmail ? (
-          <AccountMenu email={userEmail} links={[{ label: '내 우주 가기', href: '/archive' }]} />
+          <AccountMenu
+            email={userEmail}
+            links={[{ label: t('nav.goToMyUniverse'), href: '/archive' }]}
+            menuActions={[localeMenuAction]}
+          />
         ) : (
-          <Link href="/login" className={secondaryNavLinkClass}>
-            LOG IN
-          </Link>
+          <>
+            <LocaleToggle className={secondaryNavLinkClass} />
+            <Link href="/login" className={secondaryNavLinkClass}>
+              LOG IN
+            </Link>
+          </>
         )}
       </div>
 
@@ -70,15 +169,16 @@ export function Entrance({ onEnter, userEmail }: Props) {
           <h1 className="text-center text-sm font-light tracking-[0.55em] text-white/70 sm:text-base">
             CINELOG
           </h1>
-          <p className="max-w-xs text-center text-xs font-light leading-relaxed tracking-[0.3em] text-white/25">
-            영화와 영화 사이, 당신만의 우주
+          <p className="max-w-xs text-center text-xs font-light leading-relaxed tracking-[var(--tk-30)] text-white/25">
+            {copy.tagline}
           </p>
-          <p className="max-w-xs text-center text-[13px] font-light leading-loose tracking-[0.15em] text-white/40 sm:text-sm">
-            영화 한 편이 하나의 우주가 된다.
-            <br />
-            감독과 장르와 정서로 이어진 영화들이,
-            <br />
-            서로를 당기며 우주를 이룬다.
+          <p className="max-w-xs text-center text-[13px] font-light leading-loose tracking-[var(--tk-15)] text-white/40 sm:text-sm">
+            {copy.descriptionLines.map((line, i) => (
+              <span key={i}>
+                {i > 0 && <br />}
+                {line}
+              </span>
+            ))}
           </p>
         </div>
 
@@ -94,18 +194,18 @@ export function Entrance({ onEnter, userEmail }: Props) {
             onClick={onEnter}
             className={
               userEmail
-                ? 'text-xs font-light tracking-[0.4em] text-white/45 outline-none transition-colors duration-700 hover:text-white/75 focus-visible:text-white/75'
-                : 'text-sm font-light tracking-[0.4em] text-white/70 outline-none transition-colors duration-700 hover:text-white/95 focus-visible:text-white/95'
+                ? 'text-xs font-light tracking-[var(--tk-40)] text-white/45 outline-none transition-colors duration-700 hover:text-white/75 focus-visible:text-white/75'
+                : 'text-sm font-light tracking-[var(--tk-40)] text-white/70 outline-none transition-colors duration-700 hover:text-white/95 focus-visible:text-white/95'
             }
           >
-            데모 우주 둘러보기
+            {copy.browseDemoLabel}
           </button>
           <Link
             href={primaryCtaHref}
             className={
               userEmail
-                ? 'text-sm font-light tracking-[0.4em] text-white/70 outline-none transition-colors duration-700 hover:text-white/95 focus-visible:text-white/95'
-                : 'text-xs font-light tracking-[0.4em] text-white/45 outline-none transition-colors duration-700 hover:text-white/75 focus-visible:text-white/75'
+                ? 'text-sm font-light tracking-[var(--tk-40)] text-white/70 outline-none transition-colors duration-700 hover:text-white/95 focus-visible:text-white/95'
+                : 'text-xs font-light tracking-[var(--tk-40)] text-white/45 outline-none transition-colors duration-700 hover:text-white/75 focus-visible:text-white/75'
             }
           >
             {primaryCtaLabel}
@@ -119,17 +219,12 @@ export function Entrance({ onEnter, userEmail }: Props) {
 
       {/* 이용 방법 */}
       <Section id="how" className="max-w-sm gap-14 py-28">
-        <h2 className={headingClass}>어떻게 쓰나요</h2>
+        <h2 className={headingClass}>{copy.howToTitle}</h2>
         <div className="grid w-full grid-cols-1 gap-10 sm:grid-cols-2">
-          {[
-            { n: '01', t: '기록한다', d: '영화를 보고 평점과 메모를 남겨.' },
-            { n: '02', t: '우주가 된다', d: '감독, 장르, 정서로 이어진 영화들이 서로 가까워져.' },
-            { n: '03', t: '탐색한다', d: '확대하고 중심을 옮기며 관계를 따라가.' },
-            { n: '04', t: '공유한다', d: '우주 전체나 영화 한 편을 링크로 보여줘.' },
-          ].map((step) => (
+          {copy.steps.map((step) => (
             <div key={step.n} className="flex flex-col items-center gap-2">
               <p className="text-[10px] tracking-[0.3em] text-white/20">{step.n}</p>
-              <p className="text-sm font-light tracking-[0.15em] text-white/70">{step.t}</p>
+              <p className="text-sm font-light tracking-[var(--tk-15)] text-white/70">{step.t}</p>
               <p className={bodyClass}>{step.d}</p>
             </div>
           ))}
@@ -138,26 +233,27 @@ export function Entrance({ onEnter, userEmail }: Props) {
 
       {/* 철학 */}
       <Section className="max-w-xs gap-6 py-28">
-        <p className="text-[13px] font-light leading-loose tracking-[0.1em] text-white/60">
-          영화를 볼수록 내 우주가 넓어진다.
-          <br />
-          나를 채운 영화들이 모여,
-          <br />
-          광활하고 끝없는 하나의 세계가 된다.
+        <p className="text-[13px] font-light leading-loose tracking-[var(--tk-10)] text-white/60">
+          {copy.philosophyLines.map((line, i) => (
+            <span key={i}>
+              {i > 0 && <br />}
+              {line}
+            </span>
+          ))}
         </p>
       </Section>
 
       {/* 체험 — 예전 좌석 대신, 별 하나가 블랙홀 전환의 매개가 된다 */}
       <section className="flex min-h-dvh w-full flex-col items-center justify-center gap-10 px-6 text-center">
         <div className="flex flex-col items-center gap-3">
-          <h2 className={headingClass}>지금 둘러보기</h2>
-          <p className={bodyClass}>24편으로 채운 데모 우주를 로그인 없이 체험할 수 있어.</p>
+          <h2 className={headingClass}>{copy.tryTitle}</h2>
+          <p className={bodyClass}>{copy.trySubtitle}</p>
         </div>
 
         <button
           type="button"
           onClick={onEnter}
-          aria-label="데모 우주로 들어가기"
+          aria-label={copy.enterAriaLabel}
           className="group flex flex-col items-center gap-4 outline-none"
         >
           <span
@@ -167,23 +263,19 @@ export function Entrance({ onEnter, userEmail }: Props) {
               boxShadow: '0 0 40px 10px rgba(255,214,150,0.18)',
             }}
           />
-          <span className="text-xs font-light tracking-[0.4em] text-white/50 transition-colors duration-700 group-hover:text-white/80">
-            눌러서 들어가기
+          <span className="text-xs font-light tracking-[var(--tk-40)] text-white/50 transition-colors duration-700 group-hover:text-white/80">
+            {copy.pressToEnterLabel}
           </span>
         </button>
       </section>
 
       {/* FAQ */}
       <Section className="max-w-sm gap-10 py-28">
-        <h2 className={headingClass}>자주 묻는 질문</h2>
+        <h2 className={headingClass}>{copy.faqTitle}</h2>
         <div className="flex w-full flex-col gap-8">
-          {[
-            { q: '로그인 안 해도 볼 수 있어?', a: '응. 데모 우주는 누구나 로그인 없이 둘러볼 수 있어. 내가 본 영화로 채운 진짜 우주를 가지려면 로그인이 필요해.' },
-            { q: '무료야?', a: '응, 완전히 무료야.' },
-            { q: '내 정보가 다른 사람에게 보여?', a: '아니. 네가 직접 공유 링크를 켜지 않는 한 아무도 못 봐.' },
-          ].map((item) => (
+          {copy.faq.map((item) => (
             <div key={item.q} className="flex flex-col items-center gap-2">
-              <p className="text-sm tracking-[0.1em] text-white/60">{item.q}</p>
+              <p className="text-sm tracking-[var(--tk-10)] text-white/60">{item.q}</p>
               <p className={bodyClass}>{item.a}</p>
             </div>
           ))}
@@ -192,12 +284,12 @@ export function Entrance({ onEnter, userEmail }: Props) {
 
       {/* 마지막 CTA */}
       <Section className="min-h-dvh justify-center gap-10">
-        <p className="max-w-xs text-[13px] font-light leading-loose tracking-[0.1em] text-white/60">
-          지금 네 우주를 시작해봐.
+        <p className="max-w-xs text-[13px] font-light leading-loose tracking-[var(--tk-10)] text-white/60">
+          {copy.finalCtaSentence}
         </p>
         <Link
           href={primaryCtaHref}
-          className="animate-pulse-slow text-xs font-light tracking-[0.5em] text-white/50 outline-none transition-colors duration-700 hover:text-white/85 focus-visible:text-white/85"
+          className="animate-pulse-slow text-xs font-light tracking-[var(--tk-50)] text-white/50 outline-none transition-colors duration-700 hover:text-white/85 focus-visible:text-white/85"
         >
           {primaryCtaLabel}
         </Link>

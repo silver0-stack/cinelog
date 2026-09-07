@@ -12,13 +12,14 @@ import { PencilIcon } from '@/components/icons/PencilIcon'
 import { ShareCardButton } from './ShareCardButton'
 import { ViewingHistoryTimeline } from './ViewingHistoryTimeline'
 import type { Movie, MovieViewing } from '@/data/movies'
+import { useLocale } from '@/components/i18n/LocaleProvider'
 
 // 처음 이 컨트롤을 마주쳤을 때 딱 한 번, 뭘 하는 건지 아주 작게 알려준다 —
 // 두 번째부터는 다시 안 뜬다(로컬스토리지로 기억). "다시 보기"가 뭘 위한
 // 기능인지 몰라서 안 눌러봤다는 피드백이 있었다.
 const REWATCH_HINT_KEY = 'cinelog:hint-seen:rewatch'
 
-const actionClass = 'text-[9px] tracking-[0.25em] text-white/40 outline-none transition-colors duration-500 hover:text-white/70'
+const actionClass = 'text-[9px] tracking-[var(--tk-25)] text-white/40 outline-none transition-colors duration-500 hover:text-white/70'
 const fieldClass =
   'w-full border-b border-white/15 bg-transparent px-1 py-1 text-[11px] font-light tracking-wide text-white/80 outline-none transition-colors duration-500 placeholder:text-white/20 focus:border-white/40'
 
@@ -64,6 +65,7 @@ export function MoviePeekPanel({
   maxHeightPx,
   onClose,
 }: Props) {
+  const { t } = useLocale()
   const router = useRouter()
   // 감상(평점/메모) 관련 UI는 editable(실제 계정)이거나 onGuestMutate(데모 게스트
   // 체험)이 있으면 켠다 — "정보 수정"/카드 공유는 아래에서 별도로 editable만 본다.
@@ -251,7 +253,7 @@ export function MoviePeekPanel({
   async function applyTmdbResult(result: TmdbSearchResult) {
     const existingId = existingByTmdbId?.[result.tmdbId]
     if (existingId && existingId !== movie.id) {
-      setEditError('이미 기록한 다른 영화와 같은 작품이야.')
+      setEditError(t('peek.duplicateError'))
       setDuplicateTargetId(existingId)
       setTmdbResults([])
       return
@@ -290,7 +292,7 @@ export function MoviePeekPanel({
       // 23505 = unique_violation — 이 tmdb_id로 이미 기록한 다른 영화가 있다는
       // 뜻이다(logged_movies_user_tmdb_unique). 그 외엔 일반 저장 실패 메시지.
       const isDuplicate = (err as { code?: string } | null)?.code === '23505'
-      setEditError(isDuplicate ? '이미 기록한 다른 영화와 같은 작품이야.' : '저장하지 못했어. 잠시 후 다시 시도해줘.')
+      setEditError(isDuplicate ? t('peek.duplicateError') : t('error.saveFailed'))
       setDuplicateTargetId(isDuplicate ? (pickedTmdb ? existingByTmdbId?.[pickedTmdb.tmdbId] ?? null : null) : null)
     } finally {
       setSaving(false)
@@ -313,8 +315,8 @@ export function MoviePeekPanel({
                   resetMetadataDraft()
                   setMode('edit')
                 }}
-                aria-label="정보 수정"
-                title="정보 수정"
+                aria-label={t('nav.editInfo')}
+                title={t('nav.editInfo')}
                 className="-m-1.5 flex items-center justify-center p-1.5 text-white/50 outline-none transition-colors duration-500 hover:text-white/85"
               >
                 <PencilIcon />
@@ -343,17 +345,17 @@ export function MoviePeekPanel({
           <div className="mt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5">
             {guestEnabled && (
               <button type="button" onClick={() => setMode('add')} className={actionClass}>
-                {viewings.length > 0 ? '다시 본 감상 남기기' : '감상 남기기'}
+                {viewings.length > 0 ? t('peek.logAnotherViewing') : t('peek.logViewing')}
               </button>
             )}
-            <button type="button" onClick={onClose} className="text-[9px] tracking-[0.25em] text-white/25 outline-none transition-colors duration-500 hover:text-white/60">
-              닫기
+            <button type="button" onClick={onClose} className="text-[9px] tracking-[var(--tk-25)] text-white/25 outline-none transition-colors duration-500 hover:text-white/60">
+              {t('nav.close')}
             </button>
           </div>
 
           {showRewatchHint && (
             <p className="max-w-[220px] text-center text-[8px] leading-relaxed tracking-wide text-white/25">
-              같은 영화를 또 봤다면 새 감상을 남겨. 이전 감상은 지워지지 않고 쌓여
+              {t('peek.rewatchHint')}
             </p>
           )}
         </div>
@@ -365,7 +367,7 @@ export function MoviePeekPanel({
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="메모 (선택, 짧게 한 줄이어도 길게 리뷰여도 괜찮아)"
+            placeholder={t('form.notePlaceholder')}
             rows={3}
             className={`max-h-[40vh] resize-y ${fieldClass}`}
           />
@@ -376,11 +378,11 @@ export function MoviePeekPanel({
             className="border-b border-white/15 bg-transparent px-1 py-1 text-[10px] text-white/50 outline-none [color-scheme:dark] focus:border-white/40"
           />
           <div className="flex items-center gap-4">
-            <button type="button" onClick={() => setMode('view')} className="text-[9px] tracking-[0.25em] text-white/30 outline-none transition-colors duration-500 hover:text-white/60">
-              취소
+            <button type="button" onClick={() => setMode('view')} className="text-[9px] tracking-[var(--tk-25)] text-white/30 outline-none transition-colors duration-500 hover:text-white/60">
+              {t('peek.cancel')}
             </button>
             <button type="submit" disabled={saving} className={`${actionClass} disabled:text-white/20`}>
-              {saving ? '저장 중' : '저장'}
+              {saving ? t('peek.saving') : t('peek.save')}
             </button>
           </div>
         </form>
@@ -392,7 +394,7 @@ export function MoviePeekPanel({
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="메모 (선택, 짧게 한 줄이어도 길게 리뷰여도 괜찮아)"
+            placeholder={t('form.notePlaceholder')}
             rows={3}
             className={`max-h-[40vh] resize-y ${fieldClass}`}
           />
@@ -403,11 +405,11 @@ export function MoviePeekPanel({
             className="border-b border-white/15 bg-transparent px-1 py-1 text-[10px] text-white/50 outline-none [color-scheme:dark] focus:border-white/40"
           />
           <div className="flex items-center gap-4">
-            <button type="button" onClick={() => setMode('view')} className="text-[9px] tracking-[0.25em] text-white/30 outline-none transition-colors duration-500 hover:text-white/60">
-              취소
+            <button type="button" onClick={() => setMode('view')} className="text-[9px] tracking-[var(--tk-25)] text-white/30 outline-none transition-colors duration-500 hover:text-white/60">
+              {t('peek.cancel')}
             </button>
             <button type="submit" disabled={saving} className={`${actionClass} disabled:text-white/20`}>
-              {saving ? '저장 중' : '저장'}
+              {saving ? t('peek.saving') : t('peek.save')}
             </button>
           </div>
         </form>
@@ -419,7 +421,7 @@ export function MoviePeekPanel({
             type="text"
             value={title}
             onChange={(e) => handleTitleChange(e.target.value)}
-            placeholder="제목"
+            placeholder={t('form.title')}
             required
             className={fieldClass}
           />
@@ -431,7 +433,7 @@ export function MoviePeekPanel({
               tmdbPending || searching || tmdbLoadingDetail ? '' : 'invisible'
             }`}
           >
-            {tmdbLoadingDetail ? '불러오는 중' : '검색 중'}
+            {tmdbLoadingDetail ? t('loading.fetching') : t('loading.searching')}
           </p>
           {tmdbResults.length > 0 && (
             <ul className="flex w-full flex-col gap-1">
@@ -450,14 +452,14 @@ export function MoviePeekPanel({
               ))}
             </ul>
           )}
-          {pickedTmdb && <p className="text-[8px] tracking-widest text-white/25">TMDB에서 불러옴</p>}
+          {pickedTmdb && <p className="text-[8px] tracking-widest text-white/25">{t('peek.loadedFromTmdb')}</p>}
 
           <div className="flex w-full gap-2">
             <input
               type="number"
               value={year}
               onChange={(e) => setYear(e.target.value)}
-              placeholder="연도"
+              placeholder={t('form.year')}
               required
               className={`w-1/2 ${fieldClass}`}
             />
@@ -465,7 +467,7 @@ export function MoviePeekPanel({
               type="text"
               value={director}
               onChange={(e) => setDirector(e.target.value)}
-              placeholder="감독"
+              placeholder={t('form.director')}
               className={`w-1/2 ${fieldClass}`}
             />
           </div>
@@ -476,19 +478,19 @@ export function MoviePeekPanel({
               {duplicateTargetId && (
                 <Link
                   href={`/archive?focus=${duplicateTargetId}`}
-                  className="text-[9px] tracking-[0.25em] text-white/40 outline-none transition-colors duration-500 hover:text-white/70"
+                  className="text-[9px] tracking-[var(--tk-25)] text-white/40 outline-none transition-colors duration-500 hover:text-white/70"
                 >
-                  그 포스터로 가기
+                  {t('form.goToThatPoster')}
                 </Link>
               )}
             </div>
           )}
           <div className="flex items-center gap-4">
-            <button type="button" onClick={() => setMode('view')} className="text-[9px] tracking-[0.25em] text-white/30 outline-none transition-colors duration-500 hover:text-white/60">
-              취소
+            <button type="button" onClick={() => setMode('view')} className="text-[9px] tracking-[var(--tk-25)] text-white/30 outline-none transition-colors duration-500 hover:text-white/60">
+              {t('peek.cancel')}
             </button>
             <button type="submit" disabled={saving} className={`${actionClass} disabled:text-white/20`}>
-              {saving ? '저장 중' : '저장'}
+              {saving ? t('peek.saving') : t('peek.save')}
             </button>
           </div>
         </form>

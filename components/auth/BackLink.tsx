@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useLocale } from '@/components/i18n/LocaleProvider'
 
 // 브라우저 자체 뒤로가기 UI에 기대지 않는다 — 카카오톡/인스타그램 인앱
 // 브라우저처럼 뒤로가기 버튼이 작거나 안 보이는 환경에서도 똑같이 동작하도록,
@@ -8,6 +9,7 @@ import { useRouter } from 'next/navigation'
 // 돌아갈 히스토리가 없으면(history.length <= 1) 홈으로 보낸다.
 export function BackLink() {
   const router = useRouter()
+  const { t } = useLocale()
 
   return (
     <button
@@ -19,9 +21,9 @@ export function BackLink() {
           router.push('/')
         }
       }}
-      className="absolute left-6 top-6 text-[9px] font-light tracking-[0.5em] text-white/20 outline-none transition-colors duration-700 hover:text-white/50"
+      className="absolute left-6 top-6 text-[9px] font-light tracking-[var(--tk-50)] text-white/20 outline-none transition-colors duration-700 hover:text-white/50"
     >
-      ← 뒤로
+      {t('nav.back')}
     </button>
   )
 }

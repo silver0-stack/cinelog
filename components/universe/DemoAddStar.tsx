@@ -8,6 +8,7 @@ import { GenreChipPicker } from '@/components/archive/GenreChipPicker'
 import { searchTmdbMovies, fetchTmdbMovieDetail, type TmdbSearchResult } from '@/lib/tmdbClient'
 import { secondaryNavLinkClass as linkClass } from '@/lib/uiStyles'
 import type { Movie } from '@/data/movies'
+import { useLocale } from '@/components/i18n/LocaleProvider'
 
 const fieldClass =
   'w-full border-b border-white/15 bg-transparent px-1 py-2 text-sm font-light tracking-widest text-white/80 outline-none transition-colors duration-500 placeholder:text-white/20 focus:border-white/40'
@@ -34,6 +35,7 @@ function emptyDraft(): Draft {
 // /archive/new(로그인 후 실제 기록)와 같은 TMDB 검색 경험을 그대로 준다 — 수기
 // 입력만 되던 예전 버전은 저장 안 되는 실험판이라 대충 만든 것 같은 인상을 줬다.
 export function DemoAddStar({ onAdd }: { onAdd: (movie: Movie) => void }) {
+  const { t } = useLocale()
   const [stage, setStage] = useState<'closed' | 'search' | 'details' | 'warning'>('closed')
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<TmdbSearchResult[]>([])
@@ -130,7 +132,7 @@ export function DemoAddStar({ onAdd }: { onAdd: (movie: Movie) => void }) {
     <>
       {stage === 'closed' && (
         <button type="button" onClick={openSearch} className={`absolute bottom-14 right-6 z-10 ${linkClass}`}>
-          + 영화 등록해보기
+          {t('demoAddStar.cta')}
         </button>
       )}
 
@@ -152,16 +154,16 @@ export function DemoAddStar({ onAdd }: { onAdd: (movie: Movie) => void }) {
               >
             <div className="flex w-full max-w-xs flex-col items-center gap-6">
               <p className="text-center text-[11px] font-light leading-relaxed tracking-widest text-white/30">
-                이 포스터는 저장되지 않아.
+                {t('demoAddStar.notSaved1')}
                 <br />
-                어떻게 자리 잡는지만 잠깐 볼 수 있어.
+                {t('demoAddStar.notSaved2')}
               </p>
               <input
                 type="text"
                 value={query}
                 onChange={(e) => handleQueryChange(e.target.value)}
                 onCompositionEnd={handleCompositionEnd}
-                placeholder="영화 제목"
+                placeholder={t('search.moviePlaceholder')}
                 autoFocus
                 className={`text-center ${fieldClass}`}
               />
@@ -174,7 +176,7 @@ export function DemoAddStar({ onAdd }: { onAdd: (movie: Movie) => void }) {
                   pending || searching || loadingDetail ? '' : 'invisible'
                 }`}
               >
-                {loadingDetail ? '불러오는 중' : '검색 중'}
+                {loadingDetail ? t('loading.fetching') : t('loading.searching')}
               </p>
 
               {results.length > 0 && (
@@ -199,16 +201,16 @@ export function DemoAddStar({ onAdd }: { onAdd: (movie: Movie) => void }) {
                 <button
                   type="button"
                   onClick={() => setStage('closed')}
-                  className="text-xs font-light tracking-[0.4em] text-white/30 outline-none transition-colors duration-700 hover:text-white/70"
+                  className="text-xs font-light tracking-[var(--tk-40)] text-white/30 outline-none transition-colors duration-700 hover:text-white/70"
                 >
-                  닫기
+                  {t('demoAddStar.close')}
                 </button>
                 <button
                   type="button"
                   onClick={startManual}
-                  className="text-xs font-light tracking-[0.4em] text-white/30 outline-none transition-colors duration-700 hover:text-white/70"
+                  className="text-xs font-light tracking-[var(--tk-40)] text-white/30 outline-none transition-colors duration-700 hover:text-white/70"
                 >
-                  직접 입력할게
+                  {t('form.enterManually')}
                 </button>
               </div>
             </div>
@@ -231,15 +233,15 @@ export function DemoAddStar({ onAdd }: { onAdd: (movie: Movie) => void }) {
               >
             <form onSubmit={handleSubmit} className="flex w-full max-w-xs flex-col items-center gap-6">
               <p className="text-center text-[11px] font-light leading-relaxed tracking-widest text-white/30">
-                이 포스터는 저장되지 않아.
+                {t('demoAddStar.notSaved1')}
                 <br />
-                어떻게 자리 잡는지만 잠깐 볼 수 있어.
+                {t('demoAddStar.notSaved2')}
               </p>
               <input
                 type="text"
                 value={draft.title}
                 onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
-                placeholder="제목"
+                placeholder={t('form.title')}
                 autoFocus
                 required
                 className={fieldClass}
@@ -249,7 +251,7 @@ export function DemoAddStar({ onAdd }: { onAdd: (movie: Movie) => void }) {
                   type="number"
                   value={draft.year}
                   onChange={(e) => setDraft((d) => ({ ...d, year: e.target.value }))}
-                  placeholder="연도"
+                  placeholder={t('form.year')}
                   required
                   className={`w-1/2 ${fieldClass}`}
                 />
@@ -257,7 +259,7 @@ export function DemoAddStar({ onAdd }: { onAdd: (movie: Movie) => void }) {
                   type="text"
                   value={draft.director}
                   onChange={(e) => setDraft((d) => ({ ...d, director: e.target.value }))}
-                  placeholder="감독"
+                  placeholder={t('form.director')}
                   className={`w-1/2 ${fieldClass}`}
                 />
               </div>
@@ -266,15 +268,15 @@ export function DemoAddStar({ onAdd }: { onAdd: (movie: Movie) => void }) {
                 <button
                   type="button"
                   onClick={() => setStage('search')}
-                  className="text-xs font-light tracking-[0.4em] text-white/30 outline-none transition-colors duration-700 hover:text-white/70"
+                  className="text-xs font-light tracking-[var(--tk-40)] text-white/30 outline-none transition-colors duration-700 hover:text-white/70"
                 >
-                  뒤로
+                  {t('demoAddStar.back')}
                 </button>
                 <button
                   type="submit"
-                  className="text-xs font-light tracking-[0.5em] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
+                  className="text-xs font-light tracking-[var(--tk-50)] text-white/40 outline-none transition-colors duration-700 hover:text-white/80"
                 >
-                  넣어보기
+                  {t('demoAddStar.submit')}
                 </button>
               </div>
             </form>
@@ -296,7 +298,7 @@ export function DemoAddStar({ onAdd }: { onAdd: (movie: Movie) => void }) {
             {/* 로그인 링크는 따로 안 둔다 — 이 화면엔 이미 우측 하단에 상시
                 LOG IN 링크가 있어서(HomeRitual), 여기서 또 띄우면 LOG IN이
                 위아래로 두 번 겹쳐 보였다. */}
-            <p className="text-[10px] font-light tracking-widest text-white/30">로그인하지 않으면 이 포스터는 사라져.</p>
+            <p className="text-[10px] font-light tracking-widest text-white/30">{t('demoAddStar.willVanish')}</p>
           </motion.div>
         )}
       </AnimatePresence>
