@@ -184,6 +184,11 @@ type Props = {
    * 연다 — focusMovieId와 같은 "외부 트리거 → 내부 이펙트가 반응" 패턴.
    * ArchiveShell의 "+ 텍스트" 버튼이 클릭마다 이 값을 증가시킨다. */
   addTextRequestId?: number
+  /** true면 editable이 false여도(데모 우주) 텍스트 생성/편집/드래그/리사이즈가
+   * 전부 켜진다 — 다만 onGuestMutate 게스트 평점/메모, 게스트 드래그 배치와 같은
+   * 이유로 Supabase에는 저장하지 않고 로컬 state에만 반영된다(새로고침하면
+   * 사라짐). 공유(읽기 전용) 우주는 이 prop 자체를 넘기지 않아 계속 읽기 전용이다. */
+  demoTexts?: boolean
 }
 
 export function MovieUniverse({
@@ -198,6 +203,7 @@ export function MovieUniverse({
   highlightedIds,
   texts: initialTexts = [],
   addTextRequestId,
+  demoTexts = false,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   // 화면 밖으로 한참 벗어난 별의 렌더링 비용(이미지 2장+blur+무한 흔들림)을
@@ -220,6 +226,9 @@ export function MovieUniverse({
   // 그냥 로컬 state를 소스오브트루스로 써도 안전하다. texts prop(서버 초기값)은
   // 마운트 시 한 번만 시드로 쓰고 그 뒤로는 이 로컬 state가 진실이다.
   const [texts, setTexts] = useState<UniverseText[]>(initialTexts)
+  // editable(본인 아카이브)이 아니어도 demoTexts가 켜져 있으면(데모 우주) 텍스트
+  // 조작 자체는 허용한다 — 저장 여부만 editable로 따로 가른다(아래 각 핸들러).
+  const textsEditable = editable || demoTexts
   // 커밋 핸들러들이 "최신 텍스트"를 참조해야 하는데(예: 위치만 바뀌어도 최신
   // size를 같이 보내야 함) 그렇다고 texts를 의존성으로 물면 매 드래그 프레임마다
   // 콜백 정체성이 바뀐다 — peekedIdRef와 같은 이유로 ref에 미러링해둔다.
@@ -234,13 +243,14 @@ export function MovieUniverse({
 
   const handleTextCommitPosition = useCallback(
     (id: string, x: number, y: number) => {
-      if (!editable) return
+      if (!textsEditable) return
+      if (!editable) return // 데모: 로컬 state에는 이미 반영됐고, 저장만 건너뛴다
       const size = textsRef.current.find((t) => t.id === id)?.size ?? 1
       updateUniverseTextTransform(id, x, y, size).catch((err) => {
         console.error('텍스트 위치 저장 실패', err)
       })
     },
-    [editable],
+    [editable, textsEditable],
   )
 
   const handleTextResize = useCallback((id: string, size: number) => {
@@ -249,6 +259,7 @@ export function MovieUniverse({
 
   const handleTextCommitResize = useCallback(
     (id: string, size: number) => {
+      if (!textsEditable) return
       if (!editable) return
       const current = textsRef.current.find((t) => t.id === id)
       if (!current) return
@@ -256,27 +267,31 @@ export function MovieUniverse({
         console.error('텍스트 크기 저장 실패', err)
       })
     },
-    [editable],
+    [editable, textsEditable],
   )
 
   // 편집을 끝내고 블러하면 호출된다 — 비어 있으면 삭제, 아니면 저장. 별도
   // "삭제" 버튼을 안 두는 대신 이 하나로 충분하다(내용을 지우고 나가면 사라짐).
   const handleTextCommitContent = useCallback(
     (id: string, content: string) => {
-      if (!editable) return
+      if (!textsEditable) return
       if (content === '') {
         setTexts((prev) => prev.filter((t) => t.id !== id))
-        deleteUniverseText(id).catch((err) => {
-          console.error('텍스트 삭제 실패', err)
-        })
+        if (editable) {
+          deleteUniverseText(id).catch((err) => {
+            console.error('텍스트 삭제 실패', err)
+          })
+        }
         return
       }
       setTexts((prev) => prev.map((t) => (t.id === id ? { ...t, content } : t)))
-      updateUniverseTextContent(id, content).catch((err) => {
-        console.error('텍스트 저장 실패', err)
-      })
+      if (editable) {
+        updateUniverseTextContent(id, content).catch((err) => {
+          console.error('텍스트 저장 실패', err)
+        })
+      }
     },
-    [editable],
+    [editable, textsEditable],
   )
 
   // "+ 텍스트" 버튼(ArchiveShell)이 addTextRequestId를 클릭마다 증가시키면 여기서
@@ -288,16 +303,18 @@ export function MovieUniverse({
     if (addTextRequestId === undefined) return
     if (prevAddTextRequestIdRef.current === addTextRequestId) return
     prevAddTextRequestIdRef.current = addTextRequestId
-    if (!editable) return
+    if (!textsEditable) return
 
     const id = crypto.randomUUID()
     const x = (Math.random() - 0.5) * 80
     const y = (Math.random() - 0.5) * 80
     setTexts((prev) => [...prev, { id, content: '', x, y, size: 1 }])
-    createUniverseText(id, '', x, y, 1).catch((err) => {
-      console.error('텍스트 생성 실패', err)
-    })
-  }, [addTextRequestId, editable])
+    if (editable) {
+      createUniverseText(id, '', x, y, 1).catch((err) => {
+        console.error('텍스트 생성 실패', err)
+      })
+    }
+  }, [addTextRequestId, editable, textsEditable])
 
   // (2026-09-06) 드래그로 직접 배치한 좌표의 실시간 미리보기 — movie.posX/posY에는
   // 이전에 저장된 값이 이미 들어있으므로, 여기 없으면(undefined) 그 값을(그것도
@@ -832,7 +849,7 @@ export function MovieUniverse({
           <TextObject
             key={t.id}
             text={t}
-            editable={editable}
+            editable={textsEditable}
             zoomScale={zoom}
             onDragPosition={handleTextDragPosition}
             onCommitPosition={handleTextCommitPosition}

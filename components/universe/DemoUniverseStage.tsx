@@ -13,9 +13,10 @@ import { movies as staticMovies, type Movie } from '@/data/movies'
 import { navLinkClass } from '@/lib/uiStyles'
 
 // 비로그인 데모 우주. 실험 삼아 추가한 별(DemoAddStar)도, 24편에 남기는 평점/메모
-// (onGuestMutate)도 이 컴포넌트가 언마운트되면(새로고침 등) 함께 사라진다 —
-// 로그인 없이 "이렇게 쓰는 거예요" 정도만 보여주는 게 목적이라 의도적으로 저장하지
-// 않는다. 실제 계정(/archive)의 감상 기록과는 완전히 분리된 로컬 상태다.
+// (onGuestMutate)도, 자유 텍스트 배치(demoTexts)도 이 컴포넌트가 언마운트되면
+// (새로고침 등) 함께 사라진다 — 로그인 없이 "이렇게 쓰는 거예요" 정도만 보여주는
+// 게 목적이라 의도적으로 저장하지 않는다. 실제 계정(/archive)의 감상 기록과는
+// 완전히 분리된 로컬 상태다.
 //
 // 탐색/히스토리는 원래 로그인한 본인 우주(계정 드롭다운 안)에만 있었다 — 데모/
 // 공유 우주에는 아예 없어서, 여기서도 같은 기능을 체험해볼 수가 없었다는 피드백으로
@@ -28,6 +29,10 @@ export function DemoUniverseStage() {
   const [focusMovieId, setFocusMovieId] = useState<string | null>(null)
   const [historyDate, setHistoryDate] = useState<string | null>(null)
   const [highlightedIds, setHighlightedIds] = useState<Set<string> | null>(null)
+  // "+ 텍스트" 클릭마다 증가 — ArchiveShell과 같은 "외부 트리거" 패턴. 데모 우주는
+  // demoTexts로 MovieUniverse 안에서 로컬 state로만 처리되고 Supabase에는 저장되지
+  // 않는다(onGuestMutate 게스트 체험과 같은 이유로 새로고침하면 사라진다).
+  const [addTextRequestId, setAddTextRequestId] = useState(0)
 
   const insights = useMemo(() => summarizeUniverse(movies), [movies])
   const genres = useMemo(() => genreIndex(movies), [movies])
@@ -56,6 +61,8 @@ export function DemoUniverseStage() {
         onGuestMutate={handleGuestMutate}
         historyDate={historyDate}
         highlightedIds={highlightedIds}
+        demoTexts
+        addTextRequestId={addTextRequestId}
       />
 
       {historyRange && historyDate !== null && (
@@ -70,6 +77,9 @@ export function DemoUniverseStage() {
 
       <div className="absolute right-4 top-4 z-10 flex items-center gap-2 sm:right-6 sm:top-6 sm:gap-3">
         <MovieSearch searchIndex={searchIndex} onHighlightChange={handleHighlightChange} />
+        <button type="button" onClick={() => setAddTextRequestId((n) => n + 1)} className={navLinkClass}>
+          + 텍스트
+        </button>
         <GuidePanel variant="demo" triggerClassName={navLinkClass} />
       </div>
 
