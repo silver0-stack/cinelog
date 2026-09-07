@@ -27,9 +27,6 @@ type Props = {
   /** 이 영화와 가장 강하게 연결된 다른 영화(있으면) — 그 둘 사이의 editorial
    * 큐레이터 노트를 찾는 데 쓴다. 관계가 하나도 없으면 undefined. */
   closestMovie?: Movie
-  /** 이 영화와 관계 있다고 판단된(RELATED_THRESHOLD 이상) 다른 영화 수 —
-   * "관련 영화 N편" 표시에 쓴다. */
-  relatedCount?: number
   editable: boolean
   /** 있으면 평점/메모(감상)가 Supabase 대신 이 함수로 로컬 상태에만 반영된다
    * (데모 우주의 게스트 체험용) — editable과 별개다. "정보 수정"/카드 공유는
@@ -60,7 +57,6 @@ type Props = {
 export function MoviePeekPanel({
   movie,
   closestMovie,
-  relatedCount,
   editable,
   onGuestMutate,
   existingByTmdbId,
@@ -325,13 +321,6 @@ export function MoviePeekPanel({
               </button>
               <ShareCardButton loggedMovieId={movie.id} initialUrl={initialCardUrl} variant="icon" />
             </div>
-          )}
-
-          {/* 예전엔 여기가 "이 영화를 중심으로"(우주 재배치) 버튼이었다 — 대신
-              지금 우주 안에서 몇 편이나 이 영화와 관계 깊게 빛나고 있는지를
-              그냥 알려준다. 재배치 없이 관계를 보여준다는 목적은 그대로다. */}
-          {!!relatedCount && (
-            <p className="text-[9px] tracking-[0.2em] text-white/30">관련 영화 {relatedCount}편</p>
           )}
 
           <div className="themed-scroll flex max-h-[38vh] w-full flex-col items-center gap-3 overflow-y-auto">

@@ -369,7 +369,6 @@ export function MovieUniverse({
         movie,
         gravity,
         closestMovie,
-        relatedCount: related.length,
         tier: tierFor(gravity),
         x: Math.cos(angle) * radius,
         y: Math.sin(angle) * radius,
@@ -693,12 +692,11 @@ export function MovieUniverse({
       />
 
       <motion.div className="absolute inset-0" style={{ x: panX, y: panY, scale: zoom }}>
-        {bodies.map(({ movie, gravity, closestMovie, relatedCount, x, y, tier, dimmed, dimmedByHighlight }) => (
+        {bodies.map(({ movie, gravity, closestMovie, x, y, tier, dimmed, dimmedByHighlight }) => (
           <MovieBody
             key={movie.id}
             movie={movie}
             closestMovie={closestMovie}
-            relatedCount={relatedCount}
             x={x}
             y={y}
             tier={tier}

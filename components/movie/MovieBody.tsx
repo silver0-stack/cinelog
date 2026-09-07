@@ -15,8 +15,6 @@ type Props = {
   /** 이 영화와 가장 강하게 연결된 다른 영화(있으면) — peek 패널에서 그 사이의
    * editorial 큐레이터 노트를 찾는 데 쓴다. 관계가 하나도 없으면 undefined. */
   closestMovie?: Movie
-  /** 이 영화와 관계 있다고 판단된 다른 영화 수 — peek 패널의 "관련 영화 N편" 표시에 쓴다. */
-  relatedCount?: number
   x: number
   y: number
   tier: Tier
@@ -125,7 +123,6 @@ function ratingTintRgb(rating: number | undefined): string {
 export function MovieBody({
   movie,
   closestMovie,
-  relatedCount,
   x,
   y,
   tier,
@@ -606,7 +603,6 @@ export function MovieBody({
               <MoviePeekPanel
                 movie={movie}
                 closestMovie={closestMovie}
-                relatedCount={relatedCount}
                 editable={!!editable}
                 onGuestMutate={onGuestMutate}
                 existingByTmdbId={existingByTmdbId}
@@ -649,7 +645,6 @@ export function MovieBody({
                       <MoviePeekPanel
                         movie={movie}
                         closestMovie={closestMovie}
-                relatedCount={relatedCount}
                         editable={!!editable}
                         onGuestMutate={onGuestMutate}
                         existingByTmdbId={existingByTmdbId}
