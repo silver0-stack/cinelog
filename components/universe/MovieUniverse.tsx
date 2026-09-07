@@ -194,6 +194,12 @@ type Props = {
    * 이유로 Supabase에는 저장하지 않고 로컬 state에만 반영된다(새로고침하면
    * 사라짐). 공유(읽기 전용) 우주는 이 prop 자체를 넘기지 않아 계속 읽기 전용이다. */
   demoTexts?: boolean
+  /** id → {ko, en} 캔 텍스트 매핑 — 데모 우주의 안내용 더미 텍스트처럼 언어가
+   * 바뀔 때 내용도 같이 바뀌어야 하는 텍스트에만 쓴다. 지금 내용이 이 둘 중
+   * 하나와 정확히 같을 때만(=아직 방문자가 직접 고쳐 쓰지 않았을 때만) 언어
+   * 전환에 맞춰 자동으로 갈아끼운다 — 한 번이라도 직접 편집했으면 그 뒤로는
+   * 건드리지 않는다. 데모 우주 밖에서는 안 쓴다. */
+  localizedTexts?: Record<string, Record<Locale, string>>
 }
 
 export function MovieUniverse({
@@ -209,6 +215,7 @@ export function MovieUniverse({
   texts: initialTexts = [],
   addTextRequestId,
   demoTexts = false,
+  localizedTexts,
 }: Props) {
   const { locale, t } = useLocale()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -232,6 +239,26 @@ export function MovieUniverse({
   // 그냥 로컬 state를 소스오브트루스로 써도 안전하다. texts prop(서버 초기값)은
   // 마운트 시 한 번만 시드로 쓰고 그 뒤로는 이 로컬 state가 진실이다.
   const [texts, setTexts] = useState<UniverseText[]>(initialTexts)
+  // localizedTexts가 있으면(데모 우주의 안내용 더미 텍스트) 언어가 바뀔 때
+  // 그 텍스트의 내용도 같이 바꾼다 — 예전엔 <MovieUniverse key={locale}>로
+  // 컴포넌트를 통째로 재마운트시켰는데, 그러면 카메라/드리프트 애니메이션까지
+  // 전부 리셋돼서 "우주가 다시 로딩되는" 것처럼 보였다(실제로 겪은 문제).
+  // 이제 이 텍스트 하나의 content 필드만 콕 집어 갈아끼우고 나머지 상태(카메라,
+  // 다른 별들, 이 텍스트의 위치/크기)는 그대로 둔다. 지금 내용이 두 언어 캔
+  // 문구 중 하나와 정확히 같을 때만 바꾼다 — 방문자가 이미 직접 고쳐 썼으면
+  // (둘 중 어느 캔 문구와도 안 맞으면) 그 뒤로는 절대 안 건드린다.
+  useEffect(() => {
+    if (!localizedTexts) return
+    setTexts((prev) =>
+      prev.map((item) => {
+        const variants = localizedTexts[item.id]
+        if (!variants) return item
+        const next = variants[locale]
+        const isStillDefault = Object.values(variants).includes(item.content)
+        return isStillDefault && item.content !== next ? { ...item, content: next } : item
+      }),
+    )
+  }, [locale, localizedTexts])
   // editable(본인 아카이브)이 아니어도 demoTexts가 켜져 있으면(데모 우주) 텍스트
   // 조작 자체는 허용한다 — 저장 여부만 editable로 따로 가른다(아래 각 핸들러).
   const textsEditable = editable || demoTexts

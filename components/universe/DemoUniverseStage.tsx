@@ -73,7 +73,6 @@ export function DemoUniverseStage() {
   return (
     <>
       <MovieUniverse
-        key={locale}
         movies={movies}
         showIdleHint
         focusMovieId={focusMovieId}
@@ -82,6 +81,7 @@ export function DemoUniverseStage() {
         highlightedIds={highlightedIds}
         demoTexts
         texts={[demoDummyText(locale)]}
+        localizedTexts={{ 'demo-dummy-text': DEMO_DUMMY_TEXT_CONTENT }}
         addTextRequestId={addTextRequestId}
       />
 
