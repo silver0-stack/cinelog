@@ -9,6 +9,21 @@ export function ratingLine(rating: number | undefined): string {
   return '★'.repeat(rating) + '☆'.repeat(5 - rating)
 }
 
+// 티켓형 카드/이미지에서 쓰는 점수 표기 — MovieShareCard.tsx의 것과 동일한
+// 문법(●/○)이라 웹 페이지와 다운로드 이미지가 같은 "표 정보"처럼 보인다.
+export function ratingDots(rating: number | undefined): string {
+  if (rating == null) return ''
+  return '●'.repeat(rating) + '○'.repeat(5 - rating)
+}
+
+// MovieShareCard.tsx의 ticketNumber와 동일한 규칙 — 공유 slug 뒤 6자리를
+// 발권번호처럼 보여준다. 웹 페이지와 이미지가 같은 번호를 보여줘야 하므로
+// 로직이 어긋나면 안 된다.
+export function ticketNumber(slug: string): string {
+  const cleaned = slug.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+  return cleaned.slice(-6).padStart(6, '0')
+}
+
 // 고정 크기 캔버스라 스크롤이 없다 — 이 사진들은 요약용 미리보기일 뿐이고,
 // 전체 감상 이력은 이 이미지가 링크하는 웹페이지(page.tsx)에서 타임라인으로
 // 따로 볼 수 있다(ViewingHistoryTimeline). 그래서 여기서는 넘치지 않을 만큼만

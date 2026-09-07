@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { getCachedCardMovie } from './_data'
-import { ratingLine, truncate, loadKoreanFont, loadPosterDataUri } from './_shareImage'
+import { ratingDots, ticketNumber, truncate, loadKoreanFont, loadPosterDataUri } from './_shareImage'
 
 export const runtime = 'nodejs'
 export const alt = '영화 카드'
@@ -30,12 +30,16 @@ export default async function Image({ params }: { params: Promise<{ slug: string
   // 폰트 서브셋 요청에는 화면에 실제로 찍히는 문자열을 그대로 다 넣어야 한다 —
   // 제목/메모만 넣고 별점(★☆)이나 가운뎃점(·), 인용부호(" "), 연도 숫자를
   // 빠뜨리면 그 글자들은 폰트에 아예 없어서 이미지에서 안 보이거나 깨진다.
+  const watchedAt = movie?.viewings?.[0]?.watchedAt
+
   const text = [
+    '영화입장권',
     movie?.title ?? '',
     movie ? `${movie.year} · ${movie.director}` : '',
-    movie?.rating != null ? ratingLine(movie.rating) : '',
-    noteText ? `“${noteText}”` : '',
-    `${rewatchCount}번 다시 봄`,
+    watchedAt ?? '',
+    movie?.rating != null ? ratingDots(movie.rating) : '',
+    noteText,
+    `${rewatchCount}회`,
     'CINELOG',
   ].join('')
 
@@ -48,6 +52,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
     loadKoreanFont(text),
   ])
   const fontFamily = fontData ? 'Noto Sans KR' : undefined
+  const rule = { borderBottom: '2px dashed rgba(255,255,255,0.2)' }
 
   return new ImageResponse(
     (
@@ -56,63 +61,68 @@ export default async function Image({ params }: { params: Promise<{ slug: string
           width: '100%',
           height: '100%',
           display: 'flex',
-          flexDirection: 'row',
           alignItems: 'center',
+          justifyContent: 'center',
           background: '#050505',
           color: '#fff',
-          padding: '60px 70px',
-          gap: 56,
           fontFamily,
         }}
       >
-        {posterDataUri && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={posterDataUri}
-            alt=""
-            width={300}
-            height={450}
-            style={{ objectFit: 'cover', flexShrink: 0 }}
-          />
-        )}
-
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            flex: 1,
-            height: '100%',
-            paddingTop: 8,
-            paddingBottom: 8,
-          }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'flex', fontSize: 40, letterSpacing: 2, opacity: 0.92 }}>{movie?.title ?? ''}</div>
-            <div style={{ display: 'flex', fontSize: 20, letterSpacing: 4, opacity: 0.45 }}>
-              {movie ? `${movie.year} · ${movie.director}` : ''}
-            </div>
-
-            {movie?.rating != null && (
-              <div style={{ display: 'flex', fontSize: 24, letterSpacing: 8, opacity: 0.7, marginTop: 6 }}>
-                {ratingLine(movie.rating)}
-              </div>
-            )}
-
-            {noteText && (
-              <div style={{ display: 'flex', maxWidth: 620, fontSize: 17, opacity: 0.55, marginTop: 6 }}>
-                “{noteText}”
-              </div>
-            )}
-
-            {rewatchCount > 0 && (
-              <div style={{ display: 'flex', fontSize: 14, letterSpacing: 3, opacity: 0.3, marginTop: 6 }}>
-                {rewatchCount}번 다시 봄
-              </div>
-            )}
+        <div style={{ display: 'flex', flexDirection: 'column', width: 1080, border: '1px solid rgba(255,255,255,0.15)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '18px 44px', ...rule }}>
+            <div style={{ display: 'flex', fontSize: 15, letterSpacing: 10, opacity: 0.4 }}>영화입장권</div>
+            <div style={{ display: 'flex', fontSize: 13, letterSpacing: 2, opacity: 0.3 }}>No.{ticketNumber(slug)}</div>
           </div>
 
-          <div style={{ display: 'flex', fontSize: 14, letterSpacing: 9, opacity: 0.25 }}>CINELOG</div>
+          <div style={{ display: 'flex', flexDirection: 'row', padding: '34px 44px', gap: 48, ...rule }}>
+            {posterDataUri ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={posterDataUri}
+                alt=""
+                width={220}
+                height={320}
+                style={{ objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(255,255,255,0.1)' }}
+              />
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  width: 220,
+                  height: 320,
+                  flexShrink: 0,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                }}
+              >
+                <div style={{ display: 'flex', fontSize: 12, letterSpacing: 3, opacity: 0.2 }}>포스터 없음</div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 14 }}>
+              <div style={{ display: 'flex', fontSize: 36, letterSpacing: 2, opacity: 0.92 }}>{movie?.title ?? ''}</div>
+              <div style={{ display: 'flex', fontSize: 18, letterSpacing: 4, opacity: 0.45 }}>
+                {movie ? `${movie.year} · ${movie.director}` : ''}
+              </div>
+
+              <div style={{ display: 'flex', gap: 28, fontSize: 15, opacity: 0.55, marginTop: 4 }}>
+                {watchedAt && <div style={{ display: 'flex' }}>{watchedAt}</div>}
+                {movie?.rating != null && <div style={{ display: 'flex', fontSize: 17 }}>{ratingDots(movie.rating)}</div>}
+                {rewatchCount > 0 && <div style={{ display: 'flex' }}>{rewatchCount}회 다시 봄</div>}
+              </div>
+
+              {noteText && (
+                <div style={{ display: 'flex', maxWidth: 640, fontSize: 16, lineHeight: 1.5, opacity: 0.5, marginTop: 4 }}>
+                  {noteText}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '14px 44px' }}>
+            <div style={{ display: 'flex', fontSize: 13, letterSpacing: 9, opacity: 0.25 }}>CINELOG</div>
+          </div>
         </div>
       </div>
     ),

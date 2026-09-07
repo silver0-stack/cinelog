@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { fetchCardMovie } from '../_data'
-import { ratingLine, truncate, loadKoreanFont, loadPosterDataUri } from '../_shareImage'
+import { ratingDots, ticketNumber, truncate, loadKoreanFont, loadPosterDataUri } from '../_shareImage'
 
 export const runtime = 'nodejs'
 // "이미지 저장" 버튼으로 직접 다운로드해서 인스타그램 등에 올리는 용도다.
@@ -16,13 +16,19 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
 
   const noteText = movie?.note ? truncate(movie.note, 60) : ''
   const rewatchCount = Math.max(0, (movie?.viewings?.length ?? 0) - 1)
+  // 이 이미지는 페이지(page.tsx)와 달리 스크롤이 없는 고정 캔버스라 감상
+  // 이력을 전부 나열할 수 없다 — 몇 번 봤는지 숫자로만 요약하고, 회차별
+  // 상세는 이미지가 링크하는 웹페이지(ViewingHistoryTimeline)에서 보게 한다.
+  const watchedAt = movie?.viewings?.[0]?.watchedAt
 
   const text = [
+    '영화입장권',
     movie?.title ?? '',
     movie ? `${movie.year} · ${movie.director}` : '',
-    movie?.rating != null ? ratingLine(movie.rating) : '',
-    noteText ? `“${noteText}”` : '',
-    `${rewatchCount}번 다시 봄`,
+    watchedAt ?? '',
+    movie?.rating != null ? ratingDots(movie.rating) : '',
+    noteText,
+    `${rewatchCount}회`,
     'CINELOG',
   ].join('')
 
@@ -31,6 +37,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     loadKoreanFont(text),
   ])
   const fontFamily = fontData ? 'Noto Sans KR' : undefined
+  const rule = { borderBottom: '2px dashed rgba(255,255,255,0.2)' }
 
   return new ImageResponse(
     (
@@ -39,46 +46,91 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
           width: '100%',
           height: '100%',
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          justifyContent: 'center',
           background: '#050505',
           color: '#fff',
-          padding: '70px 70px',
           fontFamily,
         }}
       >
-        <div />
+        <div style={{ display: 'flex', flexDirection: 'column', width: 860, border: '1px solid rgba(255,255,255,0.15)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '22px 44px', ...rule }}>
+            <div style={{ display: 'flex', fontSize: 16, letterSpacing: 10, opacity: 0.4 }}>영화입장권</div>
+            <div style={{ display: 'flex', fontSize: 14, letterSpacing: 2, opacity: 0.3 }}>No.{ticketNumber(slug)}</div>
+          </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 26 }}>
-          {posterDataUri && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={posterDataUri} alt="" width={280} height={420} style={{ objectFit: 'cover' }} />
-          )}
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '36px 44px', ...rule }}>
+            {posterDataUri ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={posterDataUri}
+                alt=""
+                width={240}
+                height={340}
+                style={{ objectFit: 'cover', border: '1px solid rgba(255,255,255,0.1)' }}
+              />
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  width: 240,
+                  height: 340,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                }}
+              >
+                <div style={{ display: 'flex', fontSize: 13, letterSpacing: 3, opacity: 0.2 }}>포스터 없음</div>
+              </div>
+            )}
+          </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-            <div style={{ display: 'flex', fontSize: 40, letterSpacing: 3, opacity: 0.92 }}>{movie?.title ?? ''}</div>
-            <div style={{ display: 'flex', fontSize: 20, letterSpacing: 6, opacity: 0.45 }}>
+          <div
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '30px 44px', ...rule }}
+          >
+            <div style={{ display: 'flex', fontSize: 34, letterSpacing: 2, opacity: 0.92 }}>{movie?.title ?? ''}</div>
+            <div style={{ display: 'flex', fontSize: 17, letterSpacing: 4, opacity: 0.4 }}>
               {movie ? `${movie.year} · ${movie.director}` : ''}
             </div>
           </div>
 
-          {movie?.rating != null && (
-            <div style={{ display: 'flex', fontSize: 26, letterSpacing: 9, opacity: 0.7 }}>{ratingLine(movie.rating)}</div>
-          )}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 14,
+              padding: '26px 44px',
+              fontSize: 15,
+              letterSpacing: 1,
+              ...(noteText ? rule : {}),
+            }}
+          >
+            {watchedAt && (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', opacity: 0.4 }}>관람일</div>
+                <div style={{ display: 'flex', opacity: 0.8 }}>{watchedAt}</div>
+              </div>
+            )}
+            {movie?.rating != null && (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', opacity: 0.4 }}>평점</div>
+                <div style={{ display: 'flex', fontSize: 17, opacity: 0.7 }}>{ratingDots(movie.rating)}</div>
+              </div>
+            )}
+            {rewatchCount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', opacity: 0.4 }}>다시 봄</div>
+                <div style={{ display: 'flex', opacity: 0.8 }}>{rewatchCount}회</div>
+              </div>
+            )}
+          </div>
 
           {noteText && (
-            <div style={{ display: 'flex', maxWidth: 620, fontSize: 18, opacity: 0.55, textAlign: 'center' }}>
-              “{noteText}”
+            <div style={{ display: 'flex', padding: '26px 44px' }}>
+              <div style={{ display: 'flex', fontSize: 16, lineHeight: 1.6, opacity: 0.55 }}>{noteText}</div>
             </div>
           )}
-
-          {rewatchCount > 0 && (
-            <div style={{ display: 'flex', fontSize: 15, letterSpacing: 4, opacity: 0.3 }}>{rewatchCount}번 다시 봄</div>
-          )}
         </div>
-
-        <div style={{ display: 'flex', fontSize: 15, letterSpacing: 10, opacity: 0.25 }}>CINELOG</div>
       </div>
     ),
     {

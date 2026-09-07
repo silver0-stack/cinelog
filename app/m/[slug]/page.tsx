@@ -49,12 +49,13 @@ export default async function MovieCardPage({ params }: { params: Promise<{ slug
     // 전혀 안 쓴다 — 짧은 내용일 땐 화면 위쪽에 붙어 보이는 대신, 내용이 길어질
     // 때 어떤 레이아웃 계산도 클리핑을 일으킬 여지가 없는, 그냥 위에서 아래로
     // 흐르는 가장 단순한 구조를 쓴다.
-    <main className="flex min-h-dvh w-screen flex-col items-center bg-black px-6 py-20">
-      {/* 메모가 길면 카드 밑에 흐름대로 두는 CTA는 한참 밑으로 밀린다(의도된
-          동작, 위 주석 참고 — 절대 안 잘리게 하려고 흐름대로 둔다). 그래서
-          스크롤 안 해도 바로 보이는 고정 진입점을 화면 위 구석에 둔다.
-          위쪽은 콘텐츠가 아래로만 자라니 겹쳐서 가릴 위험이 없다. */}
-      <div className="fixed left-6 top-6 z-10 flex flex-col items-start gap-1.5">
+    <main className="flex min-h-dvh w-screen flex-col items-center bg-black px-6 pt-10 pb-16 sm:py-20">
+      {/* 예전엔 화면 어디서든 항상 보이도록 fixed로 띄웠는데, 그때의 카드가
+          가운데로 좁게 몰려 있어 왼쪽 위 구석이 늘 비어 있었던 것과 달리
+          지금 티켓은 페이지 폭 가까이 꽉 차서(모바일) 스크롤하면 티켓 내용이
+          그 구석을 그대로 지나가며 겹쳐 보였다. 그래서 모바일에서는 티켓 위
+          일반 흐름으로 두고, 옆 여백이 넉넉해지는 sm 이상에서만 다시 고정한다. */}
+      <div className="mb-6 flex flex-col items-center gap-1.5 sm:fixed sm:left-6 sm:top-6 sm:z-10 sm:mb-0 sm:items-start">
         <Link
           href="/"
           className="text-[9px] font-light tracking-[0.5em] text-white/20 outline-none transition-colors duration-700 hover:text-white/50"
