@@ -19,6 +19,7 @@ import { navLinkClass } from '@/lib/uiStyles'
 import { genreIndex } from '@/lib/universeInsights'
 import type { Movie } from '@/data/movies'
 import type { RewatchedMovie, UniverseInsight } from '@/lib/universeInsights'
+import type { UniverseText } from '@/lib/universeTexts'
 
 // 데모/공유 우주와 같은 자리, 같은 스타일 — "탐색"(+히스토리)이 로그인 여부와
 // 상관없이 항상 화면 하단 왼쪽에 있다는 걸 일관되게 유지한다.
@@ -36,6 +37,7 @@ type Props = {
   insights: UniverseInsight[]
   rewatched: RewatchedMovie[]
   searchIndex: { id: string; title: string; director: string }[]
+  texts: UniverseText[]
 }
 
 // 검색/재관람 목록에서 영화를 고르면 이전엔 `/archive?focus=<id>` 링크로
@@ -66,10 +68,14 @@ export function ArchiveShell({
   insights,
   rewatched,
   searchIndex,
+  texts,
 }: Props) {
   const router = useRouter()
   const [focusMovieId, setFocusMovieId] = useState(initialFocusId)
   const [addOpen, setAddOpen] = useState(false)
+  // "+ 텍스트" 클릭마다 증가 — MovieUniverse가 이 값의 변화를 감지해 새 텍스트를
+  // 만든다(focusMovieId와 같은 "외부 트리거" 패턴).
+  const [addTextRequestId, setAddTextRequestId] = useState(0)
 
   function focusAndClose(id: string) {
     setFocusMovieId(id)
@@ -115,6 +121,8 @@ export function ArchiveShell({
           existingByTmdbId={existingByTmdbId}
           historyDate={historyDate}
           highlightedIds={highlightedIds}
+          texts={texts}
+          addTextRequestId={addTextRequestId}
         />
       </FadeIn>
       {historyRange && historyDate !== null && (
@@ -150,6 +158,9 @@ export function ArchiveShell({
         <MovieSearch searchIndex={searchIndex} onHighlightChange={handleHighlightChange} />
         <button type="button" onClick={() => setAddOpen(true)} className={navLinkClass}>
           + 기록
+        </button>
+        <button type="button" onClick={() => setAddTextRequestId((n) => n + 1)} className={navLinkClass}>
+          + 텍스트
         </button>
         <AccountMenu email={email} menuActions={[{ label: '가이드', onClick: () => setGuideOpen(true) }]} />
         <GuidePanel variant="archive" open={guideOpen} onOpenChange={setGuideOpen} />

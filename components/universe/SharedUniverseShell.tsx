@@ -12,6 +12,7 @@ import { genreIndex } from '@/lib/universeInsights'
 import { navLinkClass, secondaryNavLinkClass as loginLinkClass } from '@/lib/uiStyles'
 import type { Movie } from '@/data/movies'
 import type { RewatchedMovie, UniverseInsight } from '@/lib/universeInsights'
+import type { UniverseText } from '@/lib/universeTexts'
 
 // 탐색/히스토리는 원래 로그인한 본인 우주(계정 드롭다운 안)에만 있었다 — 남의
 // 공유 우주를 구경하러 온 사람도 "이 사람이 뭘 좋아하는지"(탐색)나 "이 우주가
@@ -24,10 +25,12 @@ export function SharedUniverseShell({
   movies,
   insights,
   rewatched,
+  texts,
 }: {
   movies: Movie[]
   insights: UniverseInsight[]
   rewatched: RewatchedMovie[]
+  texts: UniverseText[]
 }) {
   const [focusMovieId, setFocusMovieId] = useState<string | null>(null)
   const [historyDate, setHistoryDate] = useState<string | null>(null)
@@ -45,6 +48,7 @@ export function SharedUniverseShell({
           focusMovieId={focusMovieId}
           historyDate={historyDate}
           highlightedIds={highlightedIds}
+          texts={texts}
         />
       </FadeIn>
 

@@ -4,6 +4,7 @@ import { createPublicClient } from '@/lib/supabase/public'
 import { SharedUniverseShell } from '@/components/universe/SharedUniverseShell'
 import { combineLoggedMovies, type LoggedMovieRow, type ViewingRow } from '@/lib/loggedMovies'
 import { attachEditorialConnections, type EditorialConnectionRow } from '@/lib/editorialConnections'
+import { combineUniverseTexts, type UniverseText } from '@/lib/universeTexts'
 import { summarizeUniverse, rewatchedMovies } from '@/lib/universeInsights'
 import { secondaryNavLinkClass as loginLinkClass } from '@/lib/uiStyles'
 
@@ -23,17 +24,25 @@ const getSharedUniverseData = unstable_cache(
 
     const { data } = await supabase.rpc('get_shared_universe_movies', { p_slug: slug })
     const rows = (data ?? []) as LoggedMovieRow[]
-    if (rows.length === 0) return { rows: [] as LoggedMovieRow[], viewingRows: [] as ViewingRow[], connectionRows: [] as EditorialConnectionRow[] }
+    if (rows.length === 0)
+      return {
+        rows: [] as LoggedMovieRow[],
+        viewingRows: [] as ViewingRow[],
+        connectionRows: [] as EditorialConnectionRow[],
+        textRows: [] as { id: string; content: string; pos_x: number; pos_y: number; size: number }[],
+      }
 
-    const [{ data: viewingData }, { data: connectionData }] = await Promise.all([
+    const [{ data: viewingData }, { data: connectionData }, { data: textData }] = await Promise.all([
       supabase.rpc('get_shared_universe_viewings', { p_slug: slug }),
       supabase.rpc('get_shared_universe_connections', { p_slug: slug }),
+      supabase.rpc('get_shared_universe_texts', { p_slug: slug }),
     ])
 
     return {
       rows,
       viewingRows: (viewingData ?? []) as ViewingRow[],
       connectionRows: (connectionData ?? []) as EditorialConnectionRow[],
+      textRows: (textData ?? []) as { id: string; content: string; pos_x: number; pos_y: number; size: number }[],
     }
   },
   ['shared-universe'],
@@ -74,6 +83,7 @@ export default async function SharedUniversePage({ params }: { params: Promise<{
   )
   const insights = summarizeUniverse(movies)
   const rewatched = rewatchedMovies(movies)
+  const texts: UniverseText[] = combineUniverseTexts(result.textRows)
 
-  return <SharedUniverseShell movies={movies} insights={insights} rewatched={rewatched} />
+  return <SharedUniverseShell movies={movies} insights={insights} rewatched={rewatched} texts={texts} />
 }

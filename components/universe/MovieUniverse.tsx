@@ -6,9 +6,17 @@ import { movies as staticMovies, type Movie } from '@/data/movies'
 import { relatedMovies } from '@/lib/gravity'
 import { MIN_RADIUS, MAX_RADIUS, MIN_ZOOM, MAX_ZOOM, clusterAngles } from '@/lib/universeLayout'
 import { firstWatchedAt, updateMoviePosition } from '@/lib/loggedMovies'
+import {
+  createUniverseText,
+  deleteUniverseText,
+  updateUniverseTextContent,
+  updateUniverseTextTransform,
+  type UniverseText,
+} from '@/lib/universeTexts'
 import { EASE_SLOW } from '@/lib/motion'
 import { useIdleHint } from '@/lib/useIdleHint'
 import { MovieBody, type Tier } from '@/components/movie/MovieBody'
+import { TextObject } from '@/components/universe/TextObject'
 
 const IDLE_HINT_DELAY = 5000
 const IDLE_HINT_CYCLE = 4200
@@ -169,6 +177,13 @@ type Props = {
    * null/undefined면 평소처럼 전부 정상 밝기. 열람 중인 별이 있으면 그 별의
    * "관련 영화" 하이라이트가 이 값보다 우선한다(아래 activeHighlightIds 참고). */
   highlightedIds?: Set<string> | null
+  /** 우주 안 자유 텍스트(별자리 대신 나온 방향 — CLAUDE.md 2026-09-07 참고). 없으면
+   * (데모/공유 우주 중 아직 안 넘긴 곳) 빈 배열처럼 취급한다. */
+  texts?: UniverseText[]
+  /** 이 값이 바뀔 때마다(마운트 시 제외) 새 텍스트를 하나 만들어 바로 편집 모드로
+   * 연다 — focusMovieId와 같은 "외부 트리거 → 내부 이펙트가 반응" 패턴.
+   * ArchiveShell의 "+ 텍스트" 버튼이 클릭마다 이 값을 증가시킨다. */
+  addTextRequestId?: number
 }
 
 export function MovieUniverse({
@@ -181,6 +196,8 @@ export function MovieUniverse({
   existingByTmdbId,
   historyDate,
   highlightedIds,
+  texts: initialTexts = [],
+  addTextRequestId,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   // 화면 밖으로 한참 벗어난 별의 렌더링 비용(이미지 2장+blur+무한 흔들림)을
@@ -197,6 +214,90 @@ export function MovieUniverse({
     return () => window.removeEventListener('resize', onResize)
   }, [])
   const [peekedId, setPeekedId] = useState<string | null>(null)
+
+  // (2026-09-07) 자유 텍스트 — movies와 달리 gravity/layout 등 다른 계산이 이
+  // 배열에 의존하지 않아서, positionOverrides처럼 원본 위에 겹쳐 쓸 필요 없이
+  // 그냥 로컬 state를 소스오브트루스로 써도 안전하다. texts prop(서버 초기값)은
+  // 마운트 시 한 번만 시드로 쓰고 그 뒤로는 이 로컬 state가 진실이다.
+  const [texts, setTexts] = useState<UniverseText[]>(initialTexts)
+  // 커밋 핸들러들이 "최신 텍스트"를 참조해야 하는데(예: 위치만 바뀌어도 최신
+  // size를 같이 보내야 함) 그렇다고 texts를 의존성으로 물면 매 드래그 프레임마다
+  // 콜백 정체성이 바뀐다 — peekedIdRef와 같은 이유로 ref에 미러링해둔다.
+  const textsRef = useRef(texts)
+  useEffect(() => {
+    textsRef.current = texts
+  }, [texts])
+
+  const handleTextDragPosition = useCallback((id: string, x: number, y: number) => {
+    setTexts((prev) => prev.map((t) => (t.id === id ? { ...t, x, y } : t)))
+  }, [])
+
+  const handleTextCommitPosition = useCallback(
+    (id: string, x: number, y: number) => {
+      if (!editable) return
+      const size = textsRef.current.find((t) => t.id === id)?.size ?? 1
+      updateUniverseTextTransform(id, x, y, size).catch((err) => {
+        console.error('텍스트 위치 저장 실패', err)
+      })
+    },
+    [editable],
+  )
+
+  const handleTextResize = useCallback((id: string, size: number) => {
+    setTexts((prev) => prev.map((t) => (t.id === id ? { ...t, size } : t)))
+  }, [])
+
+  const handleTextCommitResize = useCallback(
+    (id: string, size: number) => {
+      if (!editable) return
+      const current = textsRef.current.find((t) => t.id === id)
+      if (!current) return
+      updateUniverseTextTransform(id, current.x, current.y, size).catch((err) => {
+        console.error('텍스트 크기 저장 실패', err)
+      })
+    },
+    [editable],
+  )
+
+  // 편집을 끝내고 블러하면 호출된다 — 비어 있으면 삭제, 아니면 저장. 별도
+  // "삭제" 버튼을 안 두는 대신 이 하나로 충분하다(내용을 지우고 나가면 사라짐).
+  const handleTextCommitContent = useCallback(
+    (id: string, content: string) => {
+      if (!editable) return
+      if (content === '') {
+        setTexts((prev) => prev.filter((t) => t.id !== id))
+        deleteUniverseText(id).catch((err) => {
+          console.error('텍스트 삭제 실패', err)
+        })
+        return
+      }
+      setTexts((prev) => prev.map((t) => (t.id === id ? { ...t, content } : t)))
+      updateUniverseTextContent(id, content).catch((err) => {
+        console.error('텍스트 저장 실패', err)
+      })
+    },
+    [editable],
+  )
+
+  // "+ 텍스트" 버튼(ArchiveShell)이 addTextRequestId를 클릭마다 증가시키면 여기서
+  // 반응한다 — focusMovieId와 같은 "외부 트리거" 패턴. id는 클라이언트가 미리
+  // 만들어서 서버 응답을 기다리지 않고 바로 편집(타이핑)을 시작할 수 있게 한다
+  // (데모 게스트 감상이 guest-${uuid} 로컬 id를 미리 만드는 것과 같은 기법).
+  const prevAddTextRequestIdRef = useRef(addTextRequestId)
+  useEffect(() => {
+    if (addTextRequestId === undefined) return
+    if (prevAddTextRequestIdRef.current === addTextRequestId) return
+    prevAddTextRequestIdRef.current = addTextRequestId
+    if (!editable) return
+
+    const id = crypto.randomUUID()
+    const x = (Math.random() - 0.5) * 80
+    const y = (Math.random() - 0.5) * 80
+    setTexts((prev) => [...prev, { id, content: '', x, y, size: 1 }])
+    createUniverseText(id, '', x, y, 1).catch((err) => {
+      console.error('텍스트 생성 실패', err)
+    })
+  }, [addTextRequestId, editable])
 
   // (2026-09-06) 드래그로 직접 배치한 좌표의 실시간 미리보기 — movie.posX/posY에는
   // 이전에 저장된 값이 이미 들어있으므로, 여기 없으면(undefined) 그 값을(그것도
@@ -724,6 +825,20 @@ export function MovieUniverse({
                메모의 게스트 체험과 같은 패턴). */
             onDragPosition={handleDragPosition}
             onCommitPosition={handleCommitPosition}
+          />
+        ))}
+
+        {texts.map((t) => (
+          <TextObject
+            key={t.id}
+            text={t}
+            editable={editable}
+            zoomScale={zoom}
+            onDragPosition={handleTextDragPosition}
+            onCommitPosition={handleTextCommitPosition}
+            onResize={handleTextResize}
+            onCommitResize={handleTextCommitResize}
+            onCommitContent={handleTextCommitContent}
           />
         ))}
       </motion.div>

@@ -4,6 +4,7 @@ import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { combineLoggedMovies, type LoggedMovieRow, type ViewingRow } from '@/lib/loggedMovies'
 import { attachEditorialConnections, type EditorialConnectionRow } from '@/lib/editorialConnections'
+import { combineUniverseTexts } from '@/lib/universeTexts'
 import { AccountMenu } from '@/components/archive/AccountMenu'
 import { ArchiveShell } from '@/components/archive/ArchiveShell'
 import { summarizeUniverse, rewatchedMovies } from '@/lib/universeInsights'
@@ -55,12 +56,18 @@ export default async function ArchivePage({
     )
   }
 
-  const [{ data: viewingData }, { data: connectionData }, { data: shareLink }, { data: cardLinks }] = await Promise.all([
-    supabase.from('viewings').select('id, logged_movie_id, rating, note, watched_at').eq('user_id', user.id),
-    supabase.from('editorial_connections').select('movie_a_id, movie_b_id, strength').eq('user_id', user.id),
-    supabase.from('share_links').select('slug').eq('user_id', user.id).maybeSingle(),
-    supabase.from('movie_share_links').select('logged_movie_id, slug').eq('user_id', user.id),
-  ])
+  const [{ data: viewingData }, { data: connectionData }, { data: shareLink }, { data: cardLinks }, { data: textRows }] =
+    await Promise.all([
+      supabase.from('viewings').select('id, logged_movie_id, rating, note, watched_at').eq('user_id', user.id),
+      supabase.from('editorial_connections').select('movie_a_id, movie_b_id, strength').eq('user_id', user.id),
+      supabase.from('share_links').select('slug').eq('user_id', user.id).maybeSingle(),
+      supabase.from('movie_share_links').select('logged_movie_id, slug').eq('user_id', user.id),
+      supabase.from('universe_texts').select('id, content, pos_x, pos_y, size').eq('user_id', user.id),
+    ])
+
+  const texts = combineUniverseTexts(
+    (textRows ?? []) as { id: string; content: string; pos_x: number; pos_y: number; size: number }[],
+  )
 
   const movies = attachEditorialConnections(
     combineLoggedMovies(rows, (viewingData ?? []) as ViewingRow[]),
@@ -104,6 +111,7 @@ export default async function ArchivePage({
       insights={insights}
       rewatched={rewatched}
       searchIndex={searchIndex}
+      texts={texts}
     />
   )
 }
