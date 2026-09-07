@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { EASE_SLOW } from '@/lib/motion'
 import { GenreChipPicker } from '@/components/archive/GenreChipPicker'
 import { searchTmdbMovies, fetchTmdbMovieDetail, type TmdbSearchResult } from '@/lib/tmdbClient'
-import { secondaryNavLinkClass as linkClass } from '@/lib/uiStyles'
+import { navLinkClass as linkClass } from '@/lib/uiStyles'
 import type { Movie } from '@/data/movies'
 import { useLocale } from '@/components/i18n/LocaleProvider'
 
@@ -34,7 +34,18 @@ function emptyDraft(): Draft {
 //
 // /archive/new(로그인 후 실제 기록)와 같은 TMDB 검색 경험을 그대로 준다 — 수기
 // 입력만 되던 예전 버전은 저장 안 되는 실험판이라 대충 만든 것 같은 인상을 줬다.
-export function DemoAddStar({ onAdd }: { onAdd: (movie: Movie) => void }) {
+type Props = {
+  onAdd: (movie: Movie) => void
+  /** true면 이 컴포넌트가 자체 트리거 버튼을 그리지 않는다 — 데모 우주에서
+   * "+텍스트"와 성격이 같은 액션이라는 피드백으로 하나의 + 메뉴(DemoAddMenu)
+   * 아래로 합쳤다(2026-09-08). 열기는 openRequestId로 외부에서 대신 트리거한다. */
+  hideTrigger?: boolean
+  /** 이 값이 바뀔 때마다(마운트 시 제외) 검색 단계를 연다 — addTextRequestId와
+   * 같은 "외부 트리거 → 내부 이펙트가 반응" 패턴. */
+  openRequestId?: number
+}
+
+export function DemoAddStar({ onAdd, hideTrigger = false, openRequestId }: Props) {
   const { t } = useLocale()
   const [stage, setStage] = useState<'closed' | 'search' | 'details' | 'warning'>('closed')
   const [query, setQuery] = useState('')
@@ -45,12 +56,21 @@ export function DemoAddStar({ onAdd }: { onAdd: (movie: Movie) => void }) {
   const [loadingDetail, setLoadingDetail] = useState(false)
   const searchTokenRef = useRef(0)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const prevOpenRequestIdRef = useRef(openRequestId)
 
   useEffect(() => {
     if (stage !== 'warning') return
     const timer = window.setTimeout(() => setStage('closed'), WARNING_DURATION)
     return () => window.clearTimeout(timer)
   }, [stage])
+
+  useEffect(() => {
+    if (openRequestId === undefined) return
+    if (prevOpenRequestIdRef.current === openRequestId) return
+    prevOpenRequestIdRef.current = openRequestId
+    openSearch()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openRequestId])
 
   function runSearch(value: string) {
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -130,7 +150,7 @@ export function DemoAddStar({ onAdd }: { onAdd: (movie: Movie) => void }) {
 
   return (
     <>
-      {stage === 'closed' && (
+      {!hideTrigger && stage === 'closed' && (
         <button type="button" onClick={openSearch} className={`absolute bottom-14 right-6 z-10 ${linkClass}`}>
           {t('demoAddStar.cta')}
         </button>

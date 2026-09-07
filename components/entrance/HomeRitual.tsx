@@ -7,7 +7,7 @@ import { Entrance } from '@/components/entrance/Entrance'
 import { BlackHoleTransition } from '@/components/blackhole/BlackHoleTransition'
 import { DemoUniverseStage } from '@/components/universe/DemoUniverseStage'
 import { DURATION, EASE_SLOW } from '@/lib/motion'
-import { secondaryNavLinkClass } from '@/lib/uiStyles'
+import { primaryNavLinkClass } from '@/lib/uiStyles'
 
 type Stage = 'entrance' | 'blackhole' | 'universe'
 
@@ -68,7 +68,7 @@ export function HomeRitual({ userEmail }: { userEmail: string | null }) {
             <DemoUniverseStage />
             <Link
               href="/login"
-              className={`absolute bottom-6 right-6 z-10 ${secondaryNavLinkClass}`}
+              className={`absolute bottom-6 right-6 z-10 ${primaryNavLinkClass}`}
             >
               LOG IN
             </Link>

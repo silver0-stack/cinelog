@@ -6,137 +6,50 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { EASE_SLOW } from '@/lib/motion'
 import { secondaryNavLinkClass } from '@/lib/uiStyles'
 import { HelpIcon } from '@/components/icons/HelpIcon'
+import { FaqAccordion } from '@/components/guide/FaqAccordion'
 import { useLocale } from '@/components/i18n/LocaleProvider'
+import { useLocaleMenuAction } from '@/components/i18n/LocaleToggle'
+import { UNIVERSE_QA, DEMO_QA, SHARED_QA, type QA } from '@/lib/guideContent'
 import type { Locale } from '@/lib/i18n/locale'
 
-type QA = { q: string; a: string }
-
-// 포스터가 늘 보이니 "이게 영화 목록이다"는 이제 화면만 봐도 안다 — 그래서
-// "별이 뭐야"류 정의는 뺐다. 지금 화면에서 실제로 안 보이는 것(왜 이 자리에
-// 있는지, 눌렀을 때 뭐가 일어나는지)만 남긴다.
-const UNIVERSE_QA: Record<Locale, QA[]> = {
-  ko: [
-    {
-      q: '영화들이 왜 이 자리에 있어?',
-      a: '기본적으로는 우주 전체에서 자기와 가장 강하게 이어진 한 편과의 관계로 자리가 정해져(같은 감독, 겹치는 장르·테마일수록 안쪽으로, 같은 장르는 같은 방향으로). 별을 직접 드래그해서 옮기면 그때부터는 그 자리가 그대로 저장되고, 다시는 자동으로 안 움직여 — 데이터로는 안 잡히는 나만의 연결을 표현하는 거야.',
-    },
-    {
-      q: '제목 밑에 보이는 평점/메모는 뭐야?',
-      a: '그 영화에 남긴 감상 미리보기야. 별점 옆에 "2회"처럼 숫자가 있으면 그 영화를 다시 본 횟수야. 눌러서 전체를 볼 수 있어.',
-    },
-    {
-      q: '눌러보면?',
-      a: '카메라가 그 포스터로 확대해서 다가가고, 옆(좁은 화면에서는 아래)에 평점·메모·감상 이력이 펼쳐져. 동시에 그 영화와 관계 깊은 별들만 밝아지고 나머지는 어두워져 — 재배치 없이 관계를 보여주는 거야. 포스터를 다시 누르거나 빈 공간을 누르면 원래대로 돌아가.',
-    },
-    {
-      q: '확대·축소는 어떻게 해?',
-      a: '데스크톱은 Ctrl + 마우스 휠, 모바일은 두 손가락으로 핀치. 빈 공간을 드래그하면 화면이 움직여. 많이 축소하면 포스터가 그 영화 색의 흐린 빛으로 접혀 보여. 다시 확대하면 원래대로 돌아와.',
-    },
-  ],
-  en: [
-    {
-      q: 'Why are the movies positioned where they are?',
-      a: "By default, each one settles based on its relationship to the one movie it's most strongly tied to across the whole universe (same director, overlapping genres or themes pull it inward; same genre pulls it toward the same direction). Drag a star to move it yourself, and from then on that spot is saved and it never moves automatically again — a way to express connections the data can't capture.",
-    },
-    {
-      q: "What's the rating/note under the title?",
-      a: 'A preview of what you logged for that movie. A number like "2x" next to the rating means how many times you\'ve rewatched it. Click to see everything.',
-    },
-    {
-      q: 'What happens if I click one?',
-      a: "The camera zooms in on that poster, and its rating, note, and viewing history unfold beside it (below, on narrow screens). At the same time, only the stars closely related to it light up while the rest dim — showing relationships without rearranging anything. Click the poster again, or click empty space, to go back.",
-    },
-    {
-      q: 'How do I zoom in and out?',
-      a: 'Ctrl + scroll wheel on desktop, pinch with two fingers on mobile. Drag empty space to pan. Zoom out far enough and posters fold into a faint glow of that movie\'s color. Zoom back in and they return.',
-    },
-  ],
-}
-
-const DEMO_QA: Record<Locale, QA[]> = {
-  ko: [
-    { q: '이 우주는 진짜야?', a: '내가 직접 고른 24편이야. 로그인하면 이 자리에 네가 실제로 본 영화들로 채운 진짜 우주가 생겨.' },
-    { q: '평점이나 메모를 남길 수 있어?', a: '응, 데모 24편 어디에나 자유롭게 남겨볼 수 있어. 저장은 안 되고 새로고침하면 사라져. 로그인하면 진짜로 쌓여.' },
-  ],
-  en: [
-    { q: 'Is this universe real?', a: "It's 24 movies I picked myself. Log in and this spot becomes a real universe made of movies you've actually watched." },
-    {
-      q: 'Can I leave a rating or note?',
-      a: "Yes, freely, on any of the 24 demo movies. Nothing is saved though — refresh and it's gone. Log in and it actually sticks.",
-    },
-  ],
-}
-
-const ARCHIVE_QA: Record<Locale, QA[]> = {
-  ko: [
-    { q: '"다시 본 감상 남기기"는 뭐야?', a: '이 영화를 또 봤을 때 새 감상을 남기는 거야. 이전 감상을 덮어쓰지 않고 그대로 쌓여.' },
-    { q: '우주 공유랑 영화 카드 공유는 뭐가 달라?', a: '우주 공유는 내 아카이브 전체를 보여주는 링크고, 영화 카드 공유는 그 영화 한 편만 보여주는 링크야.' },
-    {
-      q: '히스토리는 뭐야?',
-      a: '내 우주가 시간이 지나며 어떻게 자라났는지 다시 보는 기능이야. "탐색" 패널 안의 히스토리 보기를 누르면 화면 아래 타임라인이 뜨고, 드래그하면 그 시점까지 기록한 영화만 빛나 보여.',
-    },
-  ],
-  en: [
-    { q: 'What does "log another viewing" do?', a: "Adds a fresh entry for a rewatch. It doesn't overwrite the earlier one — both stay, stacked up." },
-    {
-      q: "What's the difference between sharing my universe and sharing a movie card?",
-      a: 'Sharing your universe links to your whole archive. Sharing a movie card links to just that one film.',
-    },
-    {
-      q: "What's history?",
-      a: 'Replays how your universe grew over time. Click "view history" inside the Explore panel to open a timeline at the bottom — drag it and only the movies logged by that point light up.',
-    },
-  ],
-}
-
-// 공유 링크로 들어온 사람은 CINELOG를 이때 처음 볼 수도 있다 — 데모/내 우주와
-// 달리 "이게 데모인지 진짜인지"가 아니라 "이게 누구 건지"가 가장 먼저 드는
-// 의문이라 질문을 따로 둔다.
-const SHARED_QA: Record<Locale, QA[]> = {
-  ko: [
-    { q: '이 우주는 뭐야?', a: '이 링크를 보낸 사람이 실제로 기록한 영화들이야. 너도 로그인하면 똑같은 방식으로 네 우주를 만들 수 있어(화면 구석 "나도 기록하기").' },
-  ],
-  en: [
-    {
-      q: "What is this universe?",
-      a: 'The movies the person who sent you this link has actually watched. You can log in and build your own the same way (see "Start my own" in the corner).',
-    },
-  ],
-}
-
 type Props = {
-  /** 'demo'면 비로그인 데모 우주용, 'archive'면 로그인한 개인 아카이브용,
-   * 'shared'면 남의 공유 링크로 들어온 읽기 전용 화면용 질문을 더한다. */
-  variant: 'demo' | 'archive' | 'shared'
+  /** 'demo'면 비로그인 데모 우주용, 'shared'면 남의 공유 링크로 들어온 읽기
+   * 전용 화면용 질문을 더한다. 로그인한 개인 아카이브(archive)는 이 팝업
+   * 대신 전용 설정 페이지(/archive/settings)에 같은 FAQ를 그대로 보여준다
+   * (2026-09-08, lib/guideContent.ts의 ARCHIVE_QA 참고). */
+  variant: 'demo' | 'shared'
   /** 트리거 버튼 위치. 자체 트리거를 그릴 때만 쓴다(controlled 모드에서는 생략). */
   triggerClassName?: string
-  /** 지정하면 controlled 모드 — 자체 트리거 버튼을 그리지 않고, 외부(예: 계정
-   * 드롭다운 메뉴의 "가이드" 항목)에서 열고 닫는다. */
+  /** 지정하면 controlled 모드 — 자체 트리거 버튼을 그리지 않고, 외부에서 열고 닫는다. */
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  /** true면 패널 하단에 언어 토글을 같이 넣는다 — 데모 우주 전용. 로그인한
+   * 화면은 이미 계정 메뉴 안에 언어 토글이 있어 중복이라 기본값 false다
+   * ("성격이 다른 버튼을 억지로 묶지 않는다"는 원칙 대신, 가이드와 언어 둘 다
+   * "자주 안 쓰는 사이트 메타 설정"이라는 같은 성격이라 여기 묶는다, 2026-09-08). */
+  showLocaleToggle?: boolean
 }
 
 const EXTRA_QA: Record<Props['variant'], Record<Locale, QA[]>> = {
   demo: DEMO_QA,
-  archive: ARCHIVE_QA,
   shared: SHARED_QA,
 }
 
-// 질문이 6개나 되고 문장도 길어서, 화면 구석 작은 박스에 넣고 내부 스크롤로
+// 질문이 여러 개고 문장도 길어서, 화면 구석 작은 박스에 넣고 내부 스크롤로
 // 읽게 하면(특히 모바일에서) 답답하다 — 영화 카드 peek이 겪었던 것과 같은
 // 문제라 같은 해법을 쓴다: 화면 중앙에 크게 띄우고, 배경을 누르면 닫힌다.
 //
 // (2026-09-06) 답까지 전부 펼쳐서 보여주던 걸 아코디언(누른 질문만 펼쳐짐)으로
 // 바꿨다 — todomate의 "자주 묻는 질문" 화면을 참고했다: 질문 목록만 먼저 훑고,
-// 궁금한 것만 펼쳐보는 쪽이 6개 답을 한 번에 다 읽는 것보다 덜 부담스럽다.
-export function GuidePanel({ variant, triggerClassName, open: openProp, onOpenChange }: Props) {
+// 궁금한 것만 펼쳐보는 쪽이 한 번에 다 읽는 것보다 덜 부담스럽다.
+export function GuidePanel({ variant, triggerClassName, open: openProp, onOpenChange, showLocaleToggle = false }: Props) {
   const { locale, t } = useLocale()
   const controlled = openProp !== undefined
   const [internalOpen, setInternalOpen] = useState(false)
   const open = controlled ? openProp : internalOpen
   const setOpen = (v: boolean) => (controlled ? onOpenChange?.(v) : setInternalOpen(v))
   const items = [...UNIVERSE_QA[locale], ...EXTRA_QA[variant][locale]]
-  const [openQ, setOpenQ] = useState<string | null>(null)
+  const localeAction = useLocaleMenuAction()
 
   return (
     <>
@@ -168,39 +81,21 @@ export function GuidePanel({ variant, triggerClassName, open: openProp, onOpenCh
                   onClick={(e) => e.stopPropagation()}
                   className="themed-scroll max-h-[85vh] w-[min(90vw,420px)] overflow-y-auto rounded-lg border border-white/10 bg-black px-5 py-5"
                 >
-                  <ul className="flex flex-col gap-1">
-                    {items.map((item) => {
-                      const expanded = openQ === item.q
-                      return (
-                        <li key={item.q} className="border-b border-white/5 last:border-none">
-                          <button
-                            type="button"
-                            onClick={() => setOpenQ(expanded ? null : item.q)}
-                            className="flex w-full items-center justify-between gap-3 py-3 text-left text-xs tracking-[var(--tk-15)] text-white/60 outline-none transition-colors duration-300 hover:text-white/90"
-                          >
-                            {item.q}
-                            <span className="shrink-0 text-white/30">{expanded ? '−' : '+'}</span>
-                          </button>
-                          <AnimatePresence initial={false}>
-                            {expanded && (
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                transition={{ duration: 0.3, ease: EASE_SLOW }}
-                                className="overflow-hidden"
-                              >
-                                <p className="pb-3 text-xs leading-relaxed tracking-wide text-white/35">{item.a}</p>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                  <button type="button" onClick={() => setOpen(false)} className={`mt-6 ${secondaryNavLinkClass}`}>
-                    {t('nav.close')}
-                  </button>
+                  <FaqAccordion items={items} />
+                  <div className="mt-6 flex items-center gap-6">
+                    {showLocaleToggle && (
+                      <button
+                        type="button"
+                        onClick={localeAction.onClick}
+                        className={`flex items-center gap-1.5 ${secondaryNavLinkClass}`}
+                      >
+                        {localeAction.label}
+                      </button>
+                    )}
+                    <button type="button" onClick={() => setOpen(false)} className={secondaryNavLinkClass}>
+                      {t('nav.close')}
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             )}

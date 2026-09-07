@@ -14,11 +14,14 @@ type Props = {
    * "내 우주 가기"(/archive)가 여기 들어간다. /archive 안에서는 이미 그 화면에
    * 있으니 비워둔다. */
   links?: { label: string; href: string }[]
-  /** 페이지 이동이 아니라 이 자리에서 뭔가를 토글/실행하는 액션 — "가이드",
-   * "패턴" 같은 부가 기능을 여기 몰아둔다. 예전엔 화면 구석에 항상 떠 있는
-   * 버튼이었는데, 자주 안 쓰는 기능이 마치 주요 기능처럼 보인다는 피드백으로
-   * 여기로 옮겼다. 누르면 그 자체 동작 후 메뉴를 닫는다. */
+  /** 페이지 이동이 아니라 이 자리에서 뭔가를 토글/실행하는 액션. 누르면 그
+   * 자체 동작 후 메뉴를 닫는다. */
   menuActions?: { label: ReactNode; onClick: () => void }[]
+  /** false면 드롭다운 하단의 SIGN OUT을 안 그린다 — 아카이브 우주는 로그아웃이
+   * 이미 설정 페이지(/archive/settings) 메뉴 안에 있어서, 여기 또 있으면
+   * 같은 액션이 두 군데(드롭다운+설정)에 중복된다는 피드백(2026-09-08).
+   * 랜딩 페이지(Entrance)는 설정 페이지가 없으므로 기본값 true로 그대로 둔다. */
+  showSignOut?: boolean
 }
 
 // 로그인한 계정이 누구인지 화면 어디에도 안 보이고, 로그아웃도 /login에 따로
@@ -27,7 +30,7 @@ type Props = {
 // 기록하는 문제)으로 이어진 적이 있다. CLAUDE.md가 만들지 않기로 한 "프로필"은
 // 개인정보 편집/공개 프로필 페이지 같은 전통적인 의미고, 이건 그것과 달리
 // 지금 세션이 누구인지 보여주고 로그아웃만 하는 최소한의 계정 표시다.
-export function AccountMenu({ email, links = [], menuActions = [] }: Props) {
+export function AccountMenu({ email, links = [], menuActions = [], showSignOut = true }: Props) {
   const { t } = useLocale()
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -93,9 +96,11 @@ export function AccountMenu({ email, links = [], menuActions = [] }: Props) {
                 {action.label}
               </button>
             ))}
-            <div className="mt-1 flex w-full justify-end border-t border-white/10 pt-3">
-              <SignOutButton />
-            </div>
+            {showSignOut && (
+              <div className="mt-1 flex w-full justify-end border-t border-white/10 pt-3">
+                <SignOutButton />
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

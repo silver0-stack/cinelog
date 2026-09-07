@@ -6,14 +6,13 @@ import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { MovieUniverse } from '@/components/universe/MovieUniverse'
 import { UniverseHistoryRail } from '@/components/universe/UniverseHistoryRail'
+import { AddMenu } from '@/components/universe/AddMenu'
 import { FadeIn } from '@/components/archive/FadeIn'
 import { ShareButton } from '@/components/archive/ShareButton'
 import { AccountMenu } from '@/components/archive/AccountMenu'
 import { UniverseInsightPanel } from '@/components/archive/UniverseInsightPanel'
 import { MovieSearch } from '@/components/archive/MovieSearch'
 import { LogMovieForm } from '@/components/archive/LogMovieForm'
-import { GuidePanel } from '@/components/guide/GuidePanel'
-import { useLocaleMenuAction } from '@/components/i18n/LocaleToggle'
 import { useLocale } from '@/components/i18n/LocaleProvider'
 import { EASE_SLOW } from '@/lib/motion'
 import { computeHistoryRange } from '@/lib/loggedMovies'
@@ -74,7 +73,6 @@ export function ArchiveShell({
 }: Props) {
   const router = useRouter()
   const { t } = useLocale()
-  const localeMenuAction = useLocaleMenuAction()
   const [focusMovieId, setFocusMovieId] = useState(initialFocusId)
   const [addOpen, setAddOpen] = useState(false)
   // "+ 텍스트" 클릭마다 증가 — MovieUniverse가 이 값의 변화를 감지해 새 텍스트를
@@ -107,12 +105,6 @@ export function ArchiveShell({
   )
 
   const genres = useMemo(() => genreIndex(movies), [movies])
-
-  // (2026-09-06) 가이드를 상단 상시 버튼에서 계정 메뉴 안으로 옮겼다 — todomate
-  // 앱의 "프로필 → 설정 → 문의하기(FAQ)" 구조를 참고한 것: 자주 안 쓰는 도움말을
-  // 매번 화면에 띄워두는 대신, 계정처럼 "필요할 때 열어보는" 자리로 옮겼다.
-  // 데모/공유 우주(로그인 계정 메뉴 자체가 없음)는 그대로 상시 버튼으로 남긴다.
-  const [guideOpen, setGuideOpen] = useState(false)
 
   return (
     <main className="relative h-dvh w-screen overflow-hidden bg-black">
@@ -160,24 +152,23 @@ export function ArchiveShell({
       <div className="absolute right-4 top-4 z-40 flex items-center gap-2 sm:right-6 sm:top-6 sm:gap-3">
         <ShareButton initialUrl={initialShareUrl} />
         <MovieSearch searchIndex={searchIndex} onHighlightChange={handleHighlightChange} />
-        <button type="button" onClick={() => setAddOpen(true)} className={navLinkClass}>
-          {t('nav.addLog')}
-        </button>
-        <button type="button" onClick={() => setAddTextRequestId((n) => n + 1)} className={navLinkClass}>
-          {t('nav.addText')}
-        </button>
+        <AddMenu
+          onAddMovie={() => setAddOpen(true)}
+          onAddText={() => setAddTextRequestId((n) => n + 1)}
+          movieLabel={t('addMenu.log')}
+        />
         <AccountMenu
           email={email}
-          menuActions={[{ label: t('nav.guide'), onClick: () => setGuideOpen(true) }, localeMenuAction]}
+          links={[{ label: t('nav.settings'), href: '/archive/settings' }]}
+          showSignOut={false}
         />
-        <GuidePanel variant="archive" open={guideOpen} onOpenChange={setGuideOpen} />
       </div>
 
-      {/* 가이드/탐색/히스토리 전부 예전엔 계정 드롭다운 안에 있었다 — 데모/공유
-          우주에서는 셋 다 화면에 항상 보이는 독립 버튼인데 로그인한 내 우주에서만
-          "계정" 아이콘을 눌러야 나오는 게 일관성이 없다는 피드백. 계정 메뉴는
-          이제 이메일 확인/로그아웃 전용으로만 남기고, 나머지는 데모/공유와 같은
-          자리(가이드는 위 오른쪽 버튼 줄, 탐색+히스토리는 아래 왼쪽)로 옮긴다. */}
+      {/* 탐색/히스토리는 데모/공유 우주와 같은 자리(하단 왼쪽)에 상시 버튼으로
+          둔다 — 이건 자주 쓰는 핵심 탐색 동작이라 계정 메뉴 뒤에 숨기지 않는다.
+          가이드(FAQ)는 반대로 계정 아이콘 → 설정 페이지(/archive/settings)
+          안으로 옮겼다 — 자주 안 쓰는 메타 기능(가이드/문의/로그아웃/언어)끼리
+          묶은 것이다(2026-09-08). */}
       <UniverseInsightPanel
         insights={insights}
         genres={genres}

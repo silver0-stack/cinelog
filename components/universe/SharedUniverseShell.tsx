@@ -11,7 +11,7 @@ import { LocaleToggle } from '@/components/i18n/LocaleToggle'
 import { useLocale } from '@/components/i18n/LocaleProvider'
 import { computeHistoryRange } from '@/lib/loggedMovies'
 import { genreIndex } from '@/lib/universeInsights'
-import { navLinkClass, secondaryNavLinkClass as loginLinkClass } from '@/lib/uiStyles'
+import { navLinkClass } from '@/lib/uiStyles'
 import type { Movie } from '@/data/movies'
 import type { RewatchedMovie, UniverseInsight } from '@/lib/universeInsights'
 import type { UniverseText } from '@/lib/universeTexts'
@@ -82,7 +82,7 @@ export function SharedUniverseShell({
         onOpenHistory={() => historyRange && setHistoryDate(historyRange.min)}
       />
 
-      <Link href="/login" className={`absolute bottom-6 right-6 z-10 ${loginLinkClass}`}>
+      <Link href="/login" className={`absolute bottom-6 right-6 z-10 ${navLinkClass}`}>
         {t('nav.iAlsoWantToLog')}
       </Link>
     </main>

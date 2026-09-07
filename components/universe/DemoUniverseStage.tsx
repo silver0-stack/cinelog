@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { MovieUniverse } from './MovieUniverse'
 import { UniverseHistoryRail } from './UniverseHistoryRail'
 import { DemoAddStar } from './DemoAddStar'
+import { AddMenu } from './AddMenu'
 import { GuidePanel } from '@/components/guide/GuidePanel'
 import { MovieSearch } from '@/components/archive/MovieSearch'
 import { UniverseInsightPanel } from '@/components/archive/UniverseInsightPanel'
@@ -13,7 +14,6 @@ import { movies as staticMovies, type Movie } from '@/data/movies'
 import { navLinkClass } from '@/lib/uiStyles'
 import type { UniverseText } from '@/lib/universeTexts'
 import { useLocale } from '@/components/i18n/LocaleProvider'
-import { LocaleToggle } from '@/components/i18n/LocaleToggle'
 import type { Locale } from '@/lib/i18n/locale'
 
 // "+ 텍스트" 버튼만 있으면 존재 자체를 못 알아챌 거라는 판단으로, 데모 우주에
@@ -42,7 +42,7 @@ function demoDummyText(locale: Locale): UniverseText {
 // 버튼 두 개가 나란히 있으면 답답해 보인다는 피드백 때문(UniverseInsightPanel의
 // historyEligible/onOpenHistory 참고).
 export function DemoUniverseStage() {
-  const { locale, t } = useLocale()
+  const { locale } = useLocale()
   const [movies, setMovies] = useState<Movie[]>(staticMovies)
   const [focusMovieId, setFocusMovieId] = useState<string | null>(null)
   const [historyDate, setHistoryDate] = useState<string | null>(null)
@@ -51,6 +51,9 @@ export function DemoUniverseStage() {
   // demoTexts로 MovieUniverse 안에서 로컬 state로만 처리되고 Supabase에는 저장되지
   // 않는다(onGuestMutate 게스트 체험과 같은 이유로 새로고침하면 사라진다).
   const [addTextRequestId, setAddTextRequestId] = useState(0)
+  // DemoAddMenu의 "영화 추가"가 클릭마다 증가시킨다 — addTextRequestId와 같은
+  // 외부 트리거 패턴으로 DemoAddStar(hideTrigger)의 검색 단계를 연다.
+  const [addMovieRequestId, setAddMovieRequestId] = useState(0)
 
   const insights = useMemo(() => summarizeUniverse(movies, locale), [movies, locale])
   const genres = useMemo(() => genreIndex(movies), [movies])
@@ -97,11 +100,11 @@ export function DemoUniverseStage() {
 
       <div className="absolute right-4 top-4 z-10 flex items-center gap-2 sm:right-6 sm:top-6 sm:gap-3">
         <MovieSearch searchIndex={searchIndex} onHighlightChange={handleHighlightChange} />
-        <button type="button" onClick={() => setAddTextRequestId((n) => n + 1)} className={navLinkClass}>
-          {t('nav.addText')}
-        </button>
-        <LocaleToggle className={navLinkClass} />
-        <GuidePanel variant="demo" triggerClassName={navLinkClass} />
+        <AddMenu
+          onAddMovie={() => setAddMovieRequestId((n) => n + 1)}
+          onAddText={() => setAddTextRequestId((n) => n + 1)}
+        />
+        <GuidePanel variant="demo" triggerClassName={navLinkClass} showLocaleToggle />
       </div>
 
       <UniverseInsightPanel
@@ -117,6 +120,8 @@ export function DemoUniverseStage() {
       />
 
       <DemoAddStar
+        hideTrigger
+        openRequestId={addMovieRequestId}
         onAdd={(movie) => {
           setMovies((prev) => [...prev, movie])
           setFocusMovieId(movie.id)

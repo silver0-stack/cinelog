@@ -40,12 +40,12 @@ const ENTRANCE_COPY: Record<
     steps: [
       { n: '01', t: '기록한다', d: '영화를 보고 평점과 메모를 남겨.' },
       { n: '02', t: '우주가 된다', d: '감독, 장르, 정서로 이어진 영화들이 서로 가까워져.' },
-      { n: '03', t: '탐색한다', d: '확대하고 중심을 옮기며 관계를 따라가.' },
+      { n: '03', t: '탐색한다', d: '확대하고 영화를 눌러 관계를 발견해.' },
       { n: '04', t: '공유한다', d: '우주 전체나 영화 한 편을 링크로 보여줘.' },
     ],
     philosophyLines: ['영화를 볼수록 내 우주가 넓어진다.', '나를 채운 영화들이 모여,', '광활하고 끝없는 하나의 세계가 된다.'],
     tryTitle: '지금 둘러보기',
-    trySubtitle: '24편으로 채운 데모 우주를 로그인 없이 체험할 수 있어.',
+    trySubtitle: '80편으로 채운 데모 우주를 로그인 없이 체험할 수 있어.',
     enterAriaLabel: '데모 우주로 들어가기',
     pressToEnterLabel: '눌러서 들어가기',
     faqTitle: '자주 묻는 질문',
@@ -68,7 +68,7 @@ const ENTRANCE_COPY: Record<
     steps: [
       { n: '01', t: 'Log', d: 'Rate it and jot a note after you watch.' },
       { n: '02', t: 'It becomes a universe', d: 'Movies linked by director, genre, and mood drift closer together.' },
-      { n: '03', t: 'Explore', d: 'Zoom in, shift focus, and follow the connections.' },
+      { n: '03', t: 'Explore', d: 'Zoom in and open a movie to discover its connections.' },
       { n: '04', t: 'Share', d: 'Send a link to your whole universe, or just one movie.' },
     ],
     philosophyLines: [
@@ -77,7 +77,7 @@ const ENTRANCE_COPY: Record<
       'into one vast, endless world.',
     ],
     tryTitle: 'Try it now',
-    trySubtitle: 'Explore a demo universe of 24 films, no login needed.',
+    trySubtitle: 'Explore a demo universe of 80 films, no login needed.',
     enterAriaLabel: 'Enter the demo universe',
     pressToEnterLabel: 'Press to enter',
     faqTitle: 'Frequently asked',

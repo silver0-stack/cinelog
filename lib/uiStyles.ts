@@ -20,3 +20,11 @@ export const secondaryNavLinkClass =
 // 테두리+단색 저채움).
 export const navLinkClass =
   'rounded-full border border-white/25 bg-white/[0.06] px-3 py-1.5 text-xs font-light tracking-[var(--tk-15)] sm:tracking-[var(--tk-25)] text-white/75 outline-none transition-colors duration-500 hover:border-white/55 hover:bg-white/[0.12] hover:text-white/95 focus-visible:border-white/55 focus-visible:bg-white/[0.12] focus-visible:text-white/95 [text-shadow:0_0_10px_rgba(0,0,0,0.9),0_0_4px_rgba(0,0,0,0.9)]'
+
+// 데모 우주에서 유일한 "전환" 액션(로그인)을 나머지 outline 버튼들과 다른
+// 무게로 표현하려고 만든 solid 채움 스타일. 색을 넣는 대신 채움 강도로
+// 위계를 나눈다 — CLAUDE.md 섹션 9가 네온/그라데이션 대신 톤으로 승부하기로
+// 정해뒀기 때문에, 로그인만 색이 있으면 안 되고 "가장 꽉 찬 버튼"이면 된다
+// (2026-09-08, 사용자 피드백: 로그인 버튼이 다른 버튼들과 안 구분된다).
+export const primaryNavLinkClass =
+  'rounded-full border border-white/90 bg-white/90 px-3.5 py-1.5 text-xs font-light tracking-[var(--tk-15)] sm:tracking-[var(--tk-25)] text-black outline-none transition-colors duration-500 hover:bg-white hover:border-white focus-visible:bg-white focus-visible:border-white'

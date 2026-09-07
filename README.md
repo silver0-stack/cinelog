@@ -75,5 +75,5 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 TMDB_API_KEY=
 ```
 
-로그인 없이도 `/`에서 24편으로 채운 데모 우주를 바로 체험할 수 있다. Supabase
+로그인 없이도 `/`에서 80편으로 채운 데모 우주를 바로 체험할 수 있다. Supabase
 연결 없이도 정적 데이터만으로 동작한다.
