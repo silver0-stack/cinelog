@@ -14,7 +14,7 @@ export async function getOrCreateShareSlug(): Promise<{ slug: string; created: b
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) throw new Error('로그인이 필요해')
+  if (!user) throw new Error('로그인이 필요해요')
 
   const { data: existing } = await supabase
     .from('share_links')

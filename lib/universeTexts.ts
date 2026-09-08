@@ -18,7 +18,7 @@ export async function createUniverseText(id: string, content: string, x: number,
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) throw new Error('로그인이 필요해')
+  if (!user) throw new Error('로그인이 필요해요')
 
   const { error } = await supabase
     .from('universe_texts')

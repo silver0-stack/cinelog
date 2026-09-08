@@ -36,42 +36,42 @@ const ko: Dict = {
 
   // 검색
   'search.placeholder': '영화 검색',
-  'search.hint': '우주에서 빛나는 별을 눌러봐',
-  'search.noMatch': '일치하는 영화가 없어',
+  'search.hint': '우주에서 빛나는 별을 눌러보세요',
+  'search.noMatch': '일치하는 영화가 없어요',
 
   // + 기록 폼 (LogMovieForm)
   'form.title': '제목',
   'form.year': '연도',
   'form.director': '감독',
-  'form.notePlaceholder': '메모 (선택, 짧게 한 줄이어도 길게 리뷰여도 괜찮아)',
-  'form.enterManually': '직접 입력할게',
+  'form.notePlaceholder': '메모 (선택, 짧게 한 줄이어도 길게 리뷰여도 괜찮아요)',
+  'form.enterManually': '직접 입력할게요',
   'form.back': '뒤로',
   'form.save': 'SAVE',
   'form.saving': 'SAVING',
-  'form.loggedMovie': '{title} 기록했어.',
-  'form.duplicateMovie': '{title}, 이미 기록했어.',
+  'form.loggedMovie': '{title} 기록했어요.',
+  'form.duplicateMovie': '{title}, 이미 기록했어요.',
   'form.logAnother': '다른 영화 기록하기',
   'form.viewInUniverse': '우주에서 보기',
-  'form.duplicateHint': '다시 봤다면 그 포스터를 열어서 새 감상을 남겨봐.',
+  'form.duplicateHint': '다시 봤다면 그 포스터를 열어서 새 감상을 남겨보세요.',
   'form.searchAnother': '다른 영화 검색',
   'form.goToThatPoster': '그 포스터로 가기',
-  'error.requiredFields': '제목과 연도는 채워줘.',
-  'error.saveFailed': '저장하지 못했어. 잠시 후 다시 시도해줘.',
+  'error.requiredFields': '제목과 연도를 채워주세요.',
+  'error.saveFailed': '저장하지 못했어요. 잠시 후 다시 시도해주세요.',
 
   // 우주 공유
   'share.universe': '우주 공유',
   'share.copyLink': '우주 링크 복사',
   'share.copied': '복사됨',
   'share.creating': '만드는 중',
-  'share.hint': '이 링크를 보내서 네 우주를 보여줘봐',
-  'share.copyFailed': '복사 실패, 다시 눌러줘',
+  'share.hint': '이 링크를 보내서 우주를 보여줘보세요',
+  'share.copyFailed': '복사 실패, 다시 눌러주세요',
 
   // 영화 카드 공유
   'shareCard.copyLink': '카드 링크 복사',
   'shareCard.share': '영화 카드 공유',
   'shareCard.copied': '복사됨',
   'shareCard.creating': '만드는 중',
-  'shareCard.copyFailed': '복사 실패, 다시 눌러줘',
+  'shareCard.copyFailed': '복사 실패, 다시 눌러주세요',
   'ticket.title': '영화입장권',
   'ticket.watchedAt': '관람일',
   'ticket.rating': '평점',
@@ -91,8 +91,8 @@ const ko: Dict = {
   'peek.logViewing': '감상 남기기',
   'peek.editViewing': '이 감상 고치기',
   'peek.delete': '삭제',
-  'peek.duplicateError': '이미 기록한 다른 영화와 같은 작품이야.',
-  'peek.rewatchHint': '같은 영화를 또 봤다면 새 감상을 남겨. 이전 감상은 지워지지 않고 쌓여',
+  'peek.duplicateError': '이미 기록한 다른 영화와 같은 작품이에요.',
+  'peek.rewatchHint': '같은 영화를 또 봤다면 새 감상을 남겨보세요. 이전 감상은 지워지지 않고 쌓여요',
   'peek.loadedFromTmdb': 'TMDB에서 불러옴',
   'nav.editInfo': '정보 수정',
 
@@ -100,25 +100,25 @@ const ko: Dict = {
   'login.goToUniverse': '내 우주로 가기',
   'login.sendLink': 'SEND LINK',
   'login.sending': 'SENDING',
-  'login.invalidEmail': '올바른 이메일 주소를 입력해줘.',
-  'login.sendFailed': '링크를 보내지 못했어. 잠시 후 다시 시도해줘.',
+  'login.invalidEmail': '올바른 이메일 주소를 입력해주세요.',
+  'login.sendFailed': '링크를 보내지 못했어요. 잠시 후 다시 시도해주세요.',
 
-  'dev.supabaseNotConfigured1': 'Supabase 프로젝트가 아직 연결되지 않았어.',
-  'dev.supabaseNotConfigured2': '.env.local에 URL과 anon key를 채워줘.',
+  'dev.supabaseNotConfigured1': 'Supabase 프로젝트가 아직 연결되지 않았어요.',
+  'dev.supabaseNotConfigured2': '.env.local에 URL과 anon key를 채워주세요.',
 
   // 빈 상태 / 에러 페이지
-  'empty.archive.title': '아직 기록한 영화가 없어.',
-  'empty.archive.subtitle': '첫 영화를 기록하면 우주가 시작돼.',
+  'empty.archive.title': '아직 기록한 영화가 없어요.',
+  'empty.archive.subtitle': '첫 영화를 기록하면 우주가 시작돼요.',
   'empty.archive.cta': '첫 영화 기록하기',
-  'notFound.generic': '이 자리엔 아무것도 없어.',
-  'notFound.link': '링크를 찾을 수 없어.',
-  'notFound.noMoviesYet': '아직 기록된 영화가 없어.',
+  'notFound.generic': '이 자리엔 아무것도 없어요.',
+  'notFound.link': '링크를 찾을 수 없어요.',
+  'notFound.noMoviesYet': '아직 기록된 영화가 없어요.',
 
   // 텍스트 오브젝트
   'text.placeholder': '텍스트 (마크다운 가능: # 제목, **굵게**, *기울임*, - 목록)',
 
   // 히스토리 레일
-  'history.dragHint': '드래그해서 영화가 기록된 순서대로 우주가 자라나는 걸 봐',
+  'history.dragHint': '드래그해서 영화가 기록된 순서대로 우주가 자라나는 걸 보세요',
   'history.backToNow': '현재로 돌아가기',
 
   // 탐색 패널 인사이트
@@ -127,7 +127,7 @@ const ko: Dict = {
   'insight.topEra': '가장 머무른 시대',
   'insight.topRating': '가장 많이 준 평점',
   'insight.filmCount': '{count}편',
-  'insight.hint': '재관람한 영화와 감독·장르 경향을 여기서 볼 수 있어',
+  'insight.hint': '재관람한 영화와 감독·장르 경향을 여기서 볼 수 있어요',
   'insight.rewatchCount': '{count}회',
   'insight.summary': '{label} · {value} ({detail})',
 
@@ -137,12 +137,12 @@ const ko: Dict = {
 
   // 데모 별 추가
   'demoAddStar.cta': '+ 영화 등록해보기',
-  'demoAddStar.notSaved1': '이 포스터는 저장되지 않아.',
-  'demoAddStar.notSaved2': '어떻게 자리 잡는지만 잠깐 볼 수 있어.',
+  'demoAddStar.notSaved1': '이 포스터는 저장되지 않아요.',
+  'demoAddStar.notSaved2': '어떻게 자리 잡는지만 잠깐 볼 수 있어요.',
   'demoAddStar.submit': '넣어보기',
   'demoAddStar.close': '닫기',
   'demoAddStar.back': '뒤로',
-  'demoAddStar.willVanish': '로그인하지 않으면 이 포스터는 사라져.',
+  'demoAddStar.willVanish': '로그인하지 않으면 이 포스터는 사라져요.',
 
   'aria.openMovie': '{title} 열람하기',
   'aria.closeMovie': '{title} 닫기',

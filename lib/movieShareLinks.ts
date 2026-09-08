@@ -15,7 +15,7 @@ export async function getOrCreateMovieCardSlug(loggedMovieId: string): Promise<{
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) throw new Error('로그인이 필요해')
+  if (!user) throw new Error('로그인이 필요해요')
 
   const { data: existing } = await supabase
     .from('movie_share_links')

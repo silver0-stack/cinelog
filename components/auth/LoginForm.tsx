@@ -12,13 +12,13 @@ const COPY: Record<
   { checkEmailLine1: string; checkEmailLine2: string; checkEmailLine3: string; checkEmailLine4: string; authErrorLine1: string; authErrorLine2: string }
 > = {
   ko: {
-    checkEmailLine1: '이메일을 확인해줘.',
-    checkEmailLine2: '도착한 링크를 누르면 로그인이 완료돼.',
-    checkEmailLine3: '안 보이면 스팸함도 확인해줘.',
+    checkEmailLine1: '이메일을 확인해주세요.',
+    checkEmailLine2: '도착한 링크를 누르면 로그인이 완료돼요.',
+    checkEmailLine3: '안 보이면 스팸함도 확인해주세요.',
     checkEmailLine4:
-      '카카오톡·인스타그램 같은 앱 안에서 열고 있었다면, 링크는 거기 말고 지금 이 화면을 보고 있던 브라우저에서 열어줘.',
-    authErrorLine1: '링크가 만료됐거나, 요청했던 것과 다른 브라우저(메일 앱 안의 브라우저 등)에서 열렸을 수 있어.',
-    authErrorLine2: '아래에서 새로 받아서, 받은 편지함 앱이 아니라 원래 쓰던 브라우저에서 열어봐.',
+      '카카오톡·인스타그램 같은 앱 안에서 열고 있었다면, 링크는 거기 말고 지금 이 화면을 보고 있던 브라우저에서 열어주세요.',
+    authErrorLine1: '링크가 만료됐거나, 요청했던 것과 다른 브라우저(메일 앱 안의 브라우저 등)에서 열렸을 수 있어요.',
+    authErrorLine2: '아래에서 새로 받아서, 받은 편지함 앱이 아니라 원래 쓰던 브라우저에서 열어보세요.',
   },
   en: {
     checkEmailLine1: 'Check your email.',

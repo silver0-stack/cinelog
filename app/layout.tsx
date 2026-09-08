@@ -24,7 +24,7 @@ const siteUrl = "https://cinelog.dev";
 // 걸리도록 title/description에 자연스럽게 녹였다. 화면에 보이는 카피(Entrance.tsx)는
 // 절제된 톤을 그대로 유지하고, 검색엔진에만 보이는 이 메타데이터에서만 키워드를 더한다.
 const description =
-  "감독, 장르, 시대에 따라 영화들이 관계를 맺으며 우주를 이루는 영화 아카이빙 서비스. 본 영화를 기록하면 나만의 영화 우주가 자라나.";
+  "감독, 장르, 시대에 따라 영화들이 관계를 맺으며 우주를 이루는 영화 아카이빙 서비스. 본 영화를 기록하면 나만의 영화 우주가 자라나요.";
 const descriptionEn =
   "A movie-archiving experience where films form relationships by director, genre, and era, and grow into a universe. Log what you've watched and your own universe begins to grow.";
 

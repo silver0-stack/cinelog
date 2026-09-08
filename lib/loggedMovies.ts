@@ -129,7 +129,7 @@ export async function createLoggedMovie(input: NewLoggedMovie) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) throw new Error('로그인이 필요해')
+  if (!user) throw new Error('로그인이 필요해요')
 
   const { data: movie, error: movieError } = await supabase
     .from('logged_movies')
@@ -175,7 +175,7 @@ export async function addViewing(loggedMovieId: string, input: NewViewing) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) throw new Error('로그인이 필요해')
+  if (!user) throw new Error('로그인이 필요해요')
 
   const { error } = await supabase.from('viewings').insert({
     user_id: user.id,

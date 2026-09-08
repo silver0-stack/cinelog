@@ -21,7 +21,7 @@ import type { Locale } from '@/lib/i18n/locale'
 // universeLayout.ts) 근처엔 어차피 별이 없어서 비어 있는 자리다. onGuestMutate와
 // 같은 이유로 이것도 새로고침하면 원래대로 돌아간다(수정/삭제는 자유).
 const DEMO_DUMMY_TEXT_CONTENT: Record<Locale, string> = {
-  ko: '**텍스트도 여기 이렇게 놓을 수 있어**\n클릭해서 고쳐써봐',
+  ko: '**텍스트도 여기 이렇게 놓을 수 있어요**\n클릭해서 고쳐써보세요',
   en: '**you can place text here too**\nclick to edit it',
 }
 

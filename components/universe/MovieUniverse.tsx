@@ -40,7 +40,7 @@ const IDLE_HINT_CYCLE = 4200
 // 정하기 전 기본값"일 뿐이라, 그 기본값의 기준까지 고민하게 만들 필요가
 // 없다는 판단.)
 const IDLE_HINTS: Record<Locale, readonly string[]> = {
-  ko: ['확대해서 둘러봐', '같은 기준으로 묶인 영화일수록 한 방향에 모여', '포스터를 눌러 자세히 봐'],
+  ko: ['확대해서 둘러보세요', '같은 기준으로 묶인 영화일수록 한 방향에 모여요', '포스터를 눌러 자세히 보세요'],
   en: ['Zoom in and look around', 'Movies grouped the same way drift toward one direction', 'Click a poster for details'],
 }
 // 이 배열을 이펙트 의존성으로 그대로 쓰면 매 렌더 새 참조가 생겨 리스너가 계속
