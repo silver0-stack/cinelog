@@ -665,6 +665,16 @@ export function MovieBody({
             <motion.div
               className="pointer-events-auto absolute"
               style={{ left: '100%', top: 0, marginLeft: 16, scale: inverseZoom, transformOrigin: 'top left' }}
+              // 이 패널은 onClick={handleClick}이 걸린 제목 div 안에 DOM상
+              // 자식으로 들어가 있다(줌인했을 때 옆에 나란히 뜨는 "beside" 배치라
+              // absolute로 그 자리를 벗어나야 해서, 바텀시트처럼 portal로 빼지
+              // 않았다). 패널 안의 버튼(편집/공유/다시보기/저장/닫기 등)을
+              // 누르면 그 클릭이 그대로 위로 버블링돼 handleClick이 다시
+              // 불려서, 방금 누른 버튼의 동작과 무관하게 열람 자체가 곧바로
+              // 닫혀버렸다(실사용 버그 — 모든 버튼이 안 먹히는 것처럼 보였다).
+              // 여기서 막아야 패널 안의 클릭이 별을 다시 토글하지 않는다.
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
             >
               <MoviePeekPanel
                 movie={movie}
@@ -707,7 +717,17 @@ export function MovieBody({
                     transition={{ duration: 0.4, ease: EASE_SLOW }}
                     className="pointer-events-none fixed inset-x-0 bottom-0 z-[150] flex justify-center px-4 pb-4"
                   >
-                    <div className="pointer-events-auto w-full max-w-[360px]">
+                    {/* createPortal은 DOM 위치만 document.body로 옮길 뿐, React
+                        합성 이벤트는 실제 DOM 트리가 아니라 React 컴포넌트
+                        트리를 따라 버블링한다 — 그래서 이 안에서도 위(beside
+                        배치)와 똑같이 onClick={handleClick}이 걸린 제목 div까지
+                        클릭이 새어 올라가 열람이 곧바로 닫혔다(모바일 바텀시트에서
+                        버튼이 다 안 먹히던 원인). 여기도 동일하게 막는다. */}
+                    <div
+                      className="pointer-events-auto w-full max-w-[360px]"
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
                       <MoviePeekPanel
                         movie={movie}
                         closestMovie={closestMovie}
