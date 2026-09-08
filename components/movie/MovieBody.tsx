@@ -203,7 +203,13 @@ export function MovieBody({
       if (state.mode === 'pending') {
         // 손 떨림 정도의 아주 작은 움직임까지 드래그로 잡아버리면 "클릭했는데
         // 반응이 없다"로 느껴진다 — 열람(클릭)이 실수로 드래그에 먹히지 않도록 여유를 준다.
-        if (Math.hypot(clientX - state.startX, clientY - state.startY) < 10) return false
+        // (2026-09-08) 10px로는 부족했다 — 많이 줌아웃해서 작아진 별을 조준하려고
+        // 마우스를 누른 채 미세하게 위치를 고쳐 잡는 것만으로도 10px를 쉽게
+        // 넘어서, 클릭이 조용히 드래그로 먹혀버리고(별이 살짝 밀리기까지 함)
+        // 열람은 아예 안 열렸다("클릭이 어떨 땐 되고 어떨 땐 안 된다"는 실사용
+        // 피드백의 원인). 진짜 드래그는 보통 이보다 훨씬 크게 움직이므로,
+        // 20px로 올려도 의도된 드래그 동작에는 지장이 없다.
+        if (Math.hypot(clientX - state.startX, clientY - state.startY) < 20) return false
         // 임계값을 넘긴 바로 이 이동에서 여기서 return해버리면, 한 번에 큰 폭으로
         // 이동하는 입력에서는 이동량이 통째로 버려져 별이 실제로는 전혀 안
         // 움직이는 것처럼 보인다 — 트랜지션만 하고 아래로 흘려보내 이번
@@ -291,6 +297,33 @@ export function MovieBody({
   // 그대로 따라 커지되, 텍스트가 많은 패널까지 커지면 확대할수록 오히려 읽기
   // 어려워진다.
   const inverseZoom = useTransform(zoomScale, (z) => 1 / (z || 1))
+
+  // (2026-09-08) 탭 영역(예전엔 고정 Tailwind -m-3/p-3 = 12px)이 세계 좌표계
+  // 전체를 감싸는 부모의 scale(zoom) 변환을 그대로 물려받아서, 많이 줌아웃하면
+  // (검색 결과 전체를 담으려 카메라가 zoom을 0.5까지 낮추는 경우 등) 화면상
+  // 실제 클릭 영역이 몇 픽셀 수준까지 줄어 거의 안 눌렸다 — 별을 눌러도 우주
+  // 여백을 누른 것처럼 처리돼 패널이 안 열리고 검색 결과가 닫혀버리는 버그로
+  // 나타났다. inverseZoom으로 padding/margin 자체를 반비례시켜서, 화면에
+  // 실제로 그려지는 탭 영역은 항상 일정 크기로 고정되게 한다(포스터 자체는
+  // 그대로 줌을 따라 작아져도 된다 — "멀리서는 작은 별처럼 보인다"는 의도는 유지).
+  //
+  // 처음엔 12px(원래 -m-3/p-3 값)로 맞췄는데, 그정도로는 여전히 안 눌렸다 —
+  // STAR_FORM_ZOOM 아래로 줌아웃하면 포스터 자체는 투명해지고 대신 그보다
+  // 훨씬 넓게 번지는 흐릿한 글로우(starGlowInset로 바깥까지 확장 + blur로
+  // 시각적으로 더 퍼져 보임)가 "별"처럼 보인다 — 사람들은 실제 포스터 박스가
+  // 아니라 그 눈에 보이는 글로우 덩어리의 중심을 누르는데, 클릭 판정 영역은
+  // 여전히 작은 포스터 기준이라 어긋났다. 글로우가 가장 크게 번지는 경우
+  // (glowSpread 최대 9 + 14, 거기에 blur 반경까지)를 넉넉히 덮도록 32px로 올린다.
+  //
+  // (2026-09-08) 다만 이 32px를 모든 별에 똑같이 주면, 별이 많이 몰린 저줌
+  // 상태에서는 어두워진(매칭 안 된) 이웃 별의 확장된 클릭 영역이 바로 옆 밝은
+  // 별의 영역을 침범한다 — "어떨 땐 되고 어떨 땐 안 된다"는 실사용 피드백의
+  // 원인이었다(옆의 흐린 별이 클릭을 가로챈 것). 지금 찾고 있는(밝은) 별만
+  // 넉넉하게 키우고, 어두워진 별은 원래 여유(12px)만 유지해서 서로 침범할
+  // 가능성 자체를 줄인다.
+  const TAP_TARGET_PADDING = dimmedByHighlight ? 12 : 32
+  const tapPadding = useTransform(zoomScale, (z) => TAP_TARGET_PADDING / (z || 1))
+  const tapMargin = useTransform(tapPadding, (p) => -p)
 
   const metaOpacity = useTransform(zoomScale, META_FADE_ZOOM, [0, 1], { clamp: true })
   const starProgress = useTransform(zoomScale, STAR_FORM_ZOOM, [1, 0], { clamp: true })
@@ -460,9 +493,10 @@ export function MovieBody({
           onClick={clickable ? handleClick : undefined}
           onPointerDown={draggable ? handlePointerDown : undefined}
           aria-label={clickable ? t(peeked ? 'aria.closeMovie' : 'aria.openMovie', { title: movie.title }) : movie.title}
-          className={`relative -m-3 flex select-none items-center justify-center border-0 bg-transparent p-3 ${
+          className={`relative flex select-none items-center justify-center border-0 bg-transparent ${
             draggable ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : clickable ? 'cursor-pointer' : 'cursor-default'
           } ${clickable ? 'focus-visible:outline focus-visible:outline-1 focus-visible:-outline-offset-4 focus-visible:outline-white/40' : ''}`}
+          style={{ padding: tapPadding, margin: tapMargin }}
         >
           <motion.span
             className="relative block overflow-visible rounded-sm"
@@ -532,10 +566,20 @@ export function MovieBody({
             딸려 움직이는 것처럼 보여서 "드래그하면 다른 영화도 도미노처럼
             움직인다"는 오해를 낳았다(실제로는 위치가 재계산된 게 아니라 화면
             전체가 이동한 것). 포스터와 시각적으로 한 덩어리로 보이는 텍스트도
-            같은 드래그 시작점으로 잡는다. */}
+            같은 드래그 시작점으로 잡는다.
+            (2026-09-08) 정작 onClick은 안 걸려 있었다 — 많이 줌아웃하면 포스터는
+            투명해지고 제목 글자만 또렷하게 남는데(META_FADE_ZOOM은 연도/감독
+            줄에만 걸려있고 제목 자체는 항상 보인다), 실사용자는 흐릿한 포스터
+            대신 읽히는 제목을 클릭했다 — 그러면 data-star라 배경 팬(여백 클릭)
+            취급은 안 받으면서도 아무 반응이 없어, 검색창만 "바깥 클릭"으로
+            닫히고 그 별로는 전혀 줌인이 안 되는 것처럼 보였다. 포스터 버튼과
+            똑같은 handleClick을 여기도 연결한다. */}
         <div
-          className={`mt-2 text-center ${draggable ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : ''}`}
+          className={`mt-2 text-center ${
+            draggable ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : clickable ? 'cursor-pointer' : ''
+          }`}
           data-star=""
+          onClick={clickable ? handleClick : undefined}
           onPointerDown={draggable ? handlePointerDown : undefined}
         >
           {/* 제목은 열람 여부/줌과 무관하게 항상 보인다 — 더 이상 별도의

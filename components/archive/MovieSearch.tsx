@@ -41,7 +41,10 @@ export function MovieSearch({
     setQuery('')
   }
 
-  useClickOutside(panelRef, open, close)
+  // 별(우주 안의 포스터, data-star로 표시)을 누른 건 "바깥 클릭"으로 안 친다 —
+  // lib/useClickOutside.ts의 2026-09-08 주석 참고. 검색으로 밝아진 별을 누르는
+  // 순간 검색이 먼저 닫히면서 카메라가 흔들려 그 별을 놓치는 버그였다.
+  useClickOutside(panelRef, open, close, '[data-star]')
 
   useEffect(() => {
     if (open) inputRef.current?.focus()

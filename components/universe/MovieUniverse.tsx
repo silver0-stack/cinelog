@@ -622,6 +622,67 @@ export function MovieUniverse({
     }
   }, [peekedId, bodies, rawZoom, rawPanX, rawPanY])
 
+  // 검색(MovieSearch)이나 탐색 패널 인사이트로 하이라이트된 별이 지금 화면 밖에
+  // 있으면, 하이라이트만 켜져봐야 아무 일도 안 일어난 것처럼 보인다(2026-09-08
+  // 실사용 피드백) — 하이라이트 대상이 생기면 그 별들이 전부 보이도록 카메라를
+  // 옮긴다. peek과 달리 패널은 열지 않는다(타이핑 중에 패널이 갑자기 뜨면
+  // 산만하다). 결과가 1개면 그 별로 확대(FOCUS_ZOOM, peek과 같은 배율)하고,
+  // 여러 개면 전부 담기는 배율로 줌아웃한다(지도 앱의 "결과 전체 보기"와 같은
+  // 방식). 하이라이트가 꺼지면(검색어 지움 등) 켜기 전 카메라로 되돌아간다.
+  // bodies는 드래그 등으로 매 프레임 바뀔 수 있어 의존성에 그대로 두면 안 되므로
+  // (peekedId 이펙트와 같은 함정), 하이라이트 id 집합 자체가 바뀐 경우에만
+  // 실행되도록 정렬된 키로 비교한다.
+  const highlightCameraSnapshotRef = useRef<{ zoom: number; panX: number; panY: number } | null>(null)
+  const prevHighlightKeyRef = useRef<string | null>(null)
+  useEffect(() => {
+    const active = highlightedIds && highlightedIds.size > 0 ? highlightedIds : null
+    const key = active ? Array.from(active).sort().join(',') : null
+    if (key === prevHighlightKeyRef.current) return
+    prevHighlightKeyRef.current = key
+
+    if (active) {
+      if (!highlightCameraSnapshotRef.current) {
+        highlightCameraSnapshotRef.current = { zoom: rawZoom.get(), panX: rawPanX.get(), panY: rawPanY.get() }
+      }
+      const matched = bodies.filter((b) => active.has(b.movie.id))
+      if (matched.length === 0) return
+
+      const xs = matched.map((b) => b.x)
+      const ys = matched.map((b) => b.y)
+      const minX = Math.min(...xs)
+      const maxX = Math.max(...xs)
+      const minY = Math.min(...ys)
+      const maxY = Math.max(...ys)
+      const centerX = (minX + maxX) / 2
+      const centerY = (minY + maxY) / 2
+      const spanX = maxX - minX
+      const spanY = maxY - minY
+      // 별 자체 크기 + 제목 라벨이 잘리지 않을 여유.
+      const FIT_PADDING = 160
+      const fitZoomX = spanX > 0 ? viewport.width / (spanX + FIT_PADDING * 2) : MAX_ZOOM
+      const fitZoomY = spanY > 0 ? viewport.height / (spanY + FIT_PADDING * 2) : MAX_ZOOM
+      const zoomNew = Math.min(FOCUS_ZOOM, Math.max(MIN_ZOOM, Math.min(fitZoomX, fitZoomY)))
+      rawZoom.set(zoomNew)
+      rawPanX.set(-centerX * zoomNew)
+      rawPanY.set(-centerY * zoomNew)
+    } else if (highlightCameraSnapshotRef.current) {
+      // (2026-09-08) 하이라이트된 별을 클릭해서 열람하면(peek) 그 클릭이
+      // "검색창 바깥을 눌렀다"로도 잡혀 MovieSearch가 같은 타이밍에 검색어를
+      // 지운다 — highlightedIds가 null이 되면서 여기로 들어와, 방금 peek이
+      // 시작하며 그 별로 옮겨간 카메라를 검색 이전 위치로 도로 덮어써버렸다
+      // ("클릭해도 줌인 안 되고 검색만 취소된다"로 보였던 실사용 버그).
+      // peek이 막 시작된 경우엔 그 카메라 이동이 우선이어야 하므로 복원을
+      // 건너뛴다 — 스냅샷은 어차피 이 시점 이후로 다시 쓸 일이 없어 정리만 한다.
+      if (!peekedId) {
+        const snap = highlightCameraSnapshotRef.current
+        rawZoom.set(snap.zoom)
+        rawPanX.set(snap.panX)
+        rawPanY.set(snap.panY)
+      }
+      highlightCameraSnapshotRef.current = null
+    }
+  }, [highlightedIds, bodies, viewport, rawZoom, rawPanX, rawPanY, peekedId])
+
   // Ctrl(또는 트랙패드 핀치) + 휠로 확대/축소한다. 커서가 가리키는 지점을 기준으로
   // 확대되도록 해서, 확대하면서 특정 영화에 실제로 "다가갈" 수 있게 한다.
   // 브라우저 자체의 페이지 확대를 막으려면 React의 합성 이벤트가 아니라
