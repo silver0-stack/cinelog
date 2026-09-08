@@ -333,6 +333,12 @@ export function Entrance({ onEnter, userEmail }: Props) {
             히어로의 절제된 워드마크는 그대로 두고, 이미 옅게 처리된 푸터에만
             눈에 안 띄게 얹는다. */}
         <p className="text-[9px] font-light tracking-[0.5em] text-white/20">CINELOG · 시네로그</p>
+        <Link
+          href="/privacy"
+          className="text-[9px] font-light tracking-[var(--tk-20)] text-white/15 outline-none transition-colors duration-700 hover:text-white/40"
+        >
+          {t('footer.privacy')}
+        </Link>
       </footer>
       </div>
     </div>

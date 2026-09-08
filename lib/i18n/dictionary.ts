@@ -9,6 +9,7 @@ const ko: Dict = {
   // 공통 네비게이션 / 버튼
   'nav.guide': '가이드',
   'nav.search': '검색',
+  'footer.privacy': '개인정보처리방침',
   'addMenu.label': '추가',
   'addMenu.movie': '영화 추가',
   'addMenu.log': '영화 기록',
@@ -170,6 +171,7 @@ const ko: Dict = {
 const en: Dict = {
   'nav.guide': 'Guide',
   'nav.search': 'Search',
+  'footer.privacy': 'Privacy Policy',
   'addMenu.label': 'Add',
   'addMenu.movie': 'Add a movie',
   'addMenu.log': 'Log a movie',
