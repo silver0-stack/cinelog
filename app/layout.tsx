@@ -50,6 +50,11 @@ export async function generateMetadata(): Promise<Metadata> {
       title: isEn ? "CINELOG" : "CINELOG(시네로그)",
       description: isEn ? descriptionEn : description,
     },
+    // Search Console "URL 접두어" 속성의 HTML 태그 인증 — DNS 접근 없이 이
+    // 메타태그 하나로 소유권을 확인한다.
+    verification: {
+      google: "WTUJHfZzxVAo-kky9f3JBmigHP7FEchZ2qgzHKZGP9g",
+    },
   };
 }
 
