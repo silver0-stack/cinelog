@@ -11,11 +11,16 @@ import type { Movie } from '@/data/movies'
 export async function fetchCardMovie(slug: string): Promise<Movie | null> {
   const supabase = createPublicClient()
 
-  const { data: row } = await supabase.rpc('get_shared_movie_card', { p_slug: slug }).maybeSingle()
+  // 원래는 row를 먼저 기다렸다가 있을 때만 viewings를 조회했다 — slug가 잘못된
+  // 경우가 아니면(공유 링크로 들어오는 요청은 거의 항상 실제 있는 slug다)
+  // 순서대로 기다릴 이유가 없어서, 저장 버튼(download-image)의 체감 속도를
+  // 위해 두 조회를 동시에 보낸다. row가 없으면 viewings 결과는 그냥 버린다.
+  const [{ data: row }, { data: viewingRows }] = await Promise.all([
+    supabase.rpc('get_shared_movie_card', { p_slug: slug }).maybeSingle(),
+    supabase.rpc('get_shared_movie_card_viewings', { p_slug: slug }),
+  ])
 
   if (!row) return null
-
-  const { data: viewingRows } = await supabase.rpc('get_shared_movie_card_viewings', { p_slug: slug })
 
   return combineLoggedMovie(row as LoggedMovieRow, (viewingRows ?? []) as ViewingRow[])
 }

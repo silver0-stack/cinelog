@@ -26,6 +26,29 @@ export function MovieShareCard({ movie, slug }: { movie: Movie; slug: string }) 
   // 포스터 경로는 있는데 실제 로드가 실패하면(포스터가 내려갔거나 네트워크
   // 오류) 브라우저 기본 깨진 이미지 아이콘 대신 그냥 "포스터 없음"으로 대체한다.
   const [posterFailed, setPosterFailed] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  // 그냥 <a href download>였을 땐 눌러도 서버가 이미지를 다 그릴 때까지(몇 초)
+  // 화면에 아무 반응이 없어서 "멈췄나" 싶게 느껴졌다 — fetch로 직접 받아서
+  // blob으로 내려주는 방식으로 바꾸고, 그 사이엔 "만드는 중"을 보여준다.
+  async function handleSave() {
+    setSaving(true)
+    try {
+      const res = await fetch(`/m/${slug}/download-image`)
+      if (!res.ok) return
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${movie.title}.png`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } finally {
+      setSaving(false)
+    }
+  }
   const viewings = movie.viewings ?? []
   // movie.rating/note는 최신 감상(viewings[0])과 같은 값이라(데이터 모델 규칙),
   // 관람일도 같은 최신 감상의 날짜를 짝지어야 한 줄 안에서 값이 안 어긋난다.
@@ -124,13 +147,14 @@ export function MovieShareCard({ movie, slug }: { movie: Movie; slug: string }) 
 
       <div className="flex items-center justify-between px-6 py-3">
         <span className="text-[9px] tracking-[var(--tk-15)] text-white/20">{t('ticket.notRealTicket')}</span>
-        <a
-          href={`/m/${slug}/download-image`}
-          download={`${movie.title}.png`}
-          className="text-[10px] tracking-[var(--tk-35)] text-white/30 outline-none transition-colors duration-500 hover:text-white/60"
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="text-[10px] tracking-[var(--tk-35)] text-white/30 outline-none transition-colors duration-500 hover:text-white/60 disabled:text-white/15"
         >
-          {t('ticket.saveImage')}
-        </a>
+          {saving ? t('ticket.savingImage') : t('ticket.saveImage')}
+        </button>
       </div>
     </div>
   )
