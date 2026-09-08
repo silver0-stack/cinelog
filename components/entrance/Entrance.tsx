@@ -35,11 +35,11 @@ const ENTRANCE_COPY: Record<
 > = {
   ko: {
     tagline: '영화와 영화 사이, 당신만의 우주',
-    descriptionLines: ['영화 한 편이 하나의 우주가 된다.', '감독과 장르와 정서로 이어진 영화들이,', '서로를 당기며 우주를 이룬다.'],
+    descriptionLines: ['영화 한 편이 하나의 우주가 된다.', '감독과 장르로 가까워지기도 하고,', '네 손으로 직접 배치할 수도 있어.'],
     howToTitle: '어떻게 쓰나요',
     steps: [
       { n: '01', t: '기록한다', d: '영화를 보고 평점과 메모를 남겨.' },
-      { n: '02', t: '우주가 된다', d: '감독, 장르, 정서로 이어진 영화들이 서로 가까워져.' },
+      { n: '02', t: '우주가 된다', d: '감독, 장르로 자연스럽게 모이거나, 네가 직접 배치하고 이름 붙일 수 있어.' },
       { n: '03', t: '탐색한다', d: '확대하고 영화를 눌러 관계를 발견해.' },
       { n: '04', t: '공유한다', d: '우주 전체나 영화 한 편을 링크로 보여줘.' },
     ],
@@ -61,13 +61,13 @@ const ENTRANCE_COPY: Record<
     tagline: 'A universe between movies, all your own',
     descriptionLines: [
       'Every film becomes a universe.',
-      'Movies linked by director, genre, and mood',
-      'pull toward each other to form one.',
+      'Movies drift together by director and genre,',
+      'or you can place them exactly where you want.',
     ],
     howToTitle: 'How it works',
     steps: [
       { n: '01', t: 'Log', d: 'Rate it and jot a note after you watch.' },
-      { n: '02', t: 'It becomes a universe', d: 'Movies linked by director, genre, and mood drift closer together.' },
+      { n: '02', t: 'It becomes a universe', d: 'Movies drift closer by director and genre — or you can place and name them yourself.' },
       { n: '03', t: 'Explore', d: 'Zoom in and open a movie to discover its connections.' },
       { n: '04', t: 'Share', d: 'Send a link to your whole universe, or just one movie.' },
     ],
