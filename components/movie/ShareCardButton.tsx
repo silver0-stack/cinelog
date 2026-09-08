@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { track } from '@vercel/analytics'
 import { getOrCreateMovieCardSlug } from '@/lib/movieShareLinks'
+import { copyToClipboard } from '@/lib/clipboard'
 import { CopyIcon } from '@/components/icons/CopyIcon'
 import { CheckIcon } from '@/components/icons/CheckIcon'
 import { useLocale } from '@/components/i18n/LocaleProvider'
@@ -25,13 +26,25 @@ export function ShareCardButton({ loggedMovieId, initialUrl = null, variant = 't
   const [url, setUrl] = useState<string | null>(initialUrl)
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [copyFailed, setCopyFailed] = useState(false)
+
+  // 클립보드 복사는 문서가 포커스를 잃은 순간(다른 탭 전환 등) 조용히 실패할
+  // 수 있다(lib/clipboard.ts) — 에러를 던지는 대신 "복사됨" 대신 잠깐 실패를
+  // 알려주고, url은 이미 만들어져 있으니 다시 누르면 그냥 복사만 재시도한다.
+  function markCopyFailed() {
+    setCopyFailed(true)
+    window.setTimeout(() => setCopyFailed(false), 1800)
+  }
 
   async function handleClick() {
     if (url) {
-      await navigator.clipboard.writeText(url)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1500)
-      track('share_movie_card', { action: 'copied' })
+      if (await copyToClipboard(url)) {
+        setCopied(true)
+        window.setTimeout(() => setCopied(false), 1500)
+        track('share_movie_card', { action: 'copied' })
+      } else {
+        markCopyFailed()
+      }
       return
     }
 
@@ -40,10 +53,13 @@ export function ShareCardButton({ loggedMovieId, initialUrl = null, variant = 't
       const { slug, created } = await getOrCreateMovieCardSlug(loggedMovieId)
       const newUrl = `${window.location.origin}/m/${slug}`
       setUrl(newUrl)
-      await navigator.clipboard.writeText(newUrl)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1500)
-      track('share_movie_card', { action: created ? 'created' : 'copied' })
+      if (await copyToClipboard(newUrl)) {
+        setCopied(true)
+        window.setTimeout(() => setCopied(false), 1500)
+        track('share_movie_card', { action: created ? 'created' : 'copied' })
+      } else {
+        markCopyFailed()
+      }
     } finally {
       setLoading(false)
     }
@@ -56,7 +72,7 @@ export function ShareCardButton({ loggedMovieId, initialUrl = null, variant = 't
         onClick={handleClick}
         disabled={loading}
         aria-label={url ? t('shareCard.copyLink') : t('shareCard.share')}
-        title={copied ? t('shareCard.copied') : url ? t('shareCard.copyLink') : t('shareCard.share')}
+        title={copyFailed ? t('shareCard.copyFailed') : copied ? t('shareCard.copied') : url ? t('shareCard.copyLink') : t('shareCard.share')}
         className="-m-1.5 flex items-center justify-center p-1.5 text-white/50 outline-none transition-colors duration-500 hover:text-white/85 disabled:text-white/20"
       >
         {copied ? <CheckIcon /> : <CopyIcon />}
@@ -68,7 +84,7 @@ export function ShareCardButton({ loggedMovieId, initialUrl = null, variant = 't
     return (
       <button type="button" onClick={handleClick} className={actionClass}>
         {copied ? <CheckIcon /> : <CopyIcon />}
-        {copied ? t('shareCard.copied') : t('shareCard.copyLink')}
+        {copyFailed ? t('shareCard.copyFailed') : copied ? t('shareCard.copied') : t('shareCard.copyLink')}
       </button>
     )
   }

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { track } from '@vercel/analytics'
 import { getOrCreateShareSlug } from '@/lib/shareLinks'
+import { copyToClipboard } from '@/lib/clipboard'
 import { CopyIcon } from '@/components/icons/CopyIcon'
 import { CheckIcon } from '@/components/icons/CheckIcon'
 import { navLinkClass } from '@/lib/uiStyles'
@@ -19,6 +20,7 @@ export function ShareButton({ initialUrl = null }: { initialUrl?: string | null 
   const [url, setUrl] = useState<string | null>(initialUrl)
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [copyFailed, setCopyFailed] = useState(false)
   const [showHint, setShowHint] = useState(false)
 
   function markCopied() {
@@ -35,14 +37,25 @@ export function ShareButton({ initialUrl = null }: { initialUrl?: string | null 
     }
   }
 
+  // 클립보드 복사는 문서가 포커스를 잃은 순간(다른 탭 전환 등) 조용히 실패할
+  // 수 있다(lib/clipboard.ts) — 에러를 던지는 대신 "복사됨" 대신 잠깐 실패를
+  // 알려주고, url은 이미 만들어져 있으니 다시 누르면 그냥 복사만 재시도한다.
+  function markCopyFailed() {
+    setCopyFailed(true)
+    window.setTimeout(() => setCopyFailed(false), 1800)
+  }
+
   // 링크 자체(URL 텍스트)를 라벨로 쓰지 않는다 — 카드 공유(ShareCardButton)와
   // 같은 이유다: 그냥 텍스트로만 있으면 "이미 만들어진 링크를 보여주는 것"인지
   // "눌러야 하는 버튼"인지 구분이 안 됐다. 아이콘 + 고정 라벨로 통일한다.
   async function handleClick() {
     if (url) {
-      await navigator.clipboard.writeText(url)
-      markCopied()
-      track('share_universe', { action: 'copied' })
+      if (await copyToClipboard(url)) {
+        markCopied()
+        track('share_universe', { action: 'copied' })
+      } else {
+        markCopyFailed()
+      }
       return
     }
 
@@ -51,9 +64,12 @@ export function ShareButton({ initialUrl = null }: { initialUrl?: string | null 
       const { slug, created } = await getOrCreateShareSlug()
       const newUrl = `${window.location.origin}/u/${slug}`
       setUrl(newUrl)
-      await navigator.clipboard.writeText(newUrl)
-      markCopied()
-      track('share_universe', { action: created ? 'created' : 'copied' })
+      if (await copyToClipboard(newUrl)) {
+        markCopied()
+        track('share_universe', { action: created ? 'created' : 'copied' })
+      } else {
+        markCopyFailed()
+      }
     } finally {
       setLoading(false)
     }
@@ -66,10 +82,12 @@ export function ShareButton({ initialUrl = null }: { initialUrl?: string | null 
           type="button"
           onClick={handleClick}
           className={`flex items-center gap-1 ${navLinkClass}`}
-          aria-label={copied ? t('share.copied') : t('share.copyLink')}
+          aria-label={copyFailed ? t('share.copyFailed') : copied ? t('share.copied') : t('share.copyLink')}
         >
           {copied ? <CheckIcon /> : <CopyIcon />}
-          <span className="hidden sm:inline">{copied ? t('share.copied') : t('share.copyLink')}</span>
+          <span className="hidden sm:inline">
+            {copyFailed ? t('share.copyFailed') : copied ? t('share.copied') : t('share.copyLink')}
+          </span>
         </button>
         {showHint && (
           <p

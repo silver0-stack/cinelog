@@ -6,9 +6,12 @@ export const runtime = 'nodejs'
 // "이미지 저장" 버튼으로 직접 다운로드해서 인스타그램 등에 올리는 용도다.
 // 링크만 공유해서는 미리보기가 안 뜨는 플랫폼(인스타그램 스토리 등)은
 // 사람이 이 이미지를 저장해서 직접 올리는 수밖에 없다 — 그래서 특정
-// 플랫폼 슬롯(og:image의 1200×630 가로)이 아니라, 스토리/피드 어디에
-// 올려도 무난한 1080×1080 정사각형으로 만든다.
-const size = { width: 1080, height: 1080 }
+// 플랫폼 슬롯(og:image의 1200×630 가로)이 아니라 스토리/피드 어디에 올려도
+// 무난한 비율로 만든다. 원래는 1080×1080 정사각형이었는데, 실제로 저장해서
+// 보니 정사각형이라 영화표 느낌이 안 살았다 — 인스타 피드가 잘림 없이 보여주는
+// 최대 세로 비율인 4:5(1080×1350)로 바꿨다. 스토리(9:16)에 올리면 위아래에
+// 여백이 붙지만(인스타가 자동으로 처리) 피드에서는 이 비율 그대로 꽉 찬다.
+const size = { width: 1080, height: 1350 }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -59,22 +62,22 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
             <div style={{ display: 'flex', fontSize: 14, letterSpacing: 2, opacity: 0.3 }}>No.{ticketNumber(slug)}</div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '36px 44px', ...rule }}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 44px', ...rule }}>
             {posterDataUri ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={posterDataUri}
                 alt=""
-                width={240}
-                height={340}
+                width={300}
+                height={430}
                 style={{ objectFit: 'cover', border: '1px solid rgba(255,255,255,0.1)' }}
               />
             ) : (
               <div
                 style={{
                   display: 'flex',
-                  width: 240,
-                  height: 340,
+                  width: 300,
+                  height: 430,
                   alignItems: 'center',
                   justifyContent: 'center',
                   border: '1px solid rgba(255,255,255,0.1)',
@@ -86,10 +89,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
           </div>
 
           <div
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '30px 44px', ...rule }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '38px 44px', ...rule }}
           >
-            <div style={{ display: 'flex', fontSize: 34, letterSpacing: 2, opacity: 0.92 }}>{movie?.title ?? ''}</div>
-            <div style={{ display: 'flex', fontSize: 17, letterSpacing: 4, opacity: 0.4 }}>
+            <div style={{ display: 'flex', fontSize: 38, letterSpacing: 2, opacity: 0.92 }}>{movie?.title ?? ''}</div>
+            <div style={{ display: 'flex', fontSize: 18, letterSpacing: 4, opacity: 0.4 }}>
               {movie ? `${movie.year} · ${movie.director}` : ''}
             </div>
           </div>
@@ -98,9 +101,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
             style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: 14,
-              padding: '26px 44px',
-              fontSize: 15,
+              gap: 18,
+              padding: '34px 44px',
+              fontSize: 16,
               letterSpacing: 1,
               ...(noteText ? rule : {}),
             }}
@@ -126,8 +129,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
           </div>
 
           {noteText && (
-            <div style={{ display: 'flex', padding: '26px 44px' }}>
-              <div style={{ display: 'flex', fontSize: 16, lineHeight: 1.6, opacity: 0.55 }}>{noteText}</div>
+            <div style={{ display: 'flex', padding: '32px 44px' }}>
+              <div style={{ display: 'flex', fontSize: 17, lineHeight: 1.6, opacity: 0.55 }}>{noteText}</div>
             </div>
           )}
         </div>

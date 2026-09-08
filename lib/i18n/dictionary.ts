@@ -63,12 +63,14 @@ const ko: Dict = {
   'share.copied': '복사됨',
   'share.creating': '만드는 중',
   'share.hint': '이 링크를 보내서 네 우주를 보여줘봐',
+  'share.copyFailed': '복사 실패, 다시 눌러줘',
 
   // 영화 카드 공유
   'shareCard.copyLink': '카드 링크 복사',
   'shareCard.share': '영화 카드 공유',
   'shareCard.copied': '복사됨',
   'shareCard.creating': '만드는 중',
+  'shareCard.copyFailed': '복사 실패, 다시 눌러줘',
   'ticket.title': '영화입장권',
   'ticket.watchedAt': '관람일',
   'ticket.rating': '평점',
@@ -218,11 +220,13 @@ const en: Dict = {
   'share.copied': 'Copied',
   'share.creating': 'Creating',
   'share.hint': 'Send this link to show off your universe',
+  'share.copyFailed': "Couldn't copy, try again",
 
   'shareCard.copyLink': 'Copy card link',
   'shareCard.share': 'Share movie card',
   'shareCard.copied': 'Copied',
   'shareCard.creating': 'Creating',
+  'shareCard.copyFailed': "Couldn't copy, try again",
   'ticket.title': 'ADMIT ONE',
   'ticket.watchedAt': 'Watched',
   'ticket.rating': 'Rating',
