@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { motion, useReducedMotion } from 'framer-motion'
 import { EASE_SLOW } from '@/lib/motion'
-import { secondaryNavLinkClass } from '@/lib/uiStyles'
+import { secondaryNavLinkClass, navLinkClass, primaryNavLinkClass } from '@/lib/uiStyles'
 import { AccountMenu } from '@/components/archive/AccountMenu'
 import { useLocale } from '@/components/i18n/LocaleProvider'
 import { LocaleToggle, useLocaleMenuAction } from '@/components/i18n/LocaleToggle'
@@ -188,26 +188,16 @@ export function Entrance({ onEnter, userEmail }: Props) {
             메인 액션처럼 읽혀서 그걸 누르고, 그 아래 데모 우주가 있다는 건 끝까지
             모르고 지나갔다. 로그인을 강제하지 않는다는 방향에 맞춰 데모를
             시각적으로 더 우선하는 쪽으로 둔다. */}
+        {/* (2026-09-08) 이전엔 이 둘도 순수 텍스트라 처음 보는 사람에게 "눌러야
+            하는 버튼"이라는 형태 신호가 없었다 — 이미 검증된 pill 버튼 스타일
+            (navLinkClass/primaryNavLinkClass, 2026-09-06 실사용자 테스트에서
+            나온 결론)을 그대로 재사용한다. 위계(진짜 전환 액션 vs 데모 체험)는
+            새로 만들지 않고 기존 밝기 위계를 채움 유무로 옮겼을 뿐이다. */}
         <div className="flex flex-col items-center gap-6 sm:flex-row sm:gap-12">
-          <button
-            type="button"
-            onClick={onEnter}
-            className={
-              userEmail
-                ? 'text-xs font-light tracking-[var(--tk-40)] text-white/45 outline-none transition-colors duration-700 hover:text-white/75 focus-visible:text-white/75'
-                : 'text-sm font-light tracking-[var(--tk-40)] text-white/70 outline-none transition-colors duration-700 hover:text-white/95 focus-visible:text-white/95'
-            }
-          >
+          <button type="button" onClick={onEnter} className={userEmail ? navLinkClass : primaryNavLinkClass}>
             {copy.browseDemoLabel}
           </button>
-          <Link
-            href={primaryCtaHref}
-            className={
-              userEmail
-                ? 'text-sm font-light tracking-[var(--tk-40)] text-white/70 outline-none transition-colors duration-700 hover:text-white/95 focus-visible:text-white/95'
-                : 'text-xs font-light tracking-[var(--tk-40)] text-white/45 outline-none transition-colors duration-700 hover:text-white/75 focus-visible:text-white/75'
-            }
-          >
+          <Link href={primaryCtaHref} className={userEmail ? primaryNavLinkClass : navLinkClass}>
             {primaryCtaLabel}
           </Link>
         </div>
@@ -287,10 +277,9 @@ export function Entrance({ onEnter, userEmail }: Props) {
         <p className="max-w-xs text-[13px] font-light leading-loose tracking-[var(--tk-10)] text-white/60">
           {copy.finalCtaSentence}
         </p>
-        <Link
-          href={primaryCtaHref}
-          className="animate-pulse-slow text-xs font-light tracking-[var(--tk-50)] text-white/50 outline-none transition-colors duration-700 hover:text-white/85 focus-visible:text-white/85"
-        >
+        {/* 채워진 pill 자체가 이미 화면에서 가장 눈에 띄는 요소라 pulse로 더
+            끌 필요가 없다 — pulse는 옅은 텍스트 링크였을 때 시선을 끌던 장치였다. */}
+        <Link href={primaryCtaHref} className={primaryNavLinkClass}>
           {primaryCtaLabel}
         </Link>
       </Section>
