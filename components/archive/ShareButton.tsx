@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { track } from '@vercel/analytics'
 import { getOrCreateShareSlug } from '@/lib/shareLinks'
 import { CopyIcon } from '@/components/icons/CopyIcon'
 import { CheckIcon } from '@/components/icons/CheckIcon'
@@ -41,16 +42,18 @@ export function ShareButton({ initialUrl = null }: { initialUrl?: string | null 
     if (url) {
       await navigator.clipboard.writeText(url)
       markCopied()
+      track('share_universe', { action: 'copied' })
       return
     }
 
     setLoading(true)
     try {
-      const slug = await getOrCreateShareSlug()
+      const { slug, created } = await getOrCreateShareSlug()
       const newUrl = `${window.location.origin}/u/${slug}`
       setUrl(newUrl)
       await navigator.clipboard.writeText(newUrl)
       markCopied()
+      track('share_universe', { action: created ? 'created' : 'copied' })
     } finally {
       setLoading(false)
     }

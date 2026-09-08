@@ -43,6 +43,7 @@ yarn-error.log*
 # claude code
 .claude/
 CLAUDE.md
+viral-prep-claude-code-prompts.md
 
 # typescript
 *.tsbuildinfo

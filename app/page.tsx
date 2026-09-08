@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { HomeRitual } from '@/components/entrance/HomeRitual'
+import { UtmTracker } from '@/components/analytics/UtmTracker'
 
 const isSupabaseConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -13,7 +14,12 @@ const isSupabaseConfigured = Boolean(
 export default async function RootPage() {
   const userEmail = isSupabaseConfigured ? await getUserEmail() : null
 
-  return <HomeRitual userEmail={userEmail} />
+  return (
+    <>
+      <UtmTracker />
+      <HomeRitual userEmail={userEmail} />
+    </>
+  )
 }
 
 async function getUserEmail(): Promise<string | null> {

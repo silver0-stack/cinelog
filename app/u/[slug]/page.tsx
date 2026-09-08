@@ -1,55 +1,39 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
-import { unstable_cache } from 'next/cache'
-import { createPublicClient } from '@/lib/supabase/public'
+import { getSharedUniverseData } from './_data'
 import { SharedUniverseShell } from '@/components/universe/SharedUniverseShell'
-import { combineLoggedMovies, type LoggedMovieRow, type ViewingRow } from '@/lib/loggedMovies'
-import { attachEditorialConnections, type EditorialConnectionRow } from '@/lib/editorialConnections'
+import { combineLoggedMovies } from '@/lib/loggedMovies'
+import { attachEditorialConnections } from '@/lib/editorialConnections'
 import { combineUniverseTexts, type UniverseText } from '@/lib/universeTexts'
 import { summarizeUniverse, rewatchedMovies } from '@/lib/universeInsights'
 import { secondaryNavLinkClass as loginLinkClass } from '@/lib/uiStyles'
 import { getLocale } from '@/lib/i18n/getLocale'
 import { t } from '@/lib/i18n/dictionary'
 
-// revalidate route 설정은 fetch() 호출에만 적용된다 — Supabase 클라이언트는
-// fetch를 캐시 옵션 없이 쓰기 때문에 이 값 하나만으로는 아무것도 캐시되지
-// 않는다(Next 공식 문서: "unstable_cache allows you to cache the result of
-// database queries and other async functions that don't use fetch"). 그래서
-// 실제 조회를 unstable_cache로 직접 감싼다 — 바이럴로 같은 slug에 요청이
-// 몰릴 때 Supabase를 매번 다시 안 부르는 게 핵심. slug별로 캐시되고, 1분
-// 정도 지연 반영되는 건 이 페이지 특성상 체감하기 어렵다.
-const getSharedUniverseData = unstable_cache(
-  async (slug: string) => {
-    const supabase = createPublicClient()
+// opengraph-image.tsx가 같은 데이터로 미리보기 카드를 그려준다 — 여기서도
+// 그 카드에 쓰이는 요약(편수/대표 인사이트)과 같은 문구를 그대로 쓴다.
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const result = await getSharedUniverseData(slug)
+  const rows = result?.rows ?? []
 
-    const { data: link } = await supabase.from('share_links').select('user_id').eq('slug', slug).maybeSingle()
-    if (!link) return null
+  if (!result || rows.length === 0) return { title: 'CINELOG' }
 
-    const { data } = await supabase.rpc('get_shared_universe_movies', { p_slug: slug })
-    const rows = (data ?? []) as LoggedMovieRow[]
-    if (rows.length === 0)
-      return {
-        rows: [] as LoggedMovieRow[],
-        viewingRows: [] as ViewingRow[],
-        connectionRows: [] as EditorialConnectionRow[],
-        textRows: [] as { id: string; content: string; pos_x: number; pos_y: number; size: number }[],
-      }
+  const movies = combineLoggedMovies(rows, result.viewingRows)
+  const insights = summarizeUniverse(movies)
+  const headline = insights[0]
+  const title = `${movies.length}편의 영화가 이룬 우주 · CINELOG`
+  const description = [headline ? `${headline.label} · ${headline.value}` : null, `${movies.length}편의 영화`]
+    .filter(Boolean)
+    .join(' · ')
 
-    const [{ data: viewingData }, { data: connectionData }, { data: textData }] = await Promise.all([
-      supabase.rpc('get_shared_universe_viewings', { p_slug: slug }),
-      supabase.rpc('get_shared_universe_connections', { p_slug: slug }),
-      supabase.rpc('get_shared_universe_texts', { p_slug: slug }),
-    ])
-
-    return {
-      rows,
-      viewingRows: (viewingData ?? []) as ViewingRow[],
-      connectionRows: (connectionData ?? []) as EditorialConnectionRow[],
-      textRows: (textData ?? []) as { id: string; content: string; pos_x: number; pos_y: number; size: number }[],
-    }
-  },
-  ['shared-universe'],
-  { revalidate: 60 },
-)
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: 'website' },
+    twitter: { card: 'summary_large_image', title, description },
+  }
+}
 
 // 비동기 공유 링크의 읽기 전용 뷰(P2-8). 로그인 없이도 볼 수 있고, 드래그로
 // 관계를 조정하는 건 여기서는 안 된다 — editable을 아예 안 켠다.

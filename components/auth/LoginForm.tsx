@@ -1,6 +1,7 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect } from 'react'
+import { track } from '@vercel/analytics'
 import { sendMagicLink } from '@/app/login/actions'
 import { useLocale } from '@/components/i18n/LocaleProvider'
 import type { Locale } from '@/lib/i18n/locale'
@@ -40,6 +41,13 @@ export function LoginForm({ authError = false }: { authError?: boolean }) {
   const { locale, t } = useLocale()
   const copy = COPY[locale]
   const [state, formAction, pending] = useActionState(sendMagicLink, null)
+
+  // "가입 완료"는 매직링크를 눌러야 알 수 있어서(app/auth/callback/route.ts) 여기서는
+  // "링크 요청"까지만 잡는다 — 이 둘 사이에서 얼마나 이탈하는지가 문서 4번이 원한
+  // 퍼널의 첫 번째 구간이다.
+  useEffect(() => {
+    if (state && 'sent' in state) track('login_requested')
+  }, [state])
 
   if (state && 'sent' in state) {
     return (

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { track } from '@vercel/analytics'
 import { getOrCreateMovieCardSlug } from '@/lib/movieShareLinks'
 import { CopyIcon } from '@/components/icons/CopyIcon'
 import { CheckIcon } from '@/components/icons/CheckIcon'
@@ -30,17 +31,19 @@ export function ShareCardButton({ loggedMovieId, initialUrl = null, variant = 't
       await navigator.clipboard.writeText(url)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1500)
+      track('share_movie_card', { action: 'copied' })
       return
     }
 
     setLoading(true)
     try {
-      const slug = await getOrCreateMovieCardSlug(loggedMovieId)
+      const { slug, created } = await getOrCreateMovieCardSlug(loggedMovieId)
       const newUrl = `${window.location.origin}/m/${slug}`
       setUrl(newUrl)
       await navigator.clipboard.writeText(newUrl)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1500)
+      track('share_movie_card', { action: created ? 'created' : 'copied' })
     } finally {
       setLoading(false)
     }
