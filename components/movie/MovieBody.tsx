@@ -271,8 +271,21 @@ export function MovieBody({
   const culled = isOffscreen && !peeked
 
   // 포스터 경로는 있는데 실제 로드가 실패하면 브라우저 기본 깨진 이미지 아이콘
-  // 대신 그냥 안 보이게 한다.
+  // 대신 그냥 안 보이게 한다. 실패는 대부분 TMDB CDN에 80장 가까이를 한꺼번에
+  // 요청할 때 생기는 일시적인 타임아웃이라(포스터가 실제로 없는 경우가 아니라),
+  // 한 번 실패했다고 바로 포기하지 않고 캐시 버스터를 붙여 한 번 더 시도한다 —
+  // 이게 없으면 새로고침해야만 다시 뜨는 걸 사용자가 실제로 겪었다(2026-09-08).
+  const [posterRetried, setPosterRetried] = useState(false)
   const [posterFailed, setPosterFailed] = useState(false)
+  const posterSrc = `https://image.tmdb.org/t/p/w154${movie.posterPath}${posterRetried ? '?retry=1' : ''}`
+
+  function handlePosterError() {
+    if (posterRetried) {
+      setPosterFailed(true)
+      return
+    }
+    setPosterRetried(true)
+  }
   // 줌인해도 감상 이력/액션 패널의 글자 크기는 항상 일정하게 유지한다(지도
   // 라이브러리가 마커 라벨에 흔히 쓰는 역스케일 패턴) — 포스터/제목은 줌을
   // 그대로 따라 커지되, 텍스트가 많은 패널까지 커지면 확대할수록 오히려 읽기
@@ -465,7 +478,7 @@ export function MovieBody({
                     읽고 그냥 흐리게 "그리기"만 하니 문제없다. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <motion.img
-                  src={`https://image.tmdb.org/t/p/w154${movie.posterPath}`}
+                  src={posterSrc}
                   alt=""
                   aria-hidden="true"
                   draggable={false}
@@ -481,11 +494,11 @@ export function MovieBody({
                     텍스트(일반 div라 브라우저 기본 드래그 대상이 아님)로 하면
                     멀쩡했던 이유이기도 하다. */}
                 <motion.img
-                  src={`https://image.tmdb.org/t/p/w154${movie.posterPath}`}
+                  src={posterSrc}
                   alt=""
                   loading="lazy"
                   draggable={false}
-                  onError={() => setPosterFailed(true)}
+                  onError={handlePosterError}
                   className="relative h-full w-full rounded-sm object-cover"
                   style={{ opacity: posterOpacity }}
                 />

@@ -1,8 +1,8 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import Link from 'next/link'
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion, useMotionValue, useReducedMotion, useSpring } from 'framer-motion'
 import { EASE_SLOW } from '@/lib/motion'
 import { secondaryNavLinkClass, navLinkClass, primaryNavLinkClass } from '@/lib/uiStyles'
 import { AccountMenu } from '@/components/archive/AccountMenu'
@@ -140,8 +140,51 @@ export function Entrance({ onEnter, userEmail }: Props) {
   const primaryCtaLabel = userEmail ? t('nav.goToMyUniverse') : t('nav.createMyUniverse')
   const primaryCtaHref = userEmail ? '/archive' : '/login'
 
+  // 스크롤할수록 배경이 아주 천천히 확대되어 "우주 속으로 계속 들어가는" 감각을
+  // 준다 — 각 섹션이 스크롤에 맞춰 떠오르는 것과 같은 "스크롤=탐험" 서사를
+  // 배경까지 확장한 것. 실제 스크롤은 이 컴포넌트의 부모(HomeRitual의
+  // overflow-y-auto 레이어)에서 일어나서 window scroll이 아니라 그 부모
+  // 엘리먼트의 scrollTop을 직접 구독해야 한다. useSpring으로 완만하게 뒤따라오게
+  // 해서 스크롤 자체는 즉각 반응해도 배경은 무겁고 느리게 움직이게 한다(섹션 11의
+  // "느리고 무거운 움직임을 선호" 원칙과 동일).
+  const rootRef = useRef<HTMLDivElement>(null)
+  const rawBgScale = useMotionValue(1)
+  const bgScale = useSpring(rawBgScale, { stiffness: 55, damping: 20, mass: 1 })
+  const reducedMotion = useReducedMotion()
+
+  useEffect(() => {
+    if (reducedMotion) return
+    const parent = rootRef.current?.parentElement
+    if (!parent) return
+    const scrollEl: HTMLElement = parent
+
+    function handleScroll() {
+      const max = scrollEl.scrollHeight - scrollEl.clientHeight
+      const progress = max > 0 ? Math.min(1, Math.max(0, scrollEl.scrollTop / max)) : 0
+      rawBgScale.set(1 + progress * 0.45)
+    }
+
+    handleScroll()
+    scrollEl.addEventListener('scroll', handleScroll, { passive: true })
+    return () => scrollEl.removeEventListener('scroll', handleScroll)
+  }, [rawBgScale, reducedMotion])
+
   return (
-    <div className="flex min-h-full w-full flex-col items-center bg-black">
+    <div ref={rootRef} className="relative flex min-h-full w-full flex-col items-center bg-black">
+      {/* (2026-09-08) 데모 우주를 축소했을 때 나오는, 포스터가 부드러운 빛
+          얼룩으로 보이는 상태를 정적 이미지 한 장으로 캡처해 아주 어둡게 깐
+          배경이다 — 라이브로 렌더링하지 않는다(로그인 전 첫 화면에서 TMDB
+          요청/애니메이션 비용을 또 들일 이유가 없다). CLAUDE.md 9번이 피하라는
+          "수많은 별 효과"와 겹쳐 보이지 않도록, 밝기/채도를 낮추고 블러를 세게
+          줘서 제목 텍스트가 안 읽히는 수준까지 지웠다 — 장식이 아니라 질감으로만
+          존재해야 한다. 스크롤에 따라 아주 천천히 확대되는 것만 위에서 추가한다. */}
+      <motion.div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 z-0 bg-cover bg-center opacity-45"
+        style={{ backgroundImage: 'url(/landing-universe-bg.jpg)', scale: bgScale }}
+      />
+
+      <div className="relative z-10 flex w-full flex-col items-center">
       {/* 스크롤해도 항상 접근 가능한 진입로 — 로그인 안 했으면 로그인으로, 이미
           로그인했으면 계정 메뉴(내 우주 가기/로그아웃)로 바뀐다. 언어 토글은
           계정 메뉴가 있으면(로그인 상태) 그 안으로 들어가고, 없으면(로그인 전)
@@ -291,6 +334,7 @@ export function Entrance({ onEnter, userEmail }: Props) {
             눈에 안 띄게 얹는다. */}
         <p className="text-[9px] font-light tracking-[0.5em] text-white/20">CINELOG · 시네로그</p>
       </footer>
+      </div>
     </div>
   )
 }
