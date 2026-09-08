@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { FaqAccordion } from '@/components/guide/FaqAccordion'
 import { HelpIcon } from '@/components/icons/HelpIcon'
@@ -21,26 +20,26 @@ const CONTACT_EMAIL = 'dev.choiey@gmail.com'
 const rowClass =
   'flex w-full items-center justify-between gap-3 border-b border-white/10 py-4 text-left text-sm font-light tracking-[var(--tk-15)] text-white/70 outline-none transition-colors duration-300 hover:text-white/95'
 
-// 계정 아이콘 → 드롭다운의 "설정" → 이 페이지. 문의하기/언어/로그아웃을 같은
+// 계정 아이콘 → 드롭다운의 "설정" → 이 화면. 문의하기/언어/로그아웃을 같은
 // 레벨의 메뉴 항목으로 나란히 둔다(2026-09-08, 사용자 피드백 — 처음엔 문의하기
 // 안에 언어/로그아웃까지 다 욱여넣었더니 위계가 안 읽혔다). "문의하기"만 누르면
 // 그 자리에서 펼쳐져(접고 펴는 형식 유지) FAQ 아코디언 + 이메일 문의 버튼을
 // 보여주고, 언어/로그아웃은 누르는 즉시 실행되는 단순 액션이다.
-export function SettingsShell({ email }: { email: string }) {
+//
+// (2026-09-08) 원래 별도 라우트(/archive/settings)였다 — /archive가 매번
+// Supabase에서 새로 불러오는 force-dynamic 페이지라, 설정에서 뒤로 돌아올
+// 때마다(router.back()을 써도) 우주 전체가 다시 로드되는 느낌이었다. "+ 기록"
+// 모달과 같은 이유로 ArchiveShell 위에 뜨는 오버레이로 옮겼다 — 우주 자체를
+// 벗어나지 않으니 닫을 때 다시 불러올 것도 없다. onClose를 라우팅 대신 받는다.
+export function SettingsShell({ email, onClose }: { email: string; onClose: () => void }) {
   const { locale, t } = useLocale()
-  const router = useRouter()
   const [contactOpen, setContactOpen] = useState(false)
   const localeAction = useLocaleMenuAction()
   const items = [...UNIVERSE_QA[locale], ...ARCHIVE_QA[locale]]
 
   return (
     <main className="themed-scroll relative min-h-dvh w-screen overflow-y-auto bg-black px-6 py-16">
-      {/* /archive는 매번 Supabase에서 영화/감상/관계를 새로 불러오는 force-dynamic
-          서버 컴포넌트라(app/archive/page.tsx), <Link href="/archive">로 "새로"
-          이동하면 그 로드가 다시 돈다 — 뒤로 돌아가는 것뿐인데 몇 초씩 걸리는
-          느낌을 준다는 피드백(2026-09-08). router.back()은 브라우저 히스토리를
-          되짚어가는 것이라 이 문제를 피한다. */}
-      <button type="button" onClick={() => router.back()} className={`absolute left-6 top-6 ${secondaryNavLinkClass}`}>
+      <button type="button" onClick={onClose} className={`absolute left-6 top-6 ${secondaryNavLinkClass}`}>
         {t('nav.back')}
       </button>
 

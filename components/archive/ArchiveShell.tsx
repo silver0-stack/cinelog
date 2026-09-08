@@ -13,6 +13,7 @@ import { AccountMenu } from '@/components/archive/AccountMenu'
 import { UniverseInsightPanel } from '@/components/archive/UniverseInsightPanel'
 import { MovieSearch } from '@/components/archive/MovieSearch'
 import { LogMovieForm } from '@/components/archive/LogMovieForm'
+import { SettingsShell } from '@/components/archive/SettingsShell'
 import { useLocale } from '@/components/i18n/LocaleProvider'
 import { EASE_SLOW } from '@/lib/motion'
 import { computeHistoryRange } from '@/lib/loggedMovies'
@@ -75,6 +76,9 @@ export function ArchiveShell({
   const { t } = useLocale()
   const [focusMovieId, setFocusMovieId] = useState(initialFocusId)
   const [addOpen, setAddOpen] = useState(false)
+  // (2026-09-08) 설정도 "+ 기록"과 같은 이유로 별도 라우트(/archive/settings)
+  // 대신 이 화면 위 오버레이로 옮겼다 — SettingsShell.tsx 상단 주석 참고.
+  const [settingsOpen, setSettingsOpen] = useState(false)
   // "+ 텍스트" 클릭마다 증가 — MovieUniverse가 이 값의 변화를 감지해 새 텍스트를
   // 만든다(focusMovieId와 같은 "외부 트리거" 패턴).
   const [addTextRequestId, setAddTextRequestId] = useState(0)
@@ -159,7 +163,7 @@ export function ArchiveShell({
         />
         <AccountMenu
           email={email}
-          links={[{ label: t('nav.settings'), href: '/archive/settings' }]}
+          menuActions={[{ label: t('nav.settings'), onClick: () => setSettingsOpen(true) }]}
           showSignOut={false}
         />
       </div>
@@ -208,6 +212,29 @@ export function ArchiveShell({
                   <h1 className="-mt-10 text-center text-sm font-light tracking-[var(--tk-55)] text-white/70">{t('nav.logMovie')}</h1>
                   <LogMovieForm existingByTmdbId={existingByTmdbId} onFocusMovie={focusAndClose} onSaved={() => router.refresh()} />
                 </div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
+        )}
+
+      {/* 설정도 같은 이유로 포탈한다(위 addOpen 블록 참고). "+ 기록"과 달리
+          배경 클릭으로 취소하는 가벼운 모달이 아니라 실제 페이지 전환처럼
+          느껴져야 해서(사용자가 "설정으로 넘어갔다"고 인식해야 함) 배경을
+          반투명이 아니라 완전히 불투명하게 덮고, 클릭으로 안 닫히게 한다 —
+          닫기는 SettingsShell 안의 "← 뒤로" 버튼으로만 한다. */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {settingsOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.4, ease: EASE_SLOW }}
+                className="fixed inset-0 z-[1100]"
+              >
+                <SettingsShell email={email} onClose={() => setSettingsOpen(false)} />
               </motion.div>
             )}
           </AnimatePresence>,

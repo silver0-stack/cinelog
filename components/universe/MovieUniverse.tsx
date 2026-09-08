@@ -14,6 +14,7 @@ import {
   type UniverseText,
 } from '@/lib/universeTexts'
 import { EASE_SLOW } from '@/lib/motion'
+import { navLinkClass } from '@/lib/uiStyles'
 import { useIdleHint } from '@/lib/useIdleHint'
 import { MovieBody, type Tier } from '@/components/movie/MovieBody'
 import { TextObject } from '@/components/universe/TextObject'
@@ -968,20 +969,12 @@ export function MovieUniverse({
           열람 중이 아닐 땐 같은 자리에서 "처음으로"로 바뀐다 — 줌/팬으로 원점을
           벗어났을 때만 나타나는 카메라 리셋 버튼(cameraAway 참고). */}
       {peekedId ? (
-        <button
-          type="button"
-          onClick={() => handlePeek(null)}
-          className="absolute left-4 top-4 z-[60] text-[10px] tracking-[var(--tk-30)] text-white/60 outline-none transition-colors duration-500 hover:text-white/90"
-        >
+        <button type="button" onClick={() => handlePeek(null)} className={`absolute left-4 top-4 z-[60] ${navLinkClass}`}>
           {t('nav.exit')}
         </button>
       ) : (
         cameraAway && (
-          <button
-            type="button"
-            onClick={resetCamera}
-            className="absolute left-4 top-4 z-[60] text-[10px] tracking-[var(--tk-30)] text-white/60 outline-none transition-colors duration-500 hover:text-white/90"
-          >
+          <button type="button" onClick={resetCamera} className={`absolute left-4 top-4 z-[60] ${navLinkClass}`}>
             {t('nav.recenter')}
           </button>
         )

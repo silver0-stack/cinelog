@@ -18,8 +18,15 @@ export const secondaryNavLinkClass =
 // 아니라 버튼처럼 보이게 한다. 유리질 블러/그라데이션/글로우는 쓰지 않는다
 // (CLAUDE.md가 피하라고 한 glassmorphism과는 다르다 — 배경 흐림 없는 순수
 // 테두리+단색 저채움).
+// (2026-09-08) 그래도 LOG IN(꽉 찬 흰색)만 유독 눈에 띄고 나머지는 여전히
+// 밋밋해 보인다는 피드백 — 처음엔 흰색 채움 농도만 살짝 올렸는데(0.06→0.1),
+// 우주 배경이 알록달록한 포스터라 흰색을 옅게 얹는 정도로는 거의 안 보였다
+// (검은 배경인 랜딩에서만 그나마 티가 났다). 어떤 배경 위에서도 확실히
+// "칩처럼 떠 있다"고 읽히려면 흰색을 더 진하게 얹는 것보다, 반투명 검정으로
+// 바탕 자체를 깔아 대비를 만드는 쪽이 낫다 — 여전히 색은 안 쓰고 흑백 톤
+// 안에서 대비만 세게 준 것이다. 검색 패널이 이미 쓰는 `bg-black`과 같은 계열.
 export const navLinkClass =
-  'rounded-full border border-white/25 bg-white/[0.06] px-3 py-1.5 text-xs font-light tracking-[var(--tk-15)] sm:tracking-[var(--tk-25)] text-white/75 outline-none transition-colors duration-500 hover:border-white/55 hover:bg-white/[0.12] hover:text-white/95 focus-visible:border-white/55 focus-visible:bg-white/[0.12] focus-visible:text-white/95 [text-shadow:0_0_10px_rgba(0,0,0,0.9),0_0_4px_rgba(0,0,0,0.9)]'
+  'rounded-full border border-white/40 bg-black/50 px-3 py-1.5 text-xs font-light tracking-[var(--tk-15)] sm:tracking-[var(--tk-25)] text-white/85 outline-none transition-colors duration-500 hover:border-white/70 hover:bg-black/70 hover:text-white/95 focus-visible:border-white/70 focus-visible:bg-black/70 focus-visible:text-white/95 [text-shadow:0_0_10px_rgba(0,0,0,0.9),0_0_4px_rgba(0,0,0,0.9)]'
 
 // 데모 우주에서 유일한 "전환" 액션(로그인)을 나머지 outline 버튼들과 다른
 // 무게로 표현하려고 만든 solid 채움 스타일. 색을 넣는 대신 채움 강도로
